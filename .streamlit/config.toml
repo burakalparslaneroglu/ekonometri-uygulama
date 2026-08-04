@@ -1,0 +1,19 @@
+[theme]
+base = "light"
+
+# Ana etkileşim rengi: düğmeler, seçili öğeler, bağlantılar
+primaryColor = "#107C89"
+
+# Ana sayfa arka planı
+backgroundColor = "#FFFFFF"
+
+# Yan menü, kutular ve ikincil alanlar için açık teal tonu
+secondaryBackgroundColor = "#EAF5F6"
+
+# Ana metin rengi
+textColor = "#07373D"
+
+font = "sans serif"
+
+[server]
+headless = true
