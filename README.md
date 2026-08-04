@@ -1,0 +1,2 @@
+# ekonometri-uygulama
+ekonometri-uygulama
