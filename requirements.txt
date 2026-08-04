@@ -1,9 +1,7 @@
-streamlit
-pandas
-numpy
-scipy
-statsmodels
-plotly
+streamlit>=1.50
+pandas>=2.2
+numpy>=1.26
+statsmodels>=0.14
+plotly>=5.22
 wooldridge==0.5.0
-openpyxl
-pytest
+pytest>=8.0
