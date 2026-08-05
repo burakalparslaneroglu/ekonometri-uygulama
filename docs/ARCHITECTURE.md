@@ -39,3 +39,14 @@ Konu 06, WAGE1 üzerinde `wage ~ educ`, `wage ~ educ + exper`, `wage ~ educ + ex
 Standart hata, t istatistiği, p-değeri, güven aralığı ve F testi Konu 06 öğrenci tablolarında bilinçli olarak yer almaz. Bu ortak çıkarım altyapısı ve aktif öğretim alanı sonraki `shared-regression-inference` / Konu 07 çalışmasına bırakılmıştır.
 
 Konu 06'nın öğrenci tabloları yalnız sunum için biçimlendirilmiş değerler kullanır: modelde bulunmayan katsayılar `—`, salt-okunur doğrulamalar `Evet/Hayır`, kayan nokta yuvarlama farkları ise “sayısal tolerans içinde 0” olarak gösterilir. Saf hesaplama sonuçları bu biçimlendirmeden etkilenmez.
+# Konu 08–09 ortak altyapısı
+
+Konu 08 ve Konu 09 aynı geliştirme dalında yer alsa da ayrı `topics/`, soru ve test modülleridir. `core/joint_inference_utils.py`, yalnız geleneksel `nonrobust` kovaryans altında genel `Rβ=r` ortak F testi, iç içe modeller için SSR/R² F karşılaştırması, genel anlamlılık, tek kısıtta `F=t²`, F dağılım grafiği verisi ve NumPy batch büyük-örneklem benzetimini taşır.
+
+`core/functional_form_utils.py`, ölçekleme, standartlaştırma, log-yüzde, karesel marjinal etki/dönüm noktası, WAGE1 M1–M4 ve merkezleme iş mantığını taşır. Karesel terimlerin ortak testi kendi F formülünü yazmaz; Konu 08'in `nested_exclusion_f_test` aracını kullanır. Konu ekranlarındaki pahalı sabit model ve benzetim sonuçları `st.cache_data` ile önbelleklenir.
+
+Konu 09 model seçimini tek bir metriğe indirmez; teori, işaret, veri aralığı, basitlik, SSR/R²/düzeltilmiş R² ve ortak F birlikte sunulur. Merkezleme fitted değerleri, artıklar, SSR ve R²'yi değiştirmez; içselliği çözmez. Dayanıklı ortak testler Konu 12'ye, kukla değişkenler Konu 10'a bırakılır. Soru durumları `session_utils` içinde konu bazlı anahtarlarla tutulur ve konu geçişinde sıfırlanır.
+
+`core/ui_preferences.py`, konu durumundan bağımsız metin ölçeği seçeneklerini ve CSS/Plotly yazı boyutlarını üretir. Seçim `text_scale_label` ile session state'te korunur; `app.py` bunu tek CSS değişkenine uygular. Tüm konu soru blokları birincil “Cevabı göster” ve ikincil “Yeni soru” düğme sistemini kullanır.
+
+Konu 08'deki custom laboratuvarı serbest metin ayrıştırmaz. Kullanıcı kontrollü R satırları ve r sağ taraflarını girer; `validate_restriction_system` rank(R), rank([R|r]), sıfır bilgi satırı, bağımlı satır ve tutarsız sistemi görünür kılar. Geçersiz sistemlerde test çalışmaz. `classify_restriction_system`, yalnız basit sıfır-dışlama kısıtlarında nested SSR/R² karşılaştırmasını açar; eşitlik, sıfır dışı ve doğrusal birleşim kısıtları genel `Rβ=r` matrix F ile sınanır.
