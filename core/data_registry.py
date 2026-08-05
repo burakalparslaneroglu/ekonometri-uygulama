@@ -237,6 +237,16 @@ def konu05_model_specs() -> tuple[RegressionModelSpec, ...]:
     )
 
 
+def konu06_model_specs() -> tuple[RegressionModelSpec, ...]:
+    """Konu 06 WAGE1 ayrıştırması için sabit model sırasını döndürür."""
+    return (
+        RegressionModelSpec("W6-S", "wage1", "WAGE1 — Kısa ücret modeli", "wage", "educ", ()),
+        RegressionModelSpec("W6-M", "wage1", "WAGE1 — Deneyim kontrollü ücret modeli", "wage", "educ", ("exper",)),
+        RegressionModelSpec("W6-F", "wage1", "WAGE1 — Deneyim ve kıdem kontrollü ücret modeli", "wage", "educ", ("exper", "tenure")),
+        RegressionModelSpec("W6-A", "wage1", "WAGE1 — Yardımcı regresyon: deneyim ve eğitim", "exper", "educ", ()),
+    )
+
+
 def variable_metadata(dataset_key: str, variable: str) -> VariableMetadata:
     """Bir değişkenin katalog bilgisini döndürür."""
     metadata = get_dataset_metadata(dataset_key)
