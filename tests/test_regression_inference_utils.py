@@ -9,6 +9,7 @@ from core.regression_inference_utils import (
     ci_test_equivalence, coefficient_confidence_interval, coefficient_test,
     critical_t_value, fit_ols_inference, format_p_value, scale_coefficient_inference,
     significance_stars, simulate_confidence_coverage, simulate_standard_errors,
+    selected_coverage_plot_data, t_distribution_plot_data,
 )
 
 
@@ -72,3 +73,24 @@ def test_scale_and_vectorized_simulations_are_deterministic() -> None:
     assert coverage.coverage_rate == pytest.approx(0.95, abs=0.03)
     lower, upper = coefficient_confidence_interval(fit_ols_inference(load_dataset("wage1"), "wage", ("educ", "exper", "tenure")), "educ")
     assert lower < 0.5 < upper
+
+
+def test_selected_coverage_examples_include_real_hits_and_misses() -> None:
+    """Seçili görünüm ilk tekrarlar yerine gerçek hit/miss örneklerini taşır."""
+    coverage = simulate_confidence_coverage(nobs=50, repetitions=1000, seed=202508)
+    selected = selected_coverage_plot_data(coverage)
+    repeated = selected_coverage_plot_data(coverage)
+    assert selected.equals(repeated)
+    assert len(selected) == 25
+    assert selected["contains_truth"].any() and (~selected["contains_truth"]).any()
+    for row in selected.itertuples(index=False):
+        source = int(row.source_interval) - 1
+        assert row.lower == pytest.approx(coverage.lower_bounds[source])
+        assert bool(row.contains_truth) is bool(coverage.contains_truth[source])
+
+
+def test_large_t_uses_a_central_plot_window() -> None:
+    """Büyük gözlenen t, yoğunluk eksenini gereksizce genişletmez."""
+    data = t_distribution_plot_data(522, 11.679)
+    assert data["t"].min() == pytest.approx(-5.0)
+    assert data["t"].max() == pytest.approx(5.0)

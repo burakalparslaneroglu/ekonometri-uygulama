@@ -435,9 +435,48 @@ def coverage_plot_data(result: ConfidenceCoverageResult, *, limit: int = 25) -> 
     return pd.DataFrame({"interval": np.arange(1, count + 1), "lower": result.lower_bounds[:count], "upper": result.upper_bounds[:count], "contains_truth": result.contains_truth[:count], "status": np.where(result.contains_truth[:count], "Kapsıyor", "Kaçırıyor")})
 
 
-def t_distribution_plot_data(df_resid: int, t_statistic: float, *, points: int = 601) -> pd.DataFrame:
+def selected_coverage_plot_data(
+    result: ConfidenceCoverageResult,
+    *,
+    limit: int = 25,
+    preferred_misses: int = 3,
+) -> pd.DataFrame:
+    """Kapsayan ve kaçıran gerçek aralıkları dengeli, deterministik seçer."""
+    count = _positive_int(limit, "Grafik aralık sayısı")
+    misses_requested = _positive_int(preferred_misses, "Tercih edilen kaçırma sayısı", minimum=0)
+    count = min(count, result.repetitions)
+    hit_indices = np.flatnonzero(result.contains_truth)
+    miss_indices = np.flatnonzero(~result.contains_truth)
+    miss_count = min(misses_requested, len(miss_indices), count)
+    hit_count = min(count - miss_count, len(hit_indices))
+    selected = np.concatenate((miss_indices[:miss_count], hit_indices[:hit_count]))
+    if len(selected) < count:
+        used = set(selected.tolist())
+        remainder = [index for index in range(result.repetitions) if index not in used]
+        selected = np.concatenate((selected, np.asarray(remainder[: count - len(selected)], dtype=int)))
+    selected = np.sort(selected)
+    return pd.DataFrame({
+        "interval": np.arange(1, len(selected) + 1),
+        "source_interval": selected + 1,
+        "lower": result.lower_bounds[selected],
+        "upper": result.upper_bounds[selected],
+        "contains_truth": result.contains_truth[selected],
+        "status": np.where(result.contains_truth[selected], "Kapsıyor", "Kaçırıyor"),
+    })
+
+
+def t_distribution_plot_data(
+    df_resid: int,
+    t_statistic: float,
+    *,
+    points: int = 601,
+    plot_limit: float | None = None,
+) -> pd.DataFrame:
     """Adaptif eksende Student-t yoğunluk grafiği için veri üretir."""
     df, observed, count = _positive_int(df_resid, "Serbestlik derecesi"), _finite(t_statistic, "t istatistiği"), _positive_int(points, "Grafik noktası", minimum=51)
-    extent = max(4.5, abs(observed) + 1.0)
+    limit = 5.0 if plot_limit is None else _finite(plot_limit, "Grafik sınırı")
+    if limit < 2.0:
+        raise ValueError("Grafik sınırı en az 2 olmalıdır.")
+    extent = max(4.5, limit)
     x = np.linspace(-extent, extent, count)
     return pd.DataFrame({"t": x, "density": student_t.pdf(x, df)})

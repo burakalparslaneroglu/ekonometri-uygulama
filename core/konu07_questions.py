@@ -117,7 +117,8 @@ def generate_konu07_question(context: Konu07QuestionContext, question_index: int
         answer = "Sıfır hipotezi yanlışken onu reddedememektir; test gücü bunun karşılığı olan reddetme olasılığıdır."
     elif kind == "test_istatistigi":
         prompt = f"Bu modelde t = ({beta} − {_number(test.null_value)}) / {se} kaçtır?"
-        answer = f"t = {_number(test.t_statistic)}. Tahmin null değerinden bu kadar standart hata uzaktadır."
+        direction = "üzerindedir" if test.t_statistic >= 0 else "altındadır"
+        answer = f"t = {_number(test.t_statistic)}. Tahmin, null değerin yaklaşık {_number(abs(test.t_statistic))} standart hata {direction}."
     elif kind == "df_resid":
         prompt = f"n={result.nobs} ve k={result.n_explanatory} iken artık serbestlik derecesi nedir?"
         answer = f"n−k−1 = {result.nobs}−{result.n_explanatory}−1 = {result.df_resid}."
