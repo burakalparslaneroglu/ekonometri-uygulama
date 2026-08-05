@@ -81,20 +81,64 @@ def descriptive_statistics(frame: pd.DataFrame, variables: tuple[str, ...]) -> p
 
 def predict_value(result: SimpleOLSResult, x_value: float) -> float:
     """Geçerli bir X değeri için tahmin edilen Y değerini hesaplar."""
-    if not np.isfinite(x_value):
-        raise ValueError("X değeri sonlu bir sayı olmalıdır.")
-    return result.intercept + result.slope * float(x_value)
+    intercept, slope = _model_coefficients(result)
+    return fitted_value(intercept, slope, x_value)
+
+
+def _model_coefficients(result: SimpleOLSResult) -> tuple[float, float]:
+    """Tahmin için gerekli model katsayılarını doğrular."""
+    try:
+        return result.intercept, result.slope
+    except AttributeError as error:
+        raise ValueError("Model tahmin için sabit terim ve eğim katsayısı içermelidir.") from error
+
+
+def fitted_value(intercept: float, slope: float, x_value: float) -> float:
+    """Sabit, eğim ve X değeriyle tahmin edilen değeri hesaplar."""
+    values = {"Sabit terim": intercept, "Eğim katsayısı": slope, "X değeri": x_value}
+    converted: dict[str, float] = {}
+    for label, value in values.items():
+        try:
+            converted[label] = float(value)
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"{label} sayısal olmalıdır.") from error
+        if not np.isfinite(converted[label]):
+            raise ValueError(f"{label} sonlu bir sayı olmalıdır.")
+    return converted["Sabit terim"] + converted["Eğim katsayısı"] * converted["X değeri"]
+
+
+def residual_value(observed_value: float, predicted_value: float) -> float:
+    """Gerçekleşen ve tahmin edilen değerlerden artığı hesaplar."""
+    values = {"Y değeri": observed_value, "Tahmin edilen Y değeri": predicted_value}
+    converted: dict[str, float] = {}
+    for label, value in values.items():
+        try:
+            converted[label] = float(value)
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"{label} sayısal olmalıdır.") from error
+        if not np.isfinite(converted[label]):
+            raise ValueError(f"{label} sonlu bir sayı olmalıdır.")
+    return converted["Y değeri"] - converted["Tahmin edilen Y değeri"]
 
 
 def observation_result(result: SimpleOLSResult, position: int) -> dict[str, float | int]:
     """Sıfırdan başlayan sıra numarasıyla seçilen gözlemin tahmin ve artığını döndürür."""
+    if not isinstance(position, (int, np.integer)):
+        raise ValueError("Gözlem sırası tam sayı olmalıdır.")
     if position < 0 or position >= result.nobs:
         raise IndexError(f"Gözlem sırası 0 ile {result.nobs - 1} arasında olmalıdır.")
+    x_value = result.explanatory_values.iloc[position]
+    observed_value = result.observed_values.iloc[position]
+    if pd.isna(x_value) or pd.isna(observed_value):
+        raise ValueError("Seçili gözlemde X ve Y değerleri eksik olamaz.")
+    intercept, slope = _model_coefficients(result)
+    predicted_value = fitted_value(intercept, slope, x_value)
+    residual = residual_value(observed_value, predicted_value)
     index = result.observed_values.index[position]
     return {
         "index": int(index),
-        "x": float(result.explanatory_values.iloc[position]),
-        "observed": float(result.observed_values.iloc[position]),
-        "predicted": float(result.fitted_values.iloc[position]),
-        "residual": float(result.residuals.iloc[position]),
+        "x": float(x_value),
+        "observed": float(observed_value),
+        "predicted": predicted_value,
+        "residual": residual,
     }
