@@ -39,6 +39,19 @@ class DatasetMetadata:
     classification_reason: str = ""
 
 
+@dataclass(frozen=True)
+class RegressionModelSpec:
+    """Konu 05 için önceden tanımlanmış öğretim modelini tanımlar."""
+
+    model_id: str
+    dataset_key: str
+    title: str
+    dependent: str
+    focal_explanatory: str
+    controls: tuple[str, ...]
+    transformed_columns: tuple[str, ...] = ()
+
+
 DATASETS: dict[str, DatasetMetadata] = {
     "wage1": DatasetMetadata(
         key="wage1",
@@ -71,6 +84,8 @@ DATASETS: dict[str, DatasetMetadata] = {
             "sqrft": VariableMetadata("sqrft", "Konut alanı", "Konutun kapalı alanıdır.", "kare fit"),
             "lotsize": VariableMetadata("lotsize", "Arsa alanı", "Konutun bulunduğu arsanın alanıdır.", "kare fit"),
             "bdrms": VariableMetadata("bdrms", "Yatak odası sayısı", "Konuttaki yatak odası sayısıdır.", "adet"),
+            "lotsize1000": VariableMetadata("lotsize1000", "Arsa alanı (bin kare fit)", "Arsa alanının 1.000 kare fite bölünmüş halidir.", "bin kare fit"),
+            "sqrft100": VariableMetadata("sqrft100", "Konut alanı (100 kare fit)", "Konut alanının 100 kare fite bölünmüş halidir.", "100 kare fit"),
         },
         allowed_pairs={"price": ("sqrft", "lotsize", "bdrms")},
     ),
@@ -178,7 +193,8 @@ def load_dataset(dataset_key: str) -> pd.DataFrame:
         raise RuntimeError(f"{metadata.title} veri seti yüklenemedi: {error}") from error
     if frame.empty:
         raise RuntimeError(f"{metadata.title} veri seti boş döndü.")
-    missing = sorted(set(metadata.variables).difference(frame.columns))
+    derived = {"lotsize1000", "sqrft100"} if dataset_key == "hprice1" else set()
+    missing = sorted(set(metadata.variables).difference(derived).difference(frame.columns))
     if missing:
         raise RuntimeError(
             f"{metadata.title} beklenen sütunları içermiyor: {', '.join(missing)}. "
@@ -208,6 +224,17 @@ def konu04_model_pairs(dataset_key: str) -> tuple[tuple[str, str], ...]:
         return pairs[dataset_key]
     except KeyError as error:
         raise ValueError(f"{dataset_key!r} Konu 04 için desteklenmeyen veri setidir.") from error
+
+
+def konu05_model_specs() -> tuple[RegressionModelSpec, ...]:
+    """Konu 05'e izin verilen sabit model sırasını döndürür."""
+    return (
+        RegressionModelSpec("W1-S", "wage1", "WAGE1 — Basit ücret modeli", "wage", "educ", ()),
+        RegressionModelSpec("W1-M", "wage1", "WAGE1 — Eğitim, deneyim ve kıdem modeli", "wage", "educ", ("exper", "tenure")),
+        RegressionModelSpec("W1-L", "wage1", "WAGE1 — Log ücret modeli", "lwage", "educ", ("exper", "tenure")),
+        RegressionModelSpec("H1-S", "hprice1", "HPRICE1 — Basit konut büyüklüğü modeli", "price", "sqrft100", (), ("sqrft100",)),
+        RegressionModelSpec("H1-M", "hprice1", "HPRICE1 — Arsa, konut büyüklüğü ve yatak odası modeli", "price", "sqrft100", ("lotsize1000", "bdrms"), ("lotsize1000", "sqrft100")),
+    )
 
 
 def variable_metadata(dataset_key: str, variable: str) -> VariableMetadata:
