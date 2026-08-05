@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from core.question_engine import GeneratedQuestion, cycle_question_type
+from core.group_comparison_utils import GroupComparison
 
 
 KONU01_QUESTION_TYPES = (
@@ -15,6 +16,21 @@ KONU01_QUESTION_TYPES = (
     "empirical_purpose",
     "safe_language",
     "wage1_metadata",
+)
+
+KONU02_QUESTION_TYPES = (
+    "data_structure",
+    "observation_unit",
+    "time_dimension",
+    "panel_or_pooled",
+    "structure_or_collection",
+    "observational_or_experimental",
+    "safe_language",
+    "ceteris_paribus",
+    "causal_threat",
+    "group_difference",
+    "appropriate_interpretation",
+    "generalizability",
 )
 
 
@@ -88,4 +104,53 @@ def generate_konu01_question(model_id: str, question_index: int) -> GeneratedQue
         answer = (
             "Gözlem birimi çalışandır. wage saatlik ücret olup ABD doları/saat cinsindendir; educ tamamlanan eğitim yılıdır."
         )
+    return GeneratedQuestion(question_type=question_type, prompt=prompt, answer=answer, index=question_index)
+
+
+def generate_konu02_question(
+    model_id: str,
+    question_index: int,
+    group_comparison: GroupComparison,
+) -> GeneratedQuestion:
+    """Konu 02 kapsamındaki veri ve nedensellik sorusunu deterministik üretir."""
+    question_type = cycle_question_type(model_id, question_index, KONU02_QUESTION_TYPES, namespace="konu02")
+    if question_type == "data_structure":
+        prompt = "Aynı 300 firmanın 2018–2025 yıllarında tekrar gözlendiği dosyanın veri yapısı nedir?"
+        answer = "Panel veridir; ayırt edici özellik aynı firmaların birden fazla dönemde tekrar gözlenmesidir."
+    elif question_type == "observation_unit":
+        prompt = "WAGEPAN dosyasında bir satır yalnızca çalışanı mı, yoksa hangi birleşimi temsil eder?"
+        answer = "Bir satır çalışan-yıl birleşimini temsil eder. Aynı çalışan farklı yıllarda yeniden görünür."
+    elif question_type == "time_dimension":
+        prompt = "PHILLIPS dosyasında yıl neden sadece bir etiket değil, zaman boyutunun parçasıdır?"
+        answer = "Her satır bir yılı temsil eder ve yılların ardışık sırası ekonomik bilgi taşır; veri yıllık zaman serisidir."
+    elif question_type == "panel_or_pooled":
+        prompt = "1978 ve 1985'te farklı çalışan örneklemleri seçilmiş, aynı kişiler izlenmemiştir. Bu yapı panel mi, havuzlanmış yatay kesit mi?"
+        answer = "Havuzlanmış yatay kesittir. Birden fazla dönem vardır; fakat aynı çalışanların tekrar gözlendiği gösterilmemiştir."
+    elif question_type == "structure_or_collection":
+        prompt = "“Panel veri” ile “deneysel veri” aynı tür sınıflandırma mıdır?"
+        answer = "Hayır. Panel veri, satırların ve zamanın nasıl düzenlendiğini; deneysel veri ise uygulama atamasının nasıl üretildiğini açıklar."
+    elif question_type == "observational_or_experimental":
+        prompt = "Katılımcıların eğitim ve kontrol grubuna rastgele atanması hangi veri üretim biçimine işaret eder?"
+        answer = "Deneysel veri üretim biçimine işaret eder. Rastgele atamanın gerçekten uygulanıp uygulanmadığı yine kontrol edilmelidir."
+    elif question_type == "safe_language":
+        prompt = "Gözlemsel WAGE1 örnekleminde eğitim yılı yüksek çalışanların ücreti daha yüksek görünüyorsa, hangi yorum güvenlidir?"
+        answer = "“Örneklemde eğitim yılı ile saatlik ücret arasında pozitif bir ilişki gözlenmektedir” ifadesi güvenlidir. Bu görünüm tek başına nedensel etki göstermez."
+    elif question_type == "ceteris_paribus":
+        prompt = "Ceteris paribus düşüncesi “gerçekte her şey sabittir” mi demektir?"
+        answer = "Hayır. Diğer ilgili koşullar aynıyken bir değişkenin sonuçla bağlantısını düşünmeye yarayan kavramsal karşılaştırmadır."
+    elif question_type == "causal_threat":
+        prompt = "Daha yüksek satış beklentisi firmaları daha fazla reklam vermeye yöneltiyorsa, reklamın satışla bağlantısında hangi sorun öne çıkar?"
+        answer = "Ters nedensellik öne çıkar: sonuçla ilgili beklenti, açıklayıcı değişkeni de etkiliyor olabilir."
+    elif question_type == "group_difference":
+        prompt = f"JTRAIN2'de eğitim grubunun ortalama 1978 reel kazancı ile kontrol grubunun ortalama 1978 reel kazancı arasındaki fark nedir?"
+        answer = (
+            f"Eğitim grubu eksi kontrol grubu farkı {group_comparison.difference:.3f} {group_comparison.unit}'dır. "
+            "Bu, iki grubun ortalamalarının betimsel farkıdır."
+        )
+    elif question_type == "appropriate_interpretation":
+        prompt = "WAGE1 ve JTRAIN2 karşılaştırmalarından hangisinde, tasarım koşulları sağlanırsa, daha güçlü nedensel yorum düşünülebilir?"
+        answer = "JTRAIN2'de rastgele atama gerçekten uygulanmış ve önemli uygulama sorunu yoksa grup farkı daha güçlü yorumlanabilir. WAGE1 için güvenli dil gözlenen ilişkidir."
+    else:
+        prompt = "Bir deney örneklemindeki grup farkı, otomatik olarak tüm çalışanlar ve tüm dönemler için geçerli sayılabilir mi?"
+        answer = "Hayır. Sonucun başka kişi, kurum, yer veya dönemlere genellenebilirliği örneklem kapsamına ve bağlama bağlıdır."
     return GeneratedQuestion(question_type=question_type, prompt=prompt, answer=answer, index=question_index)

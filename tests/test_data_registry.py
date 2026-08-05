@@ -16,3 +16,20 @@ def test_hprice_variable_metadata() -> None:
     variable = variable_metadata("hprice1", "sqrft")
     assert variable.label == "Konut alanı"
     assert variable.unit == "kare fit"
+
+
+def test_konu02_dataset_metadata_and_required_columns() -> None:
+    expected = {
+        "wage1": "yatay kesit verisi",
+        "phillips": "zaman serisi verisi",
+        "cps78_85": "havuzlanmış yatay kesit verisi",
+        "wagepan": "panel veri",
+    }
+    for key, structure in expected.items():
+        metadata = get_dataset_metadata(key)
+        frame = load_dataset(key)
+        assert metadata.data_structure == structure
+        assert set(metadata.variables).issubset(frame.columns)
+    jtrain = get_dataset_metadata("jtrain2")
+    assert jtrain.collection_method == "deneysel"
+    assert {"train", "re78"}.issubset(load_dataset("jtrain2").columns)
