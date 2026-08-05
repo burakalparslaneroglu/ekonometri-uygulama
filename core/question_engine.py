@@ -27,12 +27,25 @@ def _stable_number(model_id: str, question_index: int, salt: str = "") -> int:
     return int.from_bytes(hashlib.sha256(source).digest()[:8], "big")
 
 
-def question_type_for(model_id: str, question_index: int) -> str:
-    """Konu 03 için ardışık sıralarda farklı soru türü seçer."""
+def cycle_question_type(
+    model_id: str,
+    question_index: int,
+    question_types: tuple[str, ...],
+    *,
+    namespace: str,
+) -> str:
+    """Bir konuya ait soru türlerini deterministik ve ardışık döndürür."""
     if question_index < 0:
         raise ValueError("Soru sırası negatif olamaz.")
-    start = _stable_number(model_id, 0, "type") % len(KONU03_QUESTION_TYPES)
-    return KONU03_QUESTION_TYPES[(start + question_index) % len(KONU03_QUESTION_TYPES)]
+    if not question_types:
+        raise ValueError("En az bir soru türü tanımlanmalıdır.")
+    start = _stable_number(model_id, 0, f"{namespace}:type") % len(question_types)
+    return question_types[(start + question_index) % len(question_types)]
+
+
+def question_type_for(model_id: str, question_index: int) -> str:
+    """Konu 03 için ardışık sıralarda farklı soru türü seçer."""
+    return cycle_question_type(model_id, question_index, KONU03_QUESTION_TYPES, namespace="konu03")
 
 
 def generate_question(
