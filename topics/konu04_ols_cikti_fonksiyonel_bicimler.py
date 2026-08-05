@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from core.ui_components import render_question_actions
 
 from core.data_registry import get_dataset_metadata, konu04_model_pairs, load_dataset, variable_metadata
 from core.konu04_questions import generate_konu04_question
@@ -60,12 +61,7 @@ def _render_questions(model_id: str, result, sums, decomposition, form: Function
     question = generate_konu04_question(model_id, index, result, sums, decomposition, form, y_label, x_label)
     st.subheader("Kendini dene")
     st.markdown(f"**Soru {index + 1}:** {question.prompt}")
-    left, right = st.columns(2)
-    if left.button("Cevabı göster", key="konu04_show_answer", type="primary", width="stretch"):
-        reveal_answer(st.session_state, topic_id=topic_id)
-    if right.button("Yeni soru", key="konu04_next_question", type="secondary", width="stretch"):
-        next_question(st.session_state, topic_id=topic_id)
-        st.rerun()
+    render_question_actions(topic_id=topic_id)
     if st.session_state.get(answer_key, False):
         st.success(f"**Çözüm:** {question.answer}")
     else:

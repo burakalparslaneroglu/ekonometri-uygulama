@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from core.ui_components import render_question_actions
 
 from core.data_registry import (
     allowed_explanatory_variables,
@@ -175,12 +176,7 @@ def _render_questions(result, model_id: str, dataset_key: str, observation_posit
     )
     st.subheader("Kendini dene")
     st.markdown(f"**Soru {index + 1}:** {question.prompt}")
-    first, second = st.columns(2)
-    if first.button("Cevabı göster", type="primary", width="stretch"):
-        reveal_answer(st.session_state)
-    if second.button("Yeni soru", type="secondary", width="stretch"):
-        next_question(st.session_state)
-        st.rerun()
+    render_question_actions(topic_id="konu03")
     if st.session_state.get(ANSWER_VISIBLE_KEY, False):
         st.success(f"**Çözüm:** {question.answer}")
     else:

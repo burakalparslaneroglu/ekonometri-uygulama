@@ -15,7 +15,21 @@
 [data-testid="stMetric"] { background: #F7FBFB; border: 1px solid #D4E8EA; border-radius: .55rem; padding: .65rem; }
 [data-testid="stSidebar"] { border-right: 1px solid #D4E8EA; }
 .stButton > button { border-radius: .4rem; font-weight: 600; min-width: 9rem; }
+[class*="st-key-question_actions_"] {
+  max-width: 44rem;
+  margin: .35rem 0 .65rem;
+}
+[class*="st-key-question_actions_"] [data-testid="stHorizontalBlock"] { gap: .55rem; }
+[class*="st-key-question_actions_"] .stButton > button {
+  min-height: calc(2.75rem * var(--app-font-scale, 1.10));
+  padding: .55rem 1rem;
+  border-radius: .55rem;
+  white-space: normal;
+  line-height: 1.2;
+}
 @media (max-width: 640px) {
   .block-container { padding-left: 1rem; padding-right: 1rem; }
   [data-testid="stMetric"] { padding: .45rem; }
+  [class*="st-key-question_actions_"] [data-testid="stHorizontalBlock"] { flex-wrap: wrap; }
+  [class*="st-key-question_actions_"] [data-testid="column"] { min-width: 100%; }
 }

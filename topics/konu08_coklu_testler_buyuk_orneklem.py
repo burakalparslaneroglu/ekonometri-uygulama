@@ -5,6 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from core.ui_components import render_question_actions
 
 from core.data_registry import get_dataset_metadata, load_dataset, variable_metadata
 from core.joint_inference_utils import (LinearRestriction, classify_large_sample_scenario, f_distribution_plot_data,
@@ -226,10 +227,6 @@ def render() -> None:
     index_key, _, answer_key = question_state_keys("konu08")
     question = generate_konu08_question(context, int(st.session_state.get(index_key, 0)))
     st.write(question.prompt)
-    buttons = st.columns(2)
-    if buttons[0].button("Cevabı göster", key="konu08_show_answer", type="primary", width="stretch"):
-        reveal_answer(st.session_state, "konu08")
-    if buttons[1].button("Yeni soru", key="konu08_next_question", type="secondary", width="stretch"):
-        next_question(st.session_state, "konu08"); st.rerun()
+    render_question_actions(topic_id="konu08")
     if st.session_state.get(answer_key, False):
         st.success("Çözüm: " + question.answer)

@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from core.ui_components import render_question_actions
 
 from core.data_registry import get_dataset_metadata, load_dataset
 from core.functional_form_utils import (add_wage1_quadratic_columns, center_quadratic_model, log_level_percent_change,
@@ -122,7 +123,5 @@ def render() -> None:
     st.subheader("Kendini dene")
     context = Konu09QuestionContext("wage1-m4", comparison); synchronize_question_state(st.session_state, context.context_id, "konu09")
     index_key, _, answer_key = question_state_keys("konu09"); question = generate_konu09_question(context, int(st.session_state.get(index_key, 0))); st.write(question.prompt)
-    buttons = st.columns(2)
-    if buttons[0].button("Cevabı göster", key="konu09_show_answer", type="primary", width="stretch"): reveal_answer(st.session_state, "konu09")
-    if buttons[1].button("Yeni soru", key="konu09_next_question", type="secondary", width="stretch"): next_question(st.session_state, "konu09"); st.rerun()
+    render_question_actions(topic_id="konu09")
     if st.session_state.get(answer_key, False): st.success("Çözüm: " + question.answer)

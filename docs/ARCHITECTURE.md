@@ -49,4 +49,14 @@ Konu 09 model seçimini tek bir metriğe indirmez; teori, işaret, veri aralığ
 
 `core/ui_preferences.py`, konu durumundan bağımsız metin ölçeği seçeneklerini ve CSS/Plotly yazı boyutlarını üretir. Seçim `text_scale_label` ile session state'te korunur; `app.py` bunu tek CSS değişkenine uygular. Tüm konu soru blokları birincil “Cevabı göster” ve ikincil “Yeni soru” düğme sistemini kullanır.
 
+# Konu 10–12 ortak altyapısı
+
+Konu 10, 11 ve 12 ayrı sayfa, saf hesaplama, soru ve test modülleridir. `core/categorical_regression_utils.py` 0/1 grup özeti, referans kodlama değişmezliği, kukla tuzağı rank denetimi, log-kukla yüzde dönüşümü ve Konu 08'in geleneksel ortak F testini kullanır. Türetilmiş WAGE1 sütunları girdiyi değiştirmeyen kopyada doğrulanır.
+
+`core/interaction_utils.py`, Konu 10'un referans/kategori mantığı üzerinde D×X modellerinin iki grup doğrusunu, koşullu lineer bileşim farkını ve tam kovaryansla standart hatasını kurar. Merkezleme fitted değer, artık, SSR ve R² değişmezliğini ayrıca denetler. Konu 11 yalnız ayrıntılı ders notunun desteklediği etkileşim ve grup farkı kapsamındadır; LPM eklenmemiştir.
+
+`core/robust_inference_utils.py` mevcut `OLSInferenceResult` ve Konu 08'in nonrobust anlamını değiştirmez. Bunun yerine aynı EKK katsayıları için ayrı HC0–HC3 sonuç katmanı, BP/White tanıları, robust Wald/F ortak testi, saf grafik verisi ve sabit-seed vektörize kapsama benzetimi sunar. Kovaryans türü öğrenci ekranında açıkça etiketlenir; robust standart hata katsayıyı, yanlılığı veya nedensel tasarımı düzeltmez.
+
+Video incelemesi sonrasındaki öğretim katmanı genişletmesinde `core/ui_components.py`, Konu 01–12'nin soru eylemlerini tek kompakt primary/secondary bileşeninde toplar. CSS yalnız `question_actions_<topic>` anahtarlı kapsayıcıyı hedefler ve dar ekranda sarmalanır. Konu 10'a sayısal–kukla kodlama, kategori karşıtlığı ve rank önizlemesi; Konu 11'e grup doğrusu ve koşullu fark ızgaraları; Konu 12'ye BP/White manuel yardımcı-regresyon ayrıntıları, tüm HC türlerinin karşılaştırması ve tanı/benzetim grafik verileri eklenmiştir.
+
 Konu 08'deki custom laboratuvarı serbest metin ayrıştırmaz. Kullanıcı kontrollü R satırları ve r sağ taraflarını girer; `validate_restriction_system` rank(R), rank([R|r]), sıfır bilgi satırı, bağımlı satır ve tutarsız sistemi görünür kılar. Geçersiz sistemlerde test çalışmaz. `classify_restriction_system`, yalnız basit sıfır-dışlama kısıtlarında nested SSR/R² karşılaştırmasını açar; eşitlik, sıfır dışı ve doğrusal birleşim kısıtları genel `Rβ=r` matrix F ile sınanır.
