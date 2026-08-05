@@ -48,6 +48,7 @@ DATASETS: dict[str, DatasetMetadata] = {
         observation_unit="Çalışan",
         variables={
             "wage": VariableMetadata("wage", "Saatlik ücret", "Bireyin saatlik ücretidir.", "ABD doları/saat"),
+            "lwage": VariableMetadata("lwage", "Saatlik ücretin logaritması", "Saatlik ücretin doğal logaritmasıdır.", "log birim"),
             "educ": VariableMetadata("educ", "Eğitim", "Tamamlanan eğitim yılıdır.", "yıl"),
             "exper": VariableMetadata("exper", "İş deneyimi", "İş piyasasındaki potansiyel deneyim yılıdır.", "yıl"),
             "tenure": VariableMetadata("tenure", "Mevcut işyerindeki kıdem", "Mevcut işyerinde çalışma süresidir.", "yıl"),
@@ -195,6 +196,18 @@ def allowed_explanatory_variables(dataset_key: str, dependent: str) -> tuple[str
         raise ValueError(
             f"{dependent!r}, {metadata.title} için desteklenen bağımlı değişken değildir."
         ) from error
+
+
+def konu04_model_pairs(dataset_key: str) -> tuple[tuple[str, str], ...]:
+    """Konu 04 notlarıyla uyumlu, sınırlı Y–X eşleşmelerini verir."""
+    pairs = {
+        "wage1": (("wage", "educ"),),
+        "hprice1": (("price", "sqrft"),),
+    }
+    try:
+        return pairs[dataset_key]
+    except KeyError as error:
+        raise ValueError(f"{dataset_key!r} Konu 04 için desteklenmeyen veri setidir.") from error
 
 
 def variable_metadata(dataset_key: str, variable: str) -> VariableMetadata:
