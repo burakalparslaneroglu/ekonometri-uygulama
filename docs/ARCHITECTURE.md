@@ -1,5 +1,7 @@
 # Mimari
 
+Konu 07 uygulamanın ilk aktif çıkarım modülüdür. `core/regression_inference_utils.py` Streamlit'ten bağımsız ortak katmanda yalnızca geleneksel `nonrobust` EKK standart hatalarını, Student-t kritik değerlerini ve p-değerlerini, tek katsayı testlerini, güven aralıklarını, test–GA eşdeğerliğini, p/yıldız biçimlendirmesini, ölçeklemeyi ve vektörize benzetimleri sağlar. Heteroskedastisiteye dayanıklı standart hatalar Konu 12'ye, birlikte katsayı sınaması ve F testi Konu 08'e bırakılmıştır.
+
 Uygulama, Streamlit arayüzü ile hesaplama mantığını ayıran küçük modüllerden oluşur.
 
 - `app.py`: Ortak sayfa yapılandırması, ortak görsel iskelet ve konu yönlendirmesi.

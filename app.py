@@ -14,6 +14,7 @@ from topics.konu03_basit_regresyon import render as render_konu03
 from topics.konu04_ols_cikti_fonksiyonel_bicimler import render as render_konu04
 from topics.konu05_coklu_regresyon import render as render_konu05
 from topics.konu06_ols_varsayimlari_yanlilik import render as render_konu06
+from topics.konu07_tekli_hipotez_testleri import render as render_konu07
 
 
 TOPIC_RENDERERS = {
@@ -23,6 +24,7 @@ TOPIC_RENDERERS = {
     "konu04": render_konu04,
     "konu05": render_konu05,
     "konu06": render_konu06,
+    "konu07": render_konu07,
 }
 
 
@@ -59,6 +61,7 @@ def main() -> None:
                 "Konu 04 — EKK Tahminini Değerlendirme: Uyum, Ölçü Birimleri ve Temel Fonksiyonel Biçimler",
                 "Konu 05 — Çoklu Regresyon Modeli ve Ceteris Paribus Yorumu",
                 "Konu 06 — EKK Varsayımları, Yansızlık ve Model Sorunları",
+                "Konu 07 — Tek Katsayı İçin Hipotez Testleri",
             ],
             label_visibility="collapsed",
         )
@@ -70,7 +73,7 @@ def main() -> None:
     st.caption(APP_CONFIG.application_subtitle)
 
     topic_id = next(identifier for prefix, identifier in {
-        "Konu 01": "konu01", "Konu 02": "konu02", "Konu 03": "konu03", "Konu 04": "konu04", "Konu 05": "konu05", "Konu 06": "konu06",
+        "Konu 01": "konu01", "Konu 02": "konu02", "Konu 03": "konu03", "Konu 04": "konu04", "Konu 05": "konu05", "Konu 06": "konu06", "Konu 07": "konu07",
     }.items() if topic.startswith(prefix))
     synchronize_active_topic(st.session_state, topic_id)
 
