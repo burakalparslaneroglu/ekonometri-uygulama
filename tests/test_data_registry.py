@@ -8,6 +8,8 @@ def test_wage1_catalogue_and_loader() -> None:
     assert frame.shape[0] == 526
     assert {"wage", "educ", "exper", "tenure"}.issubset(frame.columns)
     assert allowed_explanatory_variables("wage1", "wage") == ("educ", "exper", "tenure")
+    assert metadata.observation_unit == "Çalışan"
+    assert variable_metadata("wage1", "wage").unit == "ABD doları/saat"
 
 
 def test_hprice_variable_metadata() -> None:

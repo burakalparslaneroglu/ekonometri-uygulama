@@ -1,24 +1,24 @@
-\# Ekonometri UygulamasÄ± â€” Proje TalimatlarÄ±
+\# Ekonometri Uygulaması ve Proje Talimatları
 
 
 
-\## Proje amacÄ±
+\## Proje amacı
 
 
 
-Bu depo, lisans dÃ¼zeyindeki Ekonometriye GiriÅŸ dersi iÃ§in Python ve
+Bu depo, lisans düzeyindeki Ekonometriye Giriş dersi için Python ve
 
-Streamlit tabanlÄ± etkileÅŸimli bir Ã¶ÄŸretim uygulamasÄ±dÄ±r.
-
-
-
-Ders notlarÄ± konu kapsamÄ±, terminoloji, notasyon, konu sÄ±rasÄ± ve
-
-ekonometrik yorumlar bakÄ±mÄ±ndan baÄŸlayÄ±cÄ± kaynaktÄ±r.
+Streamlit tabanlı etkileşimli bir öğretim uygulamasıdır.
 
 
 
-\## Teknik Ã§erÃ§eve
+Ders notları konu kapsamı, terminoloji, notasyon, konu sırası ve
+
+ekonometrik yorumlar bakımından bağlayıcı kaynaktır.
+
+
+
+\## Teknik çerçeve
 
 
 
@@ -26,67 +26,65 @@ ekonometrik yorumlar bakÄ±mÄ±ndan baÄŸlayÄ±cÄ± kaynaktÄ±r.
 
 \- Streamlit Community Cloud ile uyumlu kod yaz.
 
-\- Sabit yerel dosya yollarÄ± kullanma.
+\- Sabit yerel dosya yolları kullanma.
 
-\- Ä°ÅŸ mantÄ±ÄŸÄ±nÄ± Streamlit arayÃ¼zÃ¼nden ayÄ±r.
+\- iş mantığını Streamlit arayüzünden ayır.
 
-\- app.py yalnÄ±zca ortak arayÃ¼z ve konu yÃ¶nlendirmesi taÅŸÄ±sÄ±n.
+\- app.py yalnızca ortak arayüz ve konu yönlendirmesi taşısın.
 
-\- Konu modÃ¼lleri topics/ altÄ±nda bulunsun.
+\- Konu modülleri topics/ altında bulunsun.
 
-\- Ortak veri, model, soru ve oturum iÅŸlevleri core/ altÄ±nda bulunsun.
+\- Ortak veri, model, soru ve oturum işlevleri core/ altında bulunsun.
 
-\- AÄŸÄ±r veya tekrarlÄ± iÅŸlemlerde uygun Streamlit cache mekanizmasÄ±nÄ± kullan.
+\- Ağır veya tekrarlı işlemlerde uygun Streamlit cache mekanizmasını kullan.
 
-\- Ã‡alÄ±ÅŸma zamanÄ± LLM veya dÄ±ÅŸ API baÄŸÄ±mlÄ±lÄ±ÄŸÄ± ekleme.
+\- Çalışma zamanı LLM veya dış API bağımlılığı ekleme.
 
-\- Secret, parola veya kiÅŸisel veri commit etme.
-
-
-
-\## GÃ¶rsel tasarÄ±m
+\- Secret, parola veya kişisel veri commit etme.
 
 
 
-Sunumlarla aynÄ± renk paletini kullan:
+\## Görsel tasarım
 
 
 
-\- pauInk: #07373D
-
-\- pauDeep: #0C5B65
-
-\- pauTeal: #107C89
-
-\- pauBright: #15A4B5
-
-\- pauGreen: #2F9E6B
-
-\- pauRed: #B3392F
+Sunumlarla aynı renk paletini kullan:
 
 
 
-AÃ§Ä±k tema kullan. Ana metin ve vurgularda yeterli renk karÅŸÄ±tlÄ±ÄŸÄ±nÄ± koru.
+\- brandInk: #07373D
 
-DoÄŸru cevaplarda pauGreen, uyarÄ±larda pauRed kullan; ancak yalnÄ±zca renge
+\- brandDeep: #0C5B65
 
-dayalÄ± bilgi verme.
+\- brandTeal: #107C89
+
+\- brandBright: #15A4B5
+
+\- brandGreen: #2F9E6B
+
+\- brandRed: #B3392F
 
 
 
-\## Veri politikasÄ±
+Açık tema kullan. Ana metin ve vurgularda yeterli renk karşıtlığını koru.
+
+Doğru cevaplarda brandGreen, uyarılarda brandRed kullan; ancak yalnızca
+
+renge dayalı bilgi verme.
+
+\## Veri politikası
 
 
 
-\- Wooldridge verilerini wooldridge Python paketi Ã¼zerinden yÃ¼kle.
+\- Wooldridge verilerini wooldridge Python paketi üzerinden yükle.
 
-\- Wooldridge Excel dosyalarÄ±nÄ± depoya kopyalama.
+\- Wooldridge Excel dosyalarını depoya kopyalama.
 
-\- Her veri setinde kaynak ve deÄŸiÅŸken aÃ§Ä±klamasÄ±nÄ± gÃ¶ster.
+\- Her veri setinde kaynak ve değişken açıklamasını göster.
 
-\- Benzetimlerde sabit ve aÃ§Ä±k bir seed kullan.
+\- Benzetimlerde sabit ve açık bir seed kullan.
 
-\- KullanÄ±cÄ±nÄ±n yÃ¼klediÄŸi verileri kalÄ±cÄ± olarak kaydetme.
+\- Kullanıcının yüklediği verileri kalıcı olarak kaydetme.
 
 
 
@@ -94,23 +92,23 @@ dayalÄ± bilgi verme.
 
 
 
-\- ArayÃ¼z dili TÃ¼rkÃ§e olsun.
+\- Arayüz dili Türkçe olsun.
 
-\- Ã–nemli Ä°ngilizce terimler ilk kullanÄ±mda parantez iÃ§inde verilebilir.
+\- Önemli ingilizce terimler ilk kullanımda parantez içinde verilebilir.
 
-\- Cross-sectional data iÃ§in yatay kesit verisi terimini kullan.
+\- Cross-sectional data için yatay kesit verisi terimini kullan.
 
-\- KavramlarÄ± ders sÄ±rasÄ±ndan Ã¶nce kullanma.
+\- Kavramları ders sırasından önce kullanma.
 
-\- Sorular ders notlarÄ±ndaki egzersizlerin kopyasÄ± olmasÄ±n.
+\- Sorular ders notlarındaki egzersizlerin kopyası olmasın.
 
-\- SorularÄ± hesaplanan sonuÃ§lara gÃ¶re deterministik olarak Ã¼ret.
+\- Soruları hesaplanan sonuçlara göre deterministik olarak üret.
 
-\- CevabÄ± yalnÄ±zca Ã¶ÄŸrenci CevabÄ± gÃ¶ster dÃ¼ÄŸmesine bastÄ±ÄŸÄ±nda gÃ¶ster.
+\- Cevabı yalnızca öğrenci Cevabı göster düğmesine bastığında göster.
 
-\- Ä°statistiksel anlamlÄ±lÄ±k ile iktisadi Ã¶nemi ayÄ±r.
+\- istatistiksel anlamlılık ile iktisadi önemi ayır.
 
-\- AraÅŸtÄ±rma tasarÄ±mÄ± desteklemiyorsa nedensel dil kullanma.
+\- Araştırma tasarımı desteklemiyorsa nedensel dil kullanma.
 
 
 
@@ -118,12 +116,13 @@ dayalÄ± bilgi verme.
 
 
 
-\- Fonksiyonlarda type hint ve kÄ±sa docstring kullan.
+\- Fonksiyonlarda type hint ve kısa docstring kullan.
 
 \- Sessizce hata yutma.
 
-\- KullanÄ±cÄ±ya anlaÅŸÄ±lÄ±r hata mesajÄ± gÃ¶ster.
+\- Kullanıcıya anlaşılır hata mesajı göster.
 
-\- SayÄ±sal hesaplamalar iÃ§in pytest testleri yaz.
+\- Sayısal hesaplamalar için pytest testleri yaz.
 
-\- DeÄŸiÅŸiklik sonrasÄ±nda testleri ve Streamlit baÅŸlangÄ±Ã§ kontrolÃ¼nÃ¼ Ã§alÄ±ÅŸtÄ±r.
+\- Değişiklik sonrasında testleri ve Streamlit başlangıç kontrolünü çalıştır.
+

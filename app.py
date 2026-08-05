@@ -6,6 +6,9 @@ from pathlib import Path
 
 import streamlit as st
 
+from core.app_config import APP_CONFIG
+from core.session_utils import synchronize_active_topic
+from topics.konu01_ampirik_arastirma import render as render_konu01
 from topics.konu03_basit_regresyon import render as render_konu03
 
 
@@ -23,7 +26,7 @@ def load_styles() -> None:
 def main() -> None:
     """Ortak sayfa düzenini kurar ve seçili konuyu görüntüler."""
     st.set_page_config(
-        page_title="Ekonometriye Giriş",
+        page_title=f"{APP_CONFIG.course_name} | {APP_CONFIG.application_subtitle}",
         page_icon="📊",
         layout="wide",
         initial_sidebar_state="expanded",
@@ -31,20 +34,26 @@ def main() -> None:
     load_styles()
 
     with st.sidebar:
-        st.markdown("### Ekonometriye Giriş")
-        st.caption("Etkileşimli ders uygulaması")
+        st.markdown(f"### {APP_CONFIG.course_name}")
+        st.caption(APP_CONFIG.application_subtitle)
         topic = st.radio(
             "Konu seçimi",
-            options=["Konu 03 — Basit Doğrusal Regresyon"],
+            options=["Konu 01 — Ekonometri ve Ampirik Araştırma", "Konu 03 — Basit Doğrusal Regresyon"],
             label_visibility="collapsed",
         )
         st.divider()
-        st.caption("Yatay kesit verisi ile model kurma ve yorumlama.")
+        st.caption(APP_CONFIG.institution_name)
 
-    st.markdown("<div class='app-kicker'>PAÜ • EKONOMETRİYE GİRİŞ</div>", unsafe_allow_html=True)
-    st.title("Ekonometriye Giriş")
+    st.markdown(f"<div class='app-kicker'>{APP_CONFIG.institution_name.upper()}</div>", unsafe_allow_html=True)
+    st.title(APP_CONFIG.course_name)
+    st.caption(APP_CONFIG.application_subtitle)
 
-    if topic == "Konu 03 — Basit Doğrusal Regresyon":
+    topic_id = "konu01" if topic.startswith("Konu 01") else "konu03"
+    synchronize_active_topic(st.session_state, topic_id)
+
+    if topic_id == "konu01":
+        render_konu01()
+    else:
         render_konu03()
 
 

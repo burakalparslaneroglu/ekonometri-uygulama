@@ -26,6 +26,7 @@ class DatasetMetadata:
     title: str
     source: str
     description: str
+    observation_unit: str
     variables: dict[str, VariableMetadata]
     allowed_pairs: dict[str, tuple[str, ...]]
 
@@ -36,6 +37,7 @@ DATASETS: dict[str, DatasetMetadata] = {
         title="WAGE1 — Ücret ve bireysel özellikler",
         source="Wooldridge, J. M. (2020), Introductory Econometrics: A Modern Approach, WAGE1.",
         description="ABD'de çalışan bireylere ait yatay kesit verisi. Ücret ile eğitim ve iş deneyimi gibi özelliklerin birlikte değişimini incelemek için kullanılır.",
+        observation_unit="Çalışan",
         variables={
             "wage": VariableMetadata("wage", "Saatlik ücret", "Bireyin saatlik ücretidir.", "ABD doları/saat"),
             "educ": VariableMetadata("educ", "Eğitim", "Tamamlanan eğitim yılıdır.", "yıl"),
@@ -49,6 +51,7 @@ DATASETS: dict[str, DatasetMetadata] = {
         title="HPRICE1 — Konut fiyatları ve özellikleri",
         source="Wooldridge, J. M. (2020), Introductory Econometrics: A Modern Approach, HPRICE1.",
         description="Konutların satış fiyatı ve fiziksel özelliklerine ait yatay kesit verisi. Fiyat ile büyüklük göstergeleri arasındaki ilişkiyi betimlemek için kullanılır.",
+        observation_unit="Konut",
         variables={
             "price": VariableMetadata("price", "Konut fiyatı", "Konutun satış fiyatıdır.", "bin ABD doları"),
             "sqrft": VariableMetadata("sqrft", "Konut alanı", "Konutun kapalı alanıdır.", "kare fit"),
