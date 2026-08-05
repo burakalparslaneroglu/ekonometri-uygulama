@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from core.ui_components import render_question_actions
 
 from core.data_registry import RegressionModelSpec, get_dataset_metadata, konu05_model_specs, load_dataset, variable_metadata
 from core.konu05_questions import generate_konu05_question
@@ -167,8 +168,6 @@ def render() -> None:
     synchronize_question_state(st.session_state, model_id, topic_id); index_key, _, answer_key = question_state_keys(topic_id); index = int(st.session_state.get(index_key, 0))
     multi_result = result if hasattr(result, "coefficients") else fit_multiple_ols(frame, spec.dependent, (spec.focal_explanatory, "exper" if spec.dataset_key == "wage1" else "lotsize1000"))
     question = generate_konu05_question(model_id, index, multi_result, spec, infos)
-    st.subheader("Kendini dene"); st.markdown(f"**Soru {index + 1}:** {question.prompt}"); left, right = st.columns(2)
-    if left.button("Cevabı göster", key="konu05_show_answer", type="primary", width="stretch"): reveal_answer(st.session_state, topic_id)
-    if right.button("Yeni soru", key="konu05_next_question", type="secondary", width="stretch"): next_question(st.session_state, topic_id); st.rerun()
+    st.subheader("Kendini dene"); st.markdown(f"**Soru {index + 1}:** {question.prompt}"); render_question_actions(topic_id=topic_id)
     if st.session_state.get(answer_key, False): st.success(f"**Çözüm:** {question.answer}")
     else: st.caption("Çözümü görmek için “Cevabı göster” düğmesini kullanın.")

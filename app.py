@@ -18,6 +18,9 @@ from topics.konu06_ols_varsayimlari_yanlilik import render as render_konu06
 from topics.konu07_tekli_hipotez_testleri import render as render_konu07
 from topics.konu08_coklu_testler_buyuk_orneklem import render as render_konu08
 from topics.konu09_fonksiyonel_bicimler import render as render_konu09
+from topics.konu10_kukla_degiskenler import render as render_konu10
+from topics.konu11_etkilesimler_grup_farklari import render as render_konu11
+from topics.konu12_heteroskedastisite import render as render_konu12
 
 
 TOPIC_RENDERERS = {
@@ -30,6 +33,9 @@ TOPIC_RENDERERS = {
     "konu07": render_konu07,
     "konu08": render_konu08,
     "konu09": render_konu09,
+    "konu10": render_konu10,
+    "konu11": render_konu11,
+    "konu12": render_konu12,
 }
 
 
@@ -75,13 +81,16 @@ def main() -> None:
                 "Konu 07 — Tek Katsayı İçin Hipotez Testleri",
                 "Konu 08 — Birden Fazla Kısıtın Sınanması: F Testi ve Büyük Örneklem Mantığı",
                 "Konu 09 — Ölçekleme, Logaritmik Modeller, Karesel Terimler ve Model Seçimi",
+                "Konu 10 — Kukla Değişkenler ve Kategorik Açıklayıcı Değişkenler",
+                "Konu 11 — Etkileşim Terimleri ve Grup Farkları",
+                "Konu 12 — Heteroskedastisite ve Dayanıklı Çıkarım",
             ],
             label_visibility="collapsed",
         )
         st.divider()
         st.markdown("#### Görünüm")
         selected_scale = st.selectbox(
-            "Metin boyutu", tuple(TEXT_SCALE_OPTIONS), index=tuple(TEXT_SCALE_OPTIONS).index(scale_label), key="text_scale_label"
+            "Metin boyutu", tuple(TEXT_SCALE_OPTIONS), key="text_scale_label"
         )
         st.session_state["text_scale"] = normalize_text_scale(TEXT_SCALE_OPTIONS[selected_scale])
         st.divider()
@@ -92,7 +101,7 @@ def main() -> None:
     st.caption(APP_CONFIG.application_subtitle)
 
     topic_id = next(identifier for prefix, identifier in {
-        "Konu 01": "konu01", "Konu 02": "konu02", "Konu 03": "konu03", "Konu 04": "konu04", "Konu 05": "konu05", "Konu 06": "konu06", "Konu 07": "konu07", "Konu 08": "konu08", "Konu 09": "konu09",
+        "Konu 01": "konu01", "Konu 02": "konu02", "Konu 03": "konu03", "Konu 04": "konu04", "Konu 05": "konu05", "Konu 06": "konu06", "Konu 07": "konu07", "Konu 08": "konu08", "Konu 09": "konu09", "Konu 10": "konu10", "Konu 11": "konu11", "Konu 12": "konu12",
     }.items() if topic.startswith(prefix))
     synchronize_active_topic(st.session_state, topic_id)
 

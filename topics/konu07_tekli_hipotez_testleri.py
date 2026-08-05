@@ -7,6 +7,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from core.ui_components import render_question_actions
 
 from core.data_registry import get_dataset_metadata, konu07_model_specs, load_dataset, variable_metadata
 from core.konu07_questions import Konu07QuestionContext, generate_konu07_question
@@ -211,12 +212,7 @@ def render() -> None:
     index = int(st.session_state.get(index_key, 0))
     question = generate_konu07_question(context, index)
     st.markdown(f"**Soru {index + 1}:** {question.prompt}")
-    left, right = st.columns(2)
-    if left.button("Cevabı göster", key="konu07_show_answer", type="primary", width="stretch"):
-        reveal_answer(st.session_state, "konu07")
-    if right.button("Yeni soru", key="konu07_next_question", type="secondary", width="stretch"):
-        next_question(st.session_state, "konu07")
-        st.rerun()
+    render_question_actions(topic_id="konu07")
     if st.session_state.get(answer_key, False):
         st.success(f"Çözüm: {question.answer}")
     else:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from core.ui_components import render_question_actions
 
 from core.data_registry import get_dataset_metadata, load_dataset, variable_metadata
 from core.model_utils import descriptive_statistics
@@ -133,12 +134,7 @@ def _render_questions() -> None:
     st.subheader("Deterministik uygulama soruları")
     st.markdown(f"**Soru {index + 1}:** {question.prompt}")
     st.text_area("Yanıtınız", key=f"konu01_student_response_{index}", help="Yanıtınızı yazdıktan sonra çözümle karşılaştırabilirsiniz.")
-    first, second = st.columns(2)
-    if first.button("Cevabı göster", type="primary", width="stretch", key="konu01_show_answer"):
-        reveal_answer(st.session_state, topic_id=TOPIC_ID)
-    if second.button("Yeni soru", type="secondary", width="stretch", key="konu01_next_question"):
-        next_question(st.session_state, topic_id=TOPIC_ID)
-        st.rerun()
+    render_question_actions(topic_id=TOPIC_ID)
     if st.session_state.get(answer_key, False):
         st.success(f"**Çözüm:** {question.answer}")
     else:
