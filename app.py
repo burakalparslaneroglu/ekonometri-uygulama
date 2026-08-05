@@ -11,6 +11,7 @@ from core.session_utils import synchronize_active_topic
 from topics.konu01_ampirik_arastirma import render as render_konu01
 from topics.konu02_veri_turleri_nedensellik import render as render_konu02
 from topics.konu03_basit_regresyon import render as render_konu03
+from topics.konu04_ols_cikti_fonksiyonel_bicimler import render as render_konu04
 
 
 def load_styles() -> None:
@@ -43,6 +44,7 @@ def main() -> None:
                 "Konu 01 — Ekonometri ve Ampirik Araştırma",
                 "Konu 02 — Ekonomik Veri Türleri, Nedensellik ve Ceteris Paribus",
                 "Konu 03 — Basit Doğrusal Regresyon",
+                "Konu 04 — EKK Tahminini Değerlendirme: Uyum, Ölçü Birimleri ve Temel Fonksiyonel Biçimler",
             ],
             label_visibility="collapsed",
         )
@@ -53,15 +55,20 @@ def main() -> None:
     st.title(APP_CONFIG.course_name)
     st.caption(APP_CONFIG.application_subtitle)
 
-    topic_id = "konu01" if topic.startswith("Konu 01") else "konu02" if topic.startswith("Konu 02") else "konu03"
+    topic_id = (
+        "konu01" if topic.startswith("Konu 01") else "konu02" if topic.startswith("Konu 02")
+        else "konu03" if topic.startswith("Konu 03") else "konu04"
+    )
     synchronize_active_topic(st.session_state, topic_id)
 
     if topic_id == "konu01":
         render_konu01()
     elif topic_id == "konu02":
         render_konu02()
-    else:
+    elif topic_id == "konu03":
         render_konu03()
+    else:
+        render_konu04()
 
 
 if __name__ == "__main__":
