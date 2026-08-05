@@ -247,6 +247,15 @@ def konu06_model_specs() -> tuple[RegressionModelSpec, ...]:
     )
 
 
+def konu07_model_specs() -> tuple[RegressionModelSpec, ...]:
+    """Konu 07 için ham ölçekli, sabit çıkarım modellerini döndürür."""
+    return (
+        RegressionModelSpec("W7-W", "wage1", "WAGE1 — Ücret modeli", "wage", "educ", ("exper", "tenure")),
+        RegressionModelSpec("W7-L", "wage1", "WAGE1 — Log ücret modeli", "lwage", "educ", ("exper", "tenure")),
+        RegressionModelSpec("H7-P", "hprice1", "HPRICE1 — Konut fiyatı modeli", "price", "lotsize", ("sqrft", "bdrms")),
+    )
+
+
 def variable_metadata(dataset_key: str, variable: str) -> VariableMetadata:
     """Bir değişkenin katalog bilgisini döndürür."""
     metadata = get_dataset_metadata(dataset_key)
