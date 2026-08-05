@@ -214,7 +214,7 @@ def render() -> None:
     left, right = st.columns(2)
     if left.button("Cevabı göster", key="konu07_show_answer", type="primary", width="stretch"):
         reveal_answer(st.session_state, "konu07")
-    if right.button("Yeni soru", key="konu07_next_question", width="stretch"):
+    if right.button("Yeni soru", key="konu07_next_question", type="secondary", width="stretch"):
         next_question(st.session_state, "konu07")
         st.rerun()
     if st.session_state.get(answer_key, False):

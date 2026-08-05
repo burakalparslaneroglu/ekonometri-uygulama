@@ -222,7 +222,7 @@ def _render_questions(comparison: GroupComparison) -> None:
     first, second = st.columns(2)
     if first.button("Cevabı göster", type="primary", width="stretch", key="konu02_show_answer"):
         reveal_answer(st.session_state, topic_id=TOPIC_ID)
-    if second.button("Yeni soru", width="stretch", key="konu02_next_question"):
+    if second.button("Yeni soru", type="secondary", width="stretch", key="konu02_next_question"):
         next_question(st.session_state, topic_id=TOPIC_ID)
         st.rerun()
     if st.session_state.get(answer_key, False):

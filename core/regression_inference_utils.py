@@ -77,6 +77,8 @@ class OLSInferenceResult:
     n_explanatory: int
     covariance_type: str
     residual_standard_deviation: float
+    covariance_matrix: pd.DataFrame
+    ssr: float
 
     def __post_init__(self) -> None:
         """Değiştirilebilir pandas nesnelerini sonuçtan yalıtır."""
@@ -94,6 +96,14 @@ class OLSInferenceResult:
             raise ValueError("Güven aralıkları iki sonlu sütundan oluşmalıdır.")
         object.__setattr__(self, "confidence_intervals_95", intervals)
         object.__setattr__(self, "design_data", self.design_data.copy(deep=True))
+        covariance = self.covariance_matrix.copy(deep=True)
+        if covariance.shape != (len(self.coefficients), len(self.coefficients)) or not np.isfinite(covariance.to_numpy(dtype=float)).all():
+            raise ValueError("Kovaryans matrisi katsayılarla uyumlu sonlu bir kare matris olmalıdır.")
+        if tuple(covariance.index) != tuple(self.coefficients.index) or tuple(covariance.columns) != tuple(self.coefficients.index):
+            raise ValueError("Kovaryans matrisi katsayı adlarıyla uyumlu olmalıdır.")
+        object.__setattr__(self, "covariance_matrix", covariance)
+        if not np.isfinite(float(self.ssr)) or float(self.ssr) < 0:
+            raise ValueError("Artık kareleri toplamı sonlu ve negatif olmayan bir sayı olmalıdır.")
         if self.covariance_type != "nonrobust":
             raise ValueError("Bu konuda yalnızca nonrobust kovaryans türü desteklenir.")
         if self.df_resid <= 0 or self.nobs <= self.n_explanatory + 1:
@@ -145,8 +155,6 @@ def _prepare_data(frame: pd.DataFrame, dependent: str, explanatory: tuple[str, .
     """Ortak complete-case örneklemini oluşturur ve tasarımın rank'ını denetler."""
     if not isinstance(frame, pd.DataFrame):
         raise ValueError("Girdi bir pandas DataFrame olmalıdır.")
-    if not explanatory:
-        raise ValueError("En az bir açıklayıcı değişken gereklidir.")
     if len(set(explanatory)) != len(explanatory):
         raise ValueError("Açıklayıcı değişken adları benzersiz olmalıdır.")
     if dependent in explanatory:
@@ -201,6 +209,7 @@ def fit_ols_inference(
         r_squared=float(fitted.rsquared), adjusted_r_squared=float(fitted.rsquared_adj),
         nobs=int(fitted.nobs), df_resid=df_resid, n_explanatory=len(explanatory),
         covariance_type="nonrobust", residual_standard_deviation=residual_sd,
+        covariance_matrix=fitted.cov_params().copy(), ssr=float(fitted.ssr),
     )
 
 

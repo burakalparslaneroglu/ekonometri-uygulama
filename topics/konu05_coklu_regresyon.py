@@ -169,6 +169,6 @@ def render() -> None:
     question = generate_konu05_question(model_id, index, multi_result, spec, infos)
     st.subheader("Kendini dene"); st.markdown(f"**Soru {index + 1}:** {question.prompt}"); left, right = st.columns(2)
     if left.button("Cevabı göster", key="konu05_show_answer", type="primary", width="stretch"): reveal_answer(st.session_state, topic_id)
-    if right.button("Yeni soru", key="konu05_next_question", width="stretch"): next_question(st.session_state, topic_id); st.rerun()
+    if right.button("Yeni soru", key="konu05_next_question", type="secondary", width="stretch"): next_question(st.session_state, topic_id); st.rerun()
     if st.session_state.get(answer_key, False): st.success(f"**Çözüm:** {question.answer}")
     else: st.caption("Çözümü görmek için “Cevabı göster” düğmesini kullanın.")

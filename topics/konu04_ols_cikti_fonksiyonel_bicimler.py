@@ -63,7 +63,7 @@ def _render_questions(model_id: str, result, sums, decomposition, form: Function
     left, right = st.columns(2)
     if left.button("Cevabı göster", key="konu04_show_answer", type="primary", width="stretch"):
         reveal_answer(st.session_state, topic_id=topic_id)
-    if right.button("Yeni soru", key="konu04_next_question", width="stretch"):
+    if right.button("Yeni soru", key="konu04_next_question", type="secondary", width="stretch"):
         next_question(st.session_state, topic_id=topic_id)
         st.rerun()
     if st.session_state.get(answer_key, False):

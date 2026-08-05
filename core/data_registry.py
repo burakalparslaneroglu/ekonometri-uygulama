@@ -64,7 +64,9 @@ DATASETS: dict[str, DatasetMetadata] = {
             "lwage": VariableMetadata("lwage", "Saatlik ücretin logaritması", "Saatlik ücretin doğal logaritmasıdır.", "log birim"),
             "educ": VariableMetadata("educ", "Eğitim", "Tamamlanan eğitim yılıdır.", "yıl"),
             "exper": VariableMetadata("exper", "İş deneyimi", "İş piyasasındaki potansiyel deneyim yılıdır.", "yıl"),
+            "expersq": VariableMetadata("expersq", "İş deneyiminin karesi", "İş deneyimi yılının karesidir.", "yıl²"),
             "tenure": VariableMetadata("tenure", "Mevcut işyerindeki kıdem", "Mevcut işyerinde çalışma süresidir.", "yıl"),
+            "tenursq": VariableMetadata("tenursq", "Kıdemin karesi", "Mevcut işyerindeki kıdem yılının karesidir.", "yıl²"),
         },
         allowed_pairs={"wage": ("educ", "exper", "tenure")},
         data_structure="yatay kesit verisi",
@@ -253,6 +255,22 @@ def konu07_model_specs() -> tuple[RegressionModelSpec, ...]:
         RegressionModelSpec("W7-W", "wage1", "WAGE1 — Ücret modeli", "wage", "educ", ("exper", "tenure")),
         RegressionModelSpec("W7-L", "wage1", "WAGE1 — Log ücret modeli", "lwage", "educ", ("exper", "tenure")),
         RegressionModelSpec("H7-P", "hprice1", "HPRICE1 — Konut fiyatı modeli", "price", "lotsize", ("sqrft", "bdrms")),
+    )
+
+
+def konu08_model_specs() -> tuple[RegressionModelSpec, ...]:
+    """Konu 08 ortak F uygulamalarının sabit model tanımlarını döndürür."""
+    return (
+        RegressionModelSpec("W8-W", "wage1", "WAGE1 — Ücret ortak testi", "wage", "educ", ("exper", "tenure")),
+        RegressionModelSpec("H8-P", "hprice1", "HPRICE1 — Konut ortak testi", "price", "sqrft", ("lotsize", "bdrms")),
+    )
+
+
+def konu09_model_specs() -> tuple[RegressionModelSpec, ...]:
+    """Konu 09 WAGE1 log-ücret fonksiyonel biçim modellerini döndürür."""
+    return (
+        RegressionModelSpec("W9-M1", "wage1", "WAGE1 M1 — Doğrusal log ücret", "lwage", "educ", ("exper", "tenure")),
+        RegressionModelSpec("W9-M4", "wage1", "WAGE1 M4 — Karesel log ücret", "lwage", "educ", ("exper", "expersq", "tenure", "tenursq")),
     )
 
 

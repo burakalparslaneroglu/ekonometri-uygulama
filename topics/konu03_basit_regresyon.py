@@ -178,7 +178,7 @@ def _render_questions(result, model_id: str, dataset_key: str, observation_posit
     first, second = st.columns(2)
     if first.button("Cevabı göster", type="primary", width="stretch"):
         reveal_answer(st.session_state)
-    if second.button("Yeni soru", width="stretch"):
+    if second.button("Yeni soru", type="secondary", width="stretch"):
         next_question(st.session_state)
         st.rerun()
     if st.session_state.get(ANSWER_VISIBLE_KEY, False):
