@@ -12,13 +12,13 @@ def _result():
 
 def test_question_is_reproducible_and_cycles_types() -> None:
     result = _result()
-    first = generate_question(result, "toy:y:x", 2)
-    second = generate_question(result, "toy:y:x", 2)
+    first = generate_question(result, "toy:y:x:observation:2", 2, observation_position=2)
+    second = generate_question(result, "toy:y:x:observation:2", 2, observation_position=2)
     assert first == second
     types = [question_type_for("toy:y:x", index) for index in range(len(KONU03_QUESTION_TYPES))]
     assert set(types) == set(KONU03_QUESTION_TYPES)
     assert "r_squared" not in KONU03_QUESTION_TYPES
-    assert "residual" not in KONU03_QUESTION_TYPES
+    assert {"residual", "residual_sign", "relative_to_line", "absolute_residual"}.issubset(KONU03_QUESTION_TYPES)
     assert question_type_for("toy:y:x", 0) != question_type_for("toy:y:x", 1)
 
 
@@ -34,12 +34,18 @@ def test_question_state_resets_on_dataset_or_variable_pair_change() -> None:
     next_question(state)
     assert synchronize_question_state(state, "hprice1:price:sqrft")
     assert state[QUESTION_INDEX_KEY] == 0
+    state[ANSWER_VISIBLE_KEY] = True
+    assert synchronize_question_state(state, "hprice1:price:sqrft:observation:1")
+    assert state[ANSWER_VISIBLE_KEY] is False
 
 
-def test_wage1_and_hprice1_support_slope_intercept_and_prediction_questions() -> None:
+def test_wage1_and_hprice1_support_prediction_and_observation_questions() -> None:
     for dataset_key, dependent, explanatory in (("wage1", "wage", "educ"), ("hprice1", "price", "sqrft")):
         result = fit_simple_ols(load_dataset(dataset_key), dependent, explanatory)
         model_id = f"{dataset_key}:{dependent}:{explanatory}"
-        questions = [generate_question(result, model_id, index) for index in range(len(KONU03_QUESTION_TYPES))]
+        questions = [
+            generate_question(result, f"{model_id}:observation:0", index, observation_position=0)
+            for index in range(len(KONU03_QUESTION_TYPES))
+        ]
         generated_types = {question.question_type for question in questions}
-        assert {"slope", "intercept", "prediction"}.issubset(generated_types)
+        assert {"slope", "intercept", "prediction", "residual", "residual_sign"}.issubset(generated_types)
