@@ -3,10 +3,12 @@
 Uygulama, Streamlit arayüzü ile hesaplama mantığını ayıran küçük modüllerden oluşur.
 
 - `app.py`: Ortak sayfa yapılandırması, ortak görsel iskelet ve konu yönlendirmesi.
-- `topics/`: Her ders konusunun Streamlit görünümü. `konu03_basit_regresyon.py`, çekirdek fonksiyonları bir araya getirir.
-- `core/data_registry.py`: Wooldridge kataloğu, değişken açıklamaları ve izin verilen pedagojik eşleşmeler.
+- `topics/`: Her ders konusunun Streamlit görünümü. `konu02_veri_turleri_nedensellik.py`, veri yapısı laboratuvarını, nedensellik dilini ve JTRAIN2 grup karşılaştırmasını; `konu03_basit_regresyon.py` ise Konu 03'ün çekirdek işlevlerini bir araya getirir.
+- `core/data_registry.py`: Wooldridge kataloğu, değişken açıklamaları, veri yapısı metadata'sı ve izin verilen pedagojik eşleşmeler. Konu 02 WAGE1, PHILLIPS, CPS78_85, WAGEPAN ve JTRAIN2 kullanır.
+- `core/data_structure_utils.py`: Tekrar eden birimleri, dönem kapsamını, zaman sırasını ve panel dengesini Streamlit bağımlılığı olmadan doğrular.
+- `core/group_comparison_utils.py`: İki grubun gözlem sayısını, ortalamasını ve ortalama farkını hesaplar; çıkarımsal çıktı üretmez.
 - `core/model_utils.py`: Veri hazırlama, basit EKK, belirli bir X değeri için tahmin ve tanımlayıcı istatistikler. Streamlit bağımlılığı yoktur.
-- `core/question_engine.py`: Model kimliği ve soru sırasından deterministik soru/çözüm üretir.
+- `core/question_engine.py` ve `core/scenario_registry.py`: Ortak soru veri yapısı, kararlı soru sırası ve Konu 01–02 senaryo fabrikalarıyla deterministik soru/çözüm üretir.
 - `core/session_utils.py`: Soru sırası ve cevap görünürlüğünün `st.session_state` içindeki anahtarlarını yönetir.
 - `assets/styles.css`: Kurumdan bağımsız marka değişkenleri ve duyarlı görsel düzen.
 
@@ -16,5 +18,7 @@ Uygulama, Streamlit arayüzü ile hesaplama mantığını ayıran küçük modü
 2. Öğrencinin seçtiği izinli Y–X çifti `model_utils.fit_simple_ols` fonksiyonuna verilir.
 3. Model çıktısı grafik, tablo, belirli bir X değeri için tahmin paneli ve soru motoru tarafından kullanılır.
 4. Veri seti veya değişkenler değiştiğinde model kimliği değişir; `session_utils` önceki soru durumunu sıfırlar.
+
+Konu 02, veri yapısı metadata'sını gerçek paket sütunlarıyla doğrular. WAGEPAN'da panel dengesi her kişinin gözlendiği dönem kümesi üzerinden; JTRAIN2'de ise eğitim ve kontrol gruplarının betimsel ortalamaları üzerinden incelenir.
 
 Model sonuçları betimseldir. Bu pilotta istatistiksel çıkarım sütunları ve yorumları bilinçli olarak sunulmaz.

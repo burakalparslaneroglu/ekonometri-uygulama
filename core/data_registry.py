@@ -29,6 +29,14 @@ class DatasetMetadata:
     observation_unit: str
     variables: dict[str, VariableMetadata]
     allowed_pairs: dict[str, tuple[str, ...]]
+    data_structure: str = "yatay kesit verisi"
+    time_variable: str | None = None
+    time_coverage: str | None = None
+    frequency: str | None = None
+    identifier_variable: str | None = None
+    repeated_units: bool = False
+    collection_method: str = "gözlemsel"
+    classification_reason: str = ""
 
 
 DATASETS: dict[str, DatasetMetadata] = {
@@ -45,6 +53,11 @@ DATASETS: dict[str, DatasetMetadata] = {
             "tenure": VariableMetadata("tenure", "Mevcut işyerindeki kıdem", "Mevcut işyerinde çalışma süresidir.", "yıl"),
         },
         allowed_pairs={"wage": ("educ", "exper", "tenure")},
+        data_structure="yatay kesit verisi",
+        time_coverage="Tek dönem bağlamı",
+        frequency="Uygulanmaz",
+        collection_method="gözlemsel",
+        classification_reason="Her satır farklı bir çalışanı temsil eder; aynı çalışan zaman içinde tekrar izlenmez.",
     ),
     "hprice1": DatasetMetadata(
         key="hprice1",
@@ -60,12 +73,91 @@ DATASETS: dict[str, DatasetMetadata] = {
         },
         allowed_pairs={"price": ("sqrft", "lotsize", "bdrms")},
     ),
+    "phillips": DatasetMetadata(
+        key="phillips",
+        title="PHILLIPS — Enflasyon ve işsizlik",
+        source="Wooldridge, J. M. (2020), Introductory Econometrics: A Modern Approach, PHILLIPS.",
+        description="1948–1996 yılları için yıllık enflasyon ve işsizlik oranları.",
+        observation_unit="Yıl",
+        variables={
+            "year": VariableMetadata("year", "Yıl", "Takvim yılıdır.", "yıl"),
+            "unem": VariableMetadata("unem", "İşsizlik oranı", "Yıllık işsizlik oranıdır.", "yüzde"),
+            "inf": VariableMetadata("inf", "Enflasyon oranı", "Yıllık enflasyon oranıdır.", "yüzde"),
+        },
+        allowed_pairs={},
+        data_structure="zaman serisi verisi",
+        time_variable="year",
+        time_coverage="1948–1996",
+        frequency="yıllık",
+        collection_method="gözlemsel",
+        classification_reason="Her satır ardışık bir yılı temsil eder; yıl sırası ekonomik bilgi taşır.",
+    ),
+    "cps78_85": DatasetMetadata(
+        key="cps78_85",
+        title="CPS78_85 — İki çalışan örneklemi",
+        source="Wooldridge, J. M. (2020), Introductory Econometrics: A Modern Approach, CPS78_85.",
+        description="1978 ve 1985 yıllarında seçilen iki çalışan örnekleminin birleştirilmiş verisi.",
+        observation_unit="Çalışan",
+        variables={
+            "year": VariableMetadata("year", "Örneklem yılı", "Örneklemin alındığı yıldır.", "yıl"),
+            "educ": VariableMetadata("educ", "Eğitim", "Tamamlanan eğitim yılıdır.", "yıl"),
+            "lwage": VariableMetadata("lwage", "Ücretin logaritması", "Saatlik ücretin doğal logaritmasıdır.", "log birim"),
+            "age": VariableMetadata("age", "Yaş", "Çalışanın yaşıdır.", "yıl"),
+        },
+        allowed_pairs={},
+        data_structure="havuzlanmış yatay kesit verisi",
+        time_variable="year",
+        time_coverage="1978 ve 1985",
+        frequency="iki ayrı kesit dönemi",
+        collection_method="gözlemsel",
+        classification_reason="İki ayrı yıldan çalışan örneklemleri birleştirilmiştir; aynı kişilerin izlendiğini gösteren kimlik bilgisi yoktur.",
+    ),
+    "wagepan": DatasetMetadata(
+        key="wagepan",
+        title="WAGEPAN — Çalışan kişi-yıl gözlemleri",
+        source="Wooldridge, J. M. (2020), Introductory Econometrics: A Modern Approach, WAGEPAN.",
+        description="Aynı çalışanların 1980–1987 yılları arasındaki kişi-yıl gözlemleri.",
+        observation_unit="Çalışan-yıl",
+        variables={
+            "nr": VariableMetadata("nr", "Çalışan kimliği", "Çalışanı tanımlayan kimlik numarasıdır.", "kimlik"),
+            "year": VariableMetadata("year", "Yıl", "Gözlemin takvim yılıdır.", "yıl"),
+            "educ": VariableMetadata("educ", "Eğitim", "Tamamlanan eğitim yılıdır.", "yıl"),
+            "lwage": VariableMetadata("lwage", "Ücretin logaritması", "Saatlik ücretin doğal logaritmasıdır.", "log birim"),
+        },
+        allowed_pairs={},
+        data_structure="panel veri",
+        time_variable="year",
+        time_coverage="1980–1987",
+        frequency="yıllık",
+        identifier_variable="nr",
+        repeated_units=True,
+        collection_method="gözlemsel",
+        classification_reason="Aynı çalışan kimlikleri sekiz farklı yılda tekrar gözlenir; her satır bir çalışan-yıl birleşimidir.",
+    ),
+    "jtrain2": DatasetMetadata(
+        key="jtrain2",
+        title="JTRAIN2 — İş eğitimi programı",
+        source="Wooldridge, J. M. (2020), Introductory Econometrics: A Modern Approach, JTRAIN2.",
+        description="İş eğitimi programına atananlar ile kontrol grubunun karşılaştırılması için deneysel veri.",
+        observation_unit="Katılımcı",
+        variables={
+            "train": VariableMetadata("train", "Grup ataması", "1 eğitim grubunu, 0 kontrol grubunu gösterir.", "gösterge"),
+            "re78": VariableMetadata("re78", "1978 reel kazancı", "1978 yılındaki reel kazançtır.", "bin ABD doları"),
+            "educ": VariableMetadata("educ", "Eğitim", "Tamamlanan eğitim yılıdır.", "yıl"),
+        },
+        allowed_pairs={},
+        data_structure="yatay kesit verisi",
+        time_coverage="1978 sonuç ölçümü",
+        frequency="tek sonuç dönemi",
+        collection_method="deneysel",
+        classification_reason="Katılımcılar eğitim ve kontrol gruplarına atanmıştır; veri üretim biçimi deneysel olarak tanımlanır.",
+    ),
 }
 
 
-def list_datasets() -> tuple[DatasetMetadata, ...]:
+def list_datasets(dataset_keys: tuple[str, ...] = ("wage1", "hprice1")) -> tuple[DatasetMetadata, ...]:
     """Katalogdaki veri setlerini kararlı sırada döndürür."""
-    return tuple(DATASETS[key] for key in ("wage1", "hprice1"))
+    return tuple(get_dataset_metadata(key) for key in dataset_keys)
 
 
 def get_dataset_metadata(dataset_key: str) -> DatasetMetadata:
@@ -85,6 +177,12 @@ def load_dataset(dataset_key: str) -> pd.DataFrame:
         raise RuntimeError(f"{metadata.title} veri seti yüklenemedi: {error}") from error
     if frame.empty:
         raise RuntimeError(f"{metadata.title} veri seti boş döndü.")
+    missing = sorted(set(metadata.variables).difference(frame.columns))
+    if missing:
+        raise RuntimeError(
+            f"{metadata.title} beklenen sütunları içermiyor: {', '.join(missing)}. "
+            f"Paket sürümünü ve veri seti anahtarını kontrol edin."
+        )
     return frame.copy()
 
 

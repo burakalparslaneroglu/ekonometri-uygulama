@@ -164,7 +164,7 @@ def render() -> None:
     st.markdown("Gözlem birimi • Sonuç değişkeni • Temel açıklayıcı değişken • Anakütle, yer ve dönem • Araştırma amacı")
     _render_model_layers()
     st.subheader("Hata teriminin kavramsal rolü")
-    st.write("Hata terimi, sonucu etkilediği hâlde modelde ayrı açıklayıcı değişken olarak gösterilmeyen unsurların net etkisini temsil eder; doğrudan gözlenmez ve yalnızca hesaplama hatası değildir.")
+    st.write("Hata terimi, sonucu etkilediği halde modelde ayrı açıklayıcı değişken olarak gösterilmeyen unsurların net etkisini temsil eder; doğrudan gözlenmez ve yalnızca hesaplama hatası değildir.")
     _render_research_stages()
     _render_purpose_cards()
     _render_wage1_explorer()
