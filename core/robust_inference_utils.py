@@ -17,10 +17,10 @@ _COVARIANCE_TYPES=("HC0","HC1","HC2","HC3")
 @dataclass(frozen=True)
 class RobustInferenceResult:
     """OLS nokta tahminlerini ve seçilmiş HC kovaryansındaki çıkarımı taşır."""
-    ols: OLSInferenceResult; covariance_type: str; standard_errors: pd.Series; t_values_zero: pd.Series
+    ols: OLSInferenceResult; covariance_type: str; coefficients: pd.Series; standard_errors: pd.Series; t_values_zero: pd.Series
     p_values_two_sided_zero: pd.Series; confidence_intervals_95: pd.DataFrame; covariance_matrix: pd.DataFrame
     def __post_init__(self)->None:
-        for name in ("standard_errors","t_values_zero","p_values_two_sided_zero"):
+        for name in ("coefficients","standard_errors","t_values_zero","p_values_two_sided_zero"):
             object.__setattr__(self,name,getattr(self,name).copy(deep=True))
         object.__setattr__(self,"confidence_intervals_95",self.confidence_intervals_95.copy(deep=True)); object.__setattr__(self,"covariance_matrix",self.covariance_matrix.copy(deep=True))
 
@@ -64,7 +64,7 @@ def fit_robust_inference(frame:pd.DataFrame,dependent:str,explanatory:tuple[str,
     names=list(ols.coefficients.index); params=pd.Series(robust.params,index=names); se=pd.Series(robust.bse,index=names); tvals=pd.Series(robust.tvalues,index=names); pvals=pd.Series(robust.pvalues,index=names)
     intervals=pd.DataFrame(robust.conf_int(),index=names,columns=["lower","upper"]); matrix=pd.DataFrame(robust.cov_params(),index=names,columns=names)
     if not np.allclose(params.to_numpy(),ols.coefficients.to_numpy()): raise ValueError("HC hesabı OLS katsayılarını değiştirmemelidir.")
-    return RobustInferenceResult(ols,cov,se,tvals,pvals,intervals,matrix)
+    return RobustInferenceResult(ols,cov,params,se,tvals,pvals,intervals,matrix)
 
 def heteroskedasticity_tests(result:OLSInferenceResult,*,alpha:float=.05)->tuple[HeteroskedasticityTest,HeteroskedasticityTest]:
     """Breusch--Pagan ve White LM tanılarını aynı model örnekleminde hesaplar."""

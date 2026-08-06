@@ -245,3 +245,14 @@ references_private/
 
 # Only for Review
 review_bundle/
+
+# Local audit, patch and review artifacts
+REVIEW/
+audit_*.txt
+app_code*.zip
+codebase_dump.txt
+manifest.json
+PAKET_*.patch
+PAKET_*_TALIMATI.md
+*.mp4
+tools/generate_review_bundle.py

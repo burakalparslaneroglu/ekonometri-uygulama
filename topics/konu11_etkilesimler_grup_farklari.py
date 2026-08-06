@@ -40,7 +40,9 @@ def render()->None:
     st.subheader("3. Dört temel grup regresyon yapısı")
     structure=st.selectbox("Yapı",("Aynı sabit – aynı eğim","Farklı sabit – aynı eğim","Aynı sabit – farklı eğim","Farklı sabit – farklı eğim"),key="konu11_structure")
     params={"Aynı sabit – aynı eğim":(0,0),"Farklı sabit – aynı eğim":(2,0),"Aynı sabit – farklı eğim":(0,1),"Farklı sabit – farklı eğim":(2,1)}[structure]
-    structure_lines=group_lines(1,1,*params); st.line_chart(interaction_curve_data(structure_lines,np.linspace(0,5,51)).set_index("x"),x_label="X",y_label="Tahmin edilen Y"); st.write(f"Sınıflandırma: **{classify_interaction_structure(*params)}**. γ₀={'0' if params[0]==0 else '≠0'}, γ₁={'0' if params[1]==0 else '≠0'}.")
+    structure_lines=group_lines(1,1,*params); st.line_chart(interaction_curve_data(structure_lines,np.linspace(0,5,51)).set_index("x"),x_label="X",y_label="Tahmin edilen Y")
+    gamma0_constraint="γ₀=0" if params[0]==0 else "γ₀≠0"; gamma1_constraint="γ₁=0" if params[1]==0 else "γ₁≠0"
+    st.write(f"Sınıflandırma: **{classify_interaction_structure(*params)}**. {gamma0_constraint}, {gamma1_constraint}.")
     st.dataframe(pd.DataFrame([{"Yapı":"Aynı sabit – aynı eğim","D":"—","X":"✓","D×X":"—","Yapısal kısıt":"γ₀=0, γ₁=0"},{"Yapı":"Farklı sabit – aynı eğim","D":"✓","X":"✓","D×X":"—","Yapısal kısıt":"γ₀≠0, γ₁=0"},{"Yapı":"Aynı sabit – farklı eğim","D":"ana etki hiyerarşi gereği modelde tutulur","X":"✓","D×X":"✓","Yapısal kısıt":"γ₀=0, γ₁≠0"},{"Yapı":"Farklı sabit – farklı eğim","D":"✓","X":"✓","D×X":"✓","Yapısal kısıt":"γ₀≠0, γ₁≠0"}]),hide_index=True,width="stretch")
 
     st.subheader("4. Koşullu grup farkı ve güven bandı")
