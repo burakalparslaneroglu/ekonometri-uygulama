@@ -5,9 +5,10 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from core.categorical_regression_utils import (add_categorical_columns, binary_group_summary, build_reference_dummies, category_contrast_inference, category_joint_test, compare_raw_and_controlled_dummy, dummy_design_preview, dummy_log_exact_percent, fit_binary_dummy_model, numeric_vs_dummy_coding_comparison)
+from core.categorical_regression_utils import (add_categorical_columns, binary_group_summary, build_reference_dummies, category_contrast_inference, category_joint_test, compare_raw_and_controlled_dummy, compare_reference_coding, dummy_design_preview, dummy_log_exact_percent, fit_binary_dummy_model, numeric_vs_dummy_coding_comparison)
 from core.data_registry import get_dataset_metadata, load_dataset
 from core.konu10_questions import Konu10QuestionContext, generate_konu10_question
+from core.model_utils import format_numerical_difference
 from core.regression_inference_utils import fit_ols_inference, format_p_value
 from core.session_utils import question_state_keys, synchronize_question_state
 from core.ui_components import render_question_actions
@@ -27,8 +28,8 @@ def render() -> None:
     """Konu 10 öğretim ekranını gösterir."""
     values = _results(); data = values["data"]; comparison = values["comparison"]; region = values["region"]; industry = values["industry"]
     assert isinstance(data, pd.DataFrame)
-    st.header("KONU 10")
-    st.subheader("Kukla Değişkenler ve Kategorik Açıklayıcı Değişkenler")
+    st.markdown("<span class='topic-badge'>KONU 10</span>", unsafe_allow_html=True)
+    st.header("Kukla Değişkenler ve Kategorik Açıklayıcı Değişkenler")
     st.info("Şimdiye kadar nicel değişkenlerle çalıştık. Bu bölümde cinsiyet, bölge ve sektör gibi kategorik bilgileri regresyona aktaracağız. Eğim farkları Konu 11'de ele alınır.")
     metadata = get_dataset_metadata("wage1")
     st.caption(f"Veri kaynağı: {metadata.source} | Gözlem birimi: {metadata.observation_unit}")
@@ -48,7 +49,7 @@ def render() -> None:
     coding_table=coding.group_means.rename(columns={"category":"Kategori","size":"n","mean":"Grup ortalaması"})
     st.dataframe(coding_table.round(3),hide_index=True,width="stretch")
     plot=coding_table.set_index("Kategori")[["Grup ortalaması"]].copy(); plot["1–2–3 doğrusal tahmin"]=[float(coding.numeric_fitted[synthetic.kategori==cat].mean()) for cat in ["A","B","C"]]
-    st.bar_chart(plot)
+    st.bar_chart(plot, x_label="Kategori", y_label="Sonuç düzeyi")
     st.write(f"Sayısal kod SSR={coding.numeric_ssr:.3f}; kukla kodlama SSR={coding.dummy_ssr:.3f}. Tek eğim A→B ile B→C farkını eşit olmaya zorlar.")
 
     st.subheader("3. 0–1 kukla kodlama laboratuvarı")
@@ -60,17 +61,31 @@ def render() -> None:
         summary = binary_group_summary(reversed_data, "wage", "male", reference_label="Kadın", comparison_label="Erkek")
     active=data if direction.startswith("D=1 kadın") else reversed_data; group="female" if direction.startswith("D=1 kadın") else "male"; binary=fit_binary_dummy_model(active,"wage",group)
     cards=st.columns(4); cards[0].metric("Referans",summary.reference_label); cards[1].metric("β̂₀",f"{binary.coefficients['const']:.4f}"); cards[2].metric("δ̂",f"{binary.coefficients[group]:.4f}"); cards[3].metric("R²",f"{binary.r_squared:.4f}")
-    st.dataframe(pd.DataFrame([{"Grup":summary.reference_label,"n":summary.reference_n,"Ortalama ücret":summary.reference_mean},{"Grup":summary.comparison_label,"n":summary.comparison_n,"Ortalama ücret":summary.comparison_mean}]).round(4),hide_index=True,width="stretch")
-    st.bar_chart(pd.DataFrame({"Grup":[summary.reference_label,summary.comparison_label],"Ortalama ücret":[summary.reference_mean,summary.comparison_mean]}).set_index("Grup"))
+    st.dataframe(pd.DataFrame([{"Grup":summary.reference_label,"n":summary.reference_n,"Ortalama ücret (ABD doları/saat)":summary.reference_mean},{"Grup":summary.comparison_label,"n":summary.comparison_n,"Ortalama ücret (ABD doları/saat)":summary.comparison_mean}]).round(4),hide_index=True,width="stretch")
+    st.bar_chart(
+        pd.DataFrame({"Grup":[summary.reference_label,summary.comparison_label],"Ortalama ücret (ABD doları/saat)":[summary.reference_mean,summary.comparison_mean]}).set_index("Grup"),
+        x_label="Grup",
+        y_label="Ortalama ücret (ABD doları/saat)",
+    )
     st.latex(r"\widehat\beta_0=\bar Y_{D=0},\qquad \widehat\delta=\bar Y_{D=1}-\bar Y_{D=0}")
     st.caption("Sabit referans grubun ortalamasını; kukla katsayısı karşılaştırma eksi referans ortalamasını verir. Kodlama değişince işaret değişir, fitted değerler değişmez.")
 
     st.subheader("4. Ham fark ve kontrollü fark")
     assert hasattr(comparison, "raw_model")
-    models=[comparison.raw_model,comparison.controlled_level_model,comparison.controlled_log_model]
-    model_names=["M1 Ham düzey","M2 Kontrollü düzey","M3 Kontrollü log"]
-    st.dataframe(pd.DataFrame([{"Model":name,"female":m.coefficients['female'],"SH":m.standard_errors['female'],"t":m.t_values_zero['female'],"p":format_p_value(float(m.p_values_two_sided_zero['female'])),"%95 GA":f"[{m.confidence_intervals_95.loc['female','lower']:.3f}, {m.confidence_intervals_95.loc['female','upper']:.3f}]","n":m.nobs,"R²":m.r_squared} for name,m in zip(model_names,models,strict=True)]).round(4),hide_index=True,width="stretch")
-    st.line_chart(pd.DataFrame({"Model":model_names,"Tahmin":[m.coefficients['female'] for m in models]}).set_index("Model"))
+    level_models=[comparison.raw_model,comparison.controlled_level_model]
+    level_names=["M1 Ham düzey","M2 Kontrollü düzey"]
+    st.markdown("**Düzey modelleri — katsayı birimi ABD doları/saat**")
+    level_table=pd.DataFrame([{"Model":name,"female":m.coefficients['female'],"SH":m.standard_errors['female'],"t":m.t_values_zero['female'],"p":format_p_value(float(m.p_values_two_sided_zero['female'])),"%95 GA":f"[{m.confidence_intervals_95.loc['female','lower']:.3f}, {m.confidence_intervals_95.loc['female','upper']:.3f}]","Birim / yorum":"ABD doları/saat","n":m.nobs,"R²":m.r_squared} for name,m in zip(level_names,level_models,strict=True)])
+    st.dataframe(level_table.round(4),hide_index=True,width="stretch")
+    st.line_chart(
+        pd.DataFrame({"Model":level_names,"Tahmin (ABD doları/saat)":[m.coefficients['female'] for m in level_models]}).set_index("Model"),
+        x_label="Model",
+        y_label="Kadın − erkek tahmini (ABD doları/saat)",
+    )
+    log_model=comparison.controlled_log_model
+    st.markdown("**Log model — log katsayısı ve yüzde dönüşümü ayrı ölçektedir**")
+    log_table=pd.DataFrame([{"Model":"M3 Kontrollü log","female (log puan)":log_model.coefficients['female'],"SH":log_model.standard_errors['female'],"t":log_model.t_values_zero['female'],"p":format_p_value(float(log_model.p_values_two_sided_zero['female'])),"%95 GA (log puan)":f"[{log_model.confidence_intervals_95.loc['female','lower']:.3f}, {log_model.confidence_intervals_95.loc['female','upper']:.3f}]","Tam yüzde farkı":f"%{comparison.exact_log_percent:.2f}","n":log_model.nobs,"R²":log_model.r_squared}])
+    st.dataframe(log_table.round(4),hide_index=True,width="stretch")
     st.success(f"Log modelinde tam yüzde dönüşüm: 100(exp(δ)−1) = %{comparison.exact_log_percent:.2f}; %95 aralık: [%{comparison.exact_log_ci_percent[0]:.2f}, %{comparison.exact_log_ci_percent[1]:.2f}].")
     st.caption("Kontrollü katsayı, seçili kontroller sabitken tahmin edilen farktır; nedensel ayrımcılık tahmini değildir.")
 
@@ -78,20 +93,33 @@ def render() -> None:
     delta=st.slider("δ",-.60,.60,float(round(comparison.controlled_log_difference,4)),.01,key="konu10_delta")
     exact=dummy_log_exact_percent(delta); approximate=100*delta
     metric=st.columns(3); metric[0].metric("Yaklaşık yüzde",f"%{approximate:.2f}"); metric[1].metric("Tam yüzde",f"%{exact:.2f}"); metric[2].metric("Fark",f"{exact-approximate:.2f} puan")
-    curve_x=np.linspace(-.6,.6,121); st.line_chart(pd.DataFrame({"δ":curve_x,"100δ":100*curve_x,"100(exp(δ)−1)":100*np.expm1(curve_x)}).set_index("δ"))
+    curve_x=np.linspace(-.6,.6,121)
+    st.line_chart(
+        pd.DataFrame({"δ":curve_x,"100δ":100*curve_x,"100(exp(δ)−1)":100*np.expm1(curve_x)}).set_index("δ"),
+        x_label="Log-kukla katsayısı (δ)",
+        y_label="Tahmin edilen yüzde fark (%)",
+    )
     st.caption("Bunlar yüzde değişimidir; yüzde puan değişimi değildir. Exact dönüşüm negatif ve pozitif tarafta simetrik değildir.")
 
     st.subheader("6. Referans kategori ve kategori karşıtlığı")
-    regions=np.select([data.northcen.eq(1),data.south.eq(1),data.west.eq(1)],["Kuzey Merkez","Güney","Batı"],default="Kuzeydoğu")
-    reference=st.selectbox("Referans bölge",("Kuzeydoğu","Kuzey Merkez","Güney","Batı"),key="konu10_region_reference")
-    coding=build_reference_dummies(pd.Series(regions,index=data.index),reference_category=reference,prefix="region",category_order=("Kuzeydoğu","Kuzey Merkez","Güney","Batı"))
+    region_categories=("Kuzeydoğu","Kuzey Merkez","Güney","Batı")
+    regions=pd.Series(np.select([data.northcen.eq(1),data.south.eq(1),data.west.eq(1)],["Kuzey Merkez","Güney","Batı"],default="Kuzeydoğu"),index=data.index,name="region")
+    reference=st.selectbox("Referans bölge",region_categories,key="konu10_region_reference")
+    coding=build_reference_dummies(regions,reference_category=reference,prefix="region",category_order=region_categories)
     region_data=data.join(coding.dummies); controls=("educ","exper","expersq","tenure","tenursq"); selected_region_model=fit_ols_inference(region_data,"lwage",(*controls,*coding.dummies.columns))
+    comparison_reference=region_categories[(region_categories.index(reference)+1)%len(region_categories)]
+    reference_invariance=compare_reference_coding(data,"lwage",controls,regions,first_reference=reference,second_reference=comparison_reference,prefix="region",category_order=region_categories)
     st.dataframe(coding.coding_table,hide_index=True,width="stretch")
     first_category=st.selectbox("Kategori A",coding.categories,index=3,key="konu10_contrast_a"); second_category=st.selectbox("Kategori B",coding.categories,index=2,key="konu10_contrast_b")
     if first_category!=second_category:
         coefficient_map={cat:f"region_{cat}" for cat in coding.categories if cat!=reference}; contrast=category_contrast_inference(selected_region_model,first_category=first_category,second_category=second_category,reference_category=reference,coefficient_map=coefficient_map)
         st.write(f"{first_category} − {second_category}: {contrast.estimate:.4f}, SH={contrast.standard_error:.4f}, t={contrast.t_statistic:.3f}, p={format_p_value(contrast.p_value)}, %95 GA=[{contrast.confidence_interval_95[0]:.4f}, {contrast.confidence_interval_95[1]:.4f}]")
-    st.caption("Referans değişince katsayı adları değişir; aynı kategori karşıtlığı, fitted değerler, artıklar, R² ve SSR değişmez.")
+    invariance_cards=st.columns(4)
+    invariance_cards[0].metric("Maks. fitted farkı",format_numerical_difference(reference_invariance.max_fitted_difference))
+    invariance_cards[1].metric("Maks. artık farkı",format_numerical_difference(reference_invariance.max_residual_difference))
+    invariance_cards[2].metric("R² farkı",format_numerical_difference(reference_invariance.r_squared_difference))
+    invariance_cards[3].metric("SSR farkı",format_numerical_difference(reference_invariance.ssr_difference))
+    st.caption(f"Referans değişmezliği: {reference_invariance.first_reference} ve {reference_invariance.second_reference} kodlamaları karşılaştırılmıştır. Model: lwage ~ eğitim + deneyim + deneyim² + kıdem + kıdem² + bölge; kovaryans türü: geleneksel (nonrobust). Referans değişince katsayı adları değişir; fitted değerler, artıklar, R² ve SSR değişmez.")
 
     st.subheader("7. Kukla değişken tuzağı ve rank laboratuvarı")
     scenario=st.radio("Tasarım",("Sabit + bütün kuklalar","Sabit + m−1 kukla","Sabitsiz + bütün kuklalar"),horizontal=True,key="konu10_rank_scenario")
@@ -108,7 +136,7 @@ def render() -> None:
         with target:
             st.markdown(f"**{null}**"); st.dataframe(pd.DataFrame({"Katsayı":coefs,"Tahmin":[model.coefficients[x] for x in coefs],"Tekli p":[format_p_value(float(model.p_values_two_sided_zero[x])) for x in coefs]}),hide_index=True,width="stretch")
             st.write(f"q={test.q}; F({test.q},{model.df_resid})={test.f_statistic:.3f}; p={format_p_value(test.p_value)}; karar: {'H₀ reddedilir' if test.reject_null else 'H₀ reddedilemez'}.")
-            st.caption("Ortak reddetme, bütün katsayıların tek tek anlamlı olmasını gerektirmez.")
+            st.caption(f"Referans kategori: {test.reference_category}. Model: WAGE1 log saatlik ücret; kovaryans türü: geleneksel (nonrobust). Ortak reddetme, bütün katsayıların tek tek anlamlı olmasını gerektirmez.")
     st.subheader("9. Python, makale tablosu ve raporlama")
     st.code("lwage ~ educ + exper + expersq + tenure + tenursq + C(region)", language="python")
     st.info(f"Rapor: Erkek referans grubuna göre kadınların kontrollü log ücret farkı {comparison.controlled_log_difference:.4f}; geleneksel SH {comparison.controlled_log_model.standard_errors['female']:.4f}, p={format_p_value(float(comparison.controlled_log_model.p_values_two_sided_zero['female']))}. Exact fark %{comparison.exact_log_percent:.2f}. Bulgular gözlemsel ve koşulludur; tek başına nedensel etki değildir.")

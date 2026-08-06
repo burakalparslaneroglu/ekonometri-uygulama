@@ -17,10 +17,10 @@ _COVARIANCE_TYPES=("HC0","HC1","HC2","HC3")
 @dataclass(frozen=True)
 class RobustInferenceResult:
     """OLS nokta tahminlerini ve seçilmiş HC kovaryansındaki çıkarımı taşır."""
-    ols: OLSInferenceResult; covariance_type: str; standard_errors: pd.Series; t_values_zero: pd.Series
+    ols: OLSInferenceResult; covariance_type: str; coefficients: pd.Series; standard_errors: pd.Series; t_values_zero: pd.Series
     p_values_two_sided_zero: pd.Series; confidence_intervals_95: pd.DataFrame; covariance_matrix: pd.DataFrame
     def __post_init__(self)->None:
-        for name in ("standard_errors","t_values_zero","p_values_two_sided_zero"):
+        for name in ("coefficients","standard_errors","t_values_zero","p_values_two_sided_zero"):
             object.__setattr__(self,name,getattr(self,name).copy(deep=True))
         object.__setattr__(self,"confidence_intervals_95",self.confidence_intervals_95.copy(deep=True)); object.__setattr__(self,"covariance_matrix",self.covariance_matrix.copy(deep=True))
 
@@ -60,11 +60,11 @@ def _validate_covariance(covariance_type:str)->CovarianceType:
 def fit_robust_inference(frame:pd.DataFrame,dependent:str,explanatory:tuple[str,...],*,covariance_type:str="HC1")->RobustInferenceResult:
     """Aynı OLS katsayılarıyla ayrı HC çıkarım sonucu üretir."""
     cov=_validate_covariance(covariance_type); ols=fit_ols_inference(frame,dependent,explanatory)
-    design=sm.add_constant(ols.design_data,has_constant="add"); robust=sm.OLS(ols.observed_values,design).fit().get_robustcov_results(cov_type=cov)
+    design=sm.add_constant(ols.design_data,has_constant="add"); robust=sm.OLS(ols.observed_values,design).fit().get_robustcov_results(cov_type=cov,use_t=True)
     names=list(ols.coefficients.index); params=pd.Series(robust.params,index=names); se=pd.Series(robust.bse,index=names); tvals=pd.Series(robust.tvalues,index=names); pvals=pd.Series(robust.pvalues,index=names)
     intervals=pd.DataFrame(robust.conf_int(),index=names,columns=["lower","upper"]); matrix=pd.DataFrame(robust.cov_params(),index=names,columns=names)
     if not np.allclose(params.to_numpy(),ols.coefficients.to_numpy()): raise ValueError("HC hesabı OLS katsayılarını değiştirmemelidir.")
-    return RobustInferenceResult(ols,cov,se,tvals,pvals,intervals,matrix)
+    return RobustInferenceResult(ols,cov,params,se,tvals,pvals,intervals,matrix)
 
 def heteroskedasticity_tests(result:OLSInferenceResult,*,alpha:float=.05)->tuple[HeteroskedasticityTest,HeteroskedasticityTest]:
     """Breusch--Pagan ve White LM tanılarını aynı model örnekleminde hesaplar."""
@@ -89,10 +89,17 @@ def robust_joint_test(result:RobustInferenceResult,restrictions:tuple[LinearRest
     return RobustJointTest(result.covariance_type,q,statistic,p,result.ols.df_resid,bool(p<alpha),tuple(labels))
 
 def residual_plot_data(result:OLSInferenceResult)->pd.DataFrame:
-    """Artık-tahmin ve ölçek-konum grafikleri için sonlu veri hazırlar."""
-    fitted=result.fitted_values.to_numpy(float); residuals=result.residuals.to_numpy(float); scale=np.sqrt(np.abs(residuals)/max(result.residual_standard_deviation,1e-12))
-    if not np.isfinite(np.column_stack((fitted,residuals,scale))).all(): raise ValueError("Grafik verisi sonlu olmalıdır.")
-    return pd.DataFrame({"tahmin":fitted,"artık":residuals,"mutlak_artık":np.abs(residuals),"scale_location":scale})
+    """Artık-tahmin ve studentize ölçek-konum grafikleri için sonlu veri hazırlar."""
+    fitted=result.fitted_values.to_numpy(float)
+    residuals=result.residuals.to_numpy(float)
+    design=sm.add_constant(result.design_data,has_constant="add").to_numpy(float)
+    inverse=np.linalg.inv(design.T@design)
+    leverage=np.einsum("ij,jk,ik->i",design,inverse,design)
+    denominator=max(result.residual_standard_deviation,1e-12)*np.sqrt(np.maximum(1.0-leverage,1e-12))
+    studentized=residuals/denominator
+    scale=np.sqrt(np.abs(studentized))
+    if not np.isfinite(np.column_stack((fitted,residuals,studentized,scale))).all(): raise ValueError("Grafik verisi sonlu olmalıdır.")
+    return pd.DataFrame({"tahmin":fitted,"artık":residuals,"mutlak_artık":np.abs(residuals),"studentize_artık":studentized,"scale_location":scale})
 
 def simulate_heteroskedastic_coverage(*,nobs:int=60,repetitions:int=4000,seed:int=202512)->SimulationSummary:
     """Binlerce statsmodels uyumu yerine vektörize HC0--HC3 kapsama benzetimi yürütür."""

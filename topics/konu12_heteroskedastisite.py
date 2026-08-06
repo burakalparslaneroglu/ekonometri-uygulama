@@ -9,7 +9,7 @@ from core.konu12_questions import Konu12QuestionContext,generate_konu12_question
 from core.regression_inference_utils import fit_ols_inference,format_p_value
 from core.robust_inference_utils import breusch_pagan_auxiliary_details,coefficient_interval_comparison,fit_robust_inference,heteroskedastic_pattern_simulation,heteroskedasticity_tests,residual_plot_data,robust_joint_test,simulate_heteroskedastic_coverage,simulation_slope_samples,white_auxiliary_design,white_test_details
 from core.session_utils import question_state_keys,synchronize_question_state
-from core.ui_components import render_question_actions
+from core.ui_components import format_null_decision,render_question_actions
 
 @st.cache_data(show_spinner=False)
 def _model(covariance_type:str):
@@ -25,14 +25,30 @@ def _simulation(nobs:int,repetitions:int):
     return simulate_heteroskedastic_coverage(nobs=nobs,repetitions=repetitions)
 def render()->None:
     """Konu 12 öğretim ekranını gösterir."""
-    st.header("KONU 12"); st.subheader("Heteroskedastisite ve Dayanıklı Çıkarım")
+    st.markdown("<span class='topic-badge'>KONU 12</span>",unsafe_allow_html=True)
+    st.header("Heteroskedastisite ve Dayanıklı Çıkarım")
     st.info("Heteroskedastisite koşullu hata varyansıyla ilgilidir. Sıfır koşullu ortalama geçerliyse EKK katsayılarını otomatik olarak yanlı yapmaz; geleneksel standart hata ve çıkarımı etkileyebilir.")
     st.caption(f"Veri kaynağı: {get_dataset_metadata('hprice1').source}")
     st.markdown("**Bu sayfada ne yapacağız?**  Koşullu varyans → Grafik tanısı → BP → White → HC0–HC3 → Ortak test → Benzetim → Raporlama")
     st.subheader("1. Koşullu ortalama ve koşullu varyans")
     pattern=st.selectbox("Varyans örüntüsü",("sabit","artan","azalan","U biçimli"),key="konu12_pattern")
     pattern_data=heteroskedastic_pattern_simulation(pattern=pattern)
-    st.scatter_chart(pattern_data.set_index("x")[["y","koşullu_ortalama"]]); st.line_chart(pattern_data.set_index("x")[["hata_sd"]])
+    pattern_mean_plot=pattern_data.rename(columns={"x":"X","y":"Gözlenen Y","koşullu_ortalama":"Koşullu ortalama E(Y|X)"})
+    st.scatter_chart(
+        pattern_mean_plot,
+        x="X",
+        y=["Gözlenen Y","Koşullu ortalama E(Y|X)"],
+        x_label="X",
+        y_label="Y düzeyi",
+    )
+    pattern_variance_plot=pattern_data.rename(columns={"x":"X","hata_sd":"Hata standart sapması"})
+    st.line_chart(
+        pattern_variance_plot,
+        x="X",
+        y="Hata standart sapması",
+        x_label="X",
+        y_label="Hata standart sapması",
+    )
     st.caption("Bütün seçeneklerde E(Y|X)=1+2X aynıdır. Değişen unsur Var(u|X)'tir; heteroskedastisite koşullu ortalama denklemi değildir.")
     st.dataframe(pd.DataFrame([{"Özellik":"EKK katsayı merkezi","Sıfır koşullu ortalama geçerliyse":"Tek başına bozulmaz"},{"Özellik":"Etkinlik","Sıfır koşullu ortalama geçerliyse":"Genellikle kaybolur"},{"Özellik":"Geleneksel SH/t/F/GA","Sıfır koşullu ortalama geçerliyse":"Güvenilmez olabilir"},{"Özellik":"HC çıkarımı","Sıfır koşullu ortalama geçerliyse":"Heteroskedastisiteye dayanıklıdır"}]),hide_index=True,width="stretch")
 
@@ -40,8 +56,16 @@ def render()->None:
     result=_model(cov); log_result=_log_model(cov); ols=result.ols; bp,white=heteroskedasticity_tests(ols); plots=residual_plot_data(ols)
     st.subheader("2. Artık grafikleri: görsel tanı, kanıt değil")
     diagnostic=st.selectbox("Tanı görünümü",("Artık–tahmin","Mutlak artık–tahmin","Ölçek–konum"),key="konu12_diagnostic")
-    column={"Artık–tahmin":"artık","Mutlak artık–tahmin":"mutlak_artık","Ölçek–konum":"scale_location"}[diagnostic]
-    st.scatter_chart(plots.set_index("tahmin")[[column]])
+    plot_labels={"Artık–tahmin":("artık","Artık (bin ABD doları)"),"Mutlak artık–tahmin":("mutlak_artık","Mutlak artık (bin ABD doları)"),"Ölçek–konum":("scale_location","√|studentize artık|")}
+    column,label=plot_labels[diagnostic]
+    diagnostic_plot=plots.rename(columns={"tahmin":"Tahmin edilen fiyat (bin ABD doları)",column:label})
+    st.scatter_chart(
+        diagnostic_plot,
+        x="Tahmin edilen fiyat (bin ABD doları)",
+        y=label,
+        x_label="Tahmin edilen fiyat (bin ABD doları)",
+        y_label=label,
+    )
     st.caption("Huni biçimi değişen yayılıma işaret edebilir; fakat fonksiyonel biçim ve uç gözlemler de örüntü yaratabilir. Grafik tek başına formal kanıt değildir.")
 
     st.subheader("3. Breusch–Pagan testi: yardımcı regresyon laboratuvarı")
@@ -51,7 +75,8 @@ def render()->None:
     st.markdown("**Adımlar:** EKK modelini tahmin et → artıkların karesini hesapla → û²'yi açıklayıcılara regrese et → yardımcı R²'yi al → LM=nR² hesapla.")
     st.write("Yardımcı açıklayıcılar: "+", ".join(bp_details.auxiliary_variables))
     bp_cards=st.columns(5); bp_cards[0].metric("R²_aux",f"{bp_details.auxiliary_r_squared:.4f}"); bp_cards[1].metric("nR²",f"{bp_details.lm_manual:.3f}"); bp_cards[2].metric("Statsmodels LM",f"{bp_details.lm_statsmodels:.3f}"); bp_cards[3].metric("df",bp_details.df); bp_cards[4].metric("p",format_p_value(bp_details.lm_p_value))
-    st.success("Karar: H₀ reddedilir; heteroskedastisite lehine kanıt vardır." if bp_details.lm_p_value<alpha else "Karar: H₀ reddedilemez; bu homoskedastisitenin kanıtı değildir.")
+    bp_reject=bp_details.lm_p_value<alpha; bp_decision=format_null_decision(bp_details.lm_p_value,alpha)
+    st.success(f"Breusch–Pagan kararı (α={alpha:.2f}, %{100*alpha:.0f}): {bp_decision}; " + ("heteroskedastisite lehine kanıt vardır." if bp_reject else "bu sonuç homoskedastisitenin kanıtı değildir."))
 
     st.subheader("4. White testi: kareler ve çapraz terimler")
     white_design,squares,crosses=white_auxiliary_design(ols); white_details=white_test_details(ols)
@@ -59,11 +84,15 @@ def render()->None:
     terms=st.columns(3); terms[0].write("**Düzey terimleri**\n\n"+", ".join(white_details.base_variables)); terms[1].write("**Kare terimleri**\n\n"+", ".join(squares)); terms[2].write("**Çapraz terimler**\n\n"+", ".join(crosses))
     st.dataframe(white_design.head(8),hide_index=True,width="stretch")
     white_cards=st.columns(5); white_cards[0].metric("Sütun",white_details.column_count); white_cards[1].metric("Rank",white_details.matrix_rank); white_cards[2].metric("nR²",f"{white_details.lm_manual:.3f}"); white_cards[3].metric("df",white_details.df); white_cards[4].metric("p",format_p_value(white_details.p_value))
+    white_reject=white_details.p_value<alpha; white_decision=format_null_decision(white_details.p_value,alpha)
+    st.success(f"White testi kararı (α={alpha:.2f}, %{100*alpha:.0f}): {white_decision}; " + ("heteroskedastisite lehine kanıt vardır." if white_reject else "bu sonuç homoskedastisitenin kanıtı değildir."))
     st.warning("White testi daha esnektir; ancak daha çok serbestlik derecesi tüketir ve yanlış fonksiyonel biçim de reddetmeye katkı sağlayabilir.")
 
     st.subheader("5. BP ve White: düzey–log karşılaştırması")
     log_bp,log_white=heteroskedasticity_tests(log_result.ols)
-    st.dataframe(pd.DataFrame([{"Model":"Düzey","BP LM":bp.lm_statistic,"BP p":bp.p_value,"White LM":white.lm_statistic,"White p":white.p_value},{"Model":"Log","BP LM":log_bp.lm_statistic,"BP p":log_bp.p_value,"White LM":log_white.lm_statistic,"White p":log_white.p_value}]).round(4),hide_index=True,width="stretch")
+    diagnostic_table=pd.DataFrame([{"Model":"Düzey","BP LM":bp.lm_statistic,"BP p":format_p_value(bp.p_value),"White LM":white.lm_statistic,"White p":format_p_value(white.p_value)},{"Model":"Log","BP LM":log_bp.lm_statistic,"BP p":format_p_value(log_bp.p_value),"White LM":log_white.lm_statistic,"White p":format_p_value(log_white.p_value)}])
+    st.dataframe(diagnostic_table.round(4),hide_index=True,width="stretch")
+    st.caption("Düzey modelinin sonuç birimi bin ABD dolarıdır; log modelinin sonucu log fiyattır. Her iki tanı geleneksel EKK artıklarına dayanır.")
     st.caption("Testlerin reddedilmemesi homoskedastisitenin kanıtı değildir. Grafik, ekonomik biçim ve robust çıkarım birlikte değerlendirilir.")
 
     st.subheader("6. HC0–HC3 dayanıklı kovaryans laboratuvarı")
@@ -72,18 +101,23 @@ def render()->None:
     comparison=coefficient_interval_comparison(source,"price",("lotsize1000","sqrft100","bdrms"))
     selected_coef=st.selectbox("Katsayı",tuple(comparison.coefficient),index=1,key="konu12_coefficient")
     selected_row=comparison.loc[comparison.coefficient==selected_coef].iloc[0]
-    st.dataframe(comparison[["coefficient","estimate","nonrobust_se","HC0_se","HC1_se","HC2_se","HC3_se","nonrobust_p",f"{cov}_p"]].round(4),hide_index=True,width="stretch")
+    comparison_display=comparison[["coefficient","estimate","nonrobust_se","HC0_se","HC1_se","HC2_se","HC3_se","nonrobust_p",f"{cov}_p"]].copy()
+    comparison_display=comparison_display.rename(columns={"coefficient":"Katsayı","estimate":"Tahmin (bin ABD doları)","nonrobust_se":"Geleneksel SH","HC0_se":"HC0 SH","HC1_se":"HC1 SH","HC2_se":"HC2 SH","HC3_se":"HC3 SH","nonrobust_p":"Geleneksel p",f"{cov}_p":f"{cov} p"})
+    comparison_display["Geleneksel p"]=comparison_display["Geleneksel p"].map(lambda value:format_p_value(float(value)))
+    comparison_display[f"{cov} p"]=comparison_display[f"{cov} p"].map(lambda value:format_p_value(float(value)))
+    st.dataframe(comparison_display.round(4),hide_index=True,width="stretch")
+    st.caption(f"Model: price ~ lotsize1000 + sqrft100 + bdrms. Sonuç birimi: bin ABD doları. Karşılaştırılan kovaryans türleri: geleneksel (nonrobust) ve {cov}.")
     st.write(f"{selected_coef}: aynı tahmin={selected_row.estimate:.4f}; geleneksel SH={selected_row.nonrobust_se:.4f}; {cov} SH={selected_row[f'{cov}_se']:.4f}; {cov} GA=[{selected_row[f'{cov}_lower']:.4f}, {selected_row[f'{cov}_upper']:.4f}].")
 
     st.subheader("7. HPRICE1 düzey modeli ayrıntılı uygulama")
     table=pd.DataFrame({"Katsayı":ols.coefficients.index,"EKK tahmini":ols.coefficients.values,"Geleneksel SH":ols.standard_errors.values,f"{cov} SH":result.standard_errors.values,"Geleneksel p": [format_p_value(float(v)) for v in ols.p_values_two_sided_zero],f"{cov} p":[format_p_value(float(v)) for v in result.p_values_two_sided_zero]})
     st.dataframe(table.round(4),hide_index=True,width="stretch")
-    st.caption("Nokta tahminleri, fitted değerler, R² ve artıklar aynıdır. Yalnız seçili kovaryansla standart hata ve çıkarım değişir.")
+    st.caption(f"Model: HPRICE1 düzey fiyat modeli; sonuç birimi bin ABD doları. Nokta tahminleri, fitted değerler, R² ve artıklar aynıdır. Yalnız geleneksel ve {cov} kovaryansları arasında standart hata ve çıkarım değişir.")
     st.info(f"lotsize1000 tahmini {ols.coefficients['lotsize1000']:.4f} değişmez; geleneksel p={format_p_value(float(ols.p_values_two_sided_zero['lotsize1000']))}, HC1 p={format_p_value(float(_model('HC1').p_values_two_sided_zero['lotsize1000']))}. Belirsizlik ve karar değişebilir; ekonomik büyüklük değişmez.")
 
     st.subheader("8. HPRICE1 log modeli ayrıntılı uygulama")
     log_table=pd.DataFrame({"Katsayı":log_result.ols.coefficients.index,"Tahmin":log_result.ols.coefficients.values,"Geleneksel SH":log_result.ols.standard_errors.values,f"{cov} SH":log_result.standard_errors.values,"Geleneksel p":[format_p_value(float(v)) for v in log_result.ols.p_values_two_sided_zero],f"{cov} p":[format_p_value(float(v)) for v in log_result.p_values_two_sided_zero]})
-    st.dataframe(log_table.round(4),hide_index=True,width="stretch"); st.caption("llotsize ve lsqrft katsayıları esnekliktir. Bağımlı değişkenler farklı olduğu için düzey ve log model R² değerleri mekanik model seçimi için doğrudan karşılaştırılmaz.")
+    st.dataframe(log_table.round(4),hide_index=True,width="stretch"); st.caption(f"Model: HPRICE1 log fiyat modeli; kovaryans türleri geleneksel ve {cov}. llotsize ve lsqrft katsayıları esnekliktir. Bağımlı değişkenler farklı olduğu için düzey ve log model R² değerleri mekanik model seçimi için doğrudan karşılaştırılmaz.")
 
     st.subheader("9. Geleneksel ve dayanıklı ortak test")
     joint=robust_joint_test(result,(LinearRestriction({"lotsize1000":1},0,"lotsize1000 = 0"),LinearRestriction({"bdrms":1},0,"bdrms = 0")))
@@ -97,7 +131,17 @@ def render()->None:
     sim=_simulation(60,reps)
     st.dataframe(pd.DataFrame([{"Eğim ortalaması":sim.slope_mean,"Ampirik SD":sim.empirical_slope_sd,"Geleneksel ort. SH":sim.mean_nonrobust_se,"HC1 ort. SH":sim.mean_hc1_se,"HC3 ort. SH":sim.mean_hc3_se,"Geleneksel kapsama":sim.nonrobust_coverage,"HC1 kapsama":sim.hc1_coverage,"HC3 kapsama":sim.hc3_coverage}]).round(3),hide_index=True,width="stretch")
     slope_samples=simulation_slope_samples(repetitions=reps).eğim.to_numpy(); counts,edges=np.histogram(slope_samples,bins=25); centers=(edges[:-1]+edges[1:])/2
-    st.bar_chart(pd.DataFrame({"Eğim":centers,"Frekans":counts}).set_index("Eğim")); st.bar_chart(pd.DataFrame({"Yöntem":["Geleneksel","HC1","HC3"],"Kapsama":[sim.nonrobust_coverage,sim.hc1_coverage,sim.hc3_coverage]}).set_index("Yöntem")); st.caption("Nominal hedef .95'tir. Eğim doğru merkezin çevresinde kalırken çok küçük geleneksel SH kapsamanın düşmesine yol açabilir.")
+    st.bar_chart(
+        pd.DataFrame({"Eğim":centers,"Frekans":counts}).set_index("Eğim"),
+        x_label="Eğim tahmini",
+        y_label="Frekans",
+    )
+    st.bar_chart(
+        pd.DataFrame({"Yöntem":["Geleneksel","HC1","HC3"],"Kapsama":[sim.nonrobust_coverage,sim.hc1_coverage,sim.hc3_coverage]}).set_index("Yöntem"),
+        x_label="Standart hata yöntemi",
+        y_label="Kapsama oranı",
+    )
+    st.caption("Nominal hedef .95'tir. Eğim doğru merkezin çevresinde kalırken çok küçük geleneksel SH kapsamanın düşmesine yol açabilir.")
     st.subheader("11. Robust standart hata neyi çözmez?")
     issue=st.selectbox("Sorun",("heteroskedastisite","eksik değişken","yanlış fonksiyonel biçim","içsellik","küme bağımlılığı","seri korelasyon","ölçüm hatası"),key="konu12_limit")
     if issue=="heteroskedastisite": st.success("Bağımsız gözlemler altında HC0–HC3 türü kovaryans çözümü uygun olabilir.")

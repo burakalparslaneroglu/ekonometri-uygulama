@@ -2,7 +2,7 @@
 import pytest
 
 from core.categorical_regression_utils import (add_categorical_columns, binary_group_summary, compare_raw_and_controlled_dummy,
-    diagnose_dummy_trap, dummy_design_preview, dummy_log_ci_to_exact_percent, dummy_log_exact_percent,numeric_vs_dummy_coding_comparison)
+    build_reference_dummies, diagnose_dummy_trap, dummy_design_preview, dummy_log_ci_to_exact_percent, dummy_log_exact_percent,numeric_vs_dummy_coding_comparison)
 from core.data_registry import load_dataset
 
 @pytest.fixture(scope="module")
@@ -35,3 +35,12 @@ def test_numeric_code_imposes_equal_spacing_and_dummy_reproduces_means() -> None
     assert comparison.equal_spacing_imposed and comparison.dummy_ssr < comparison.numeric_ssr
     preview,diagnostic=dummy_design_preview(categories,includes_intercept=True,include_all_dummies=True)
     assert preview.shape[1]==4 and not diagnostic.full_rank
+
+
+def test_missing_category_is_not_silently_treated_as_reference() -> None:
+    import pandas as pd
+    categories = pd.Series(["A", None, "B"], index=[10, 11, 12])
+    coding = build_reference_dummies(categories, reference_category="A", prefix="group", category_order=("A", "B"))
+    assert coding.dummies.loc[10, "group_B"] == 0
+    assert pd.isna(coding.dummies.loc[11, "group_B"])
+    assert coding.dummies.loc[12, "group_B"] == 1

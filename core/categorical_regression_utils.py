@@ -149,7 +149,15 @@ def build_reference_dummies(category_series: pd.Series, *, reference_category: s
     categories = tuple(category_order or pd.unique(values))
     if len(categories) < 2 or reference_category not in categories or set(values.unique()).difference(categories):
         raise ValueError("Referans ve kategori sırası gözlenen kategorilerle uyumlu olmalıdır.")
-    dummies = pd.DataFrame({f"{prefix}_{cat}": (category_series.astype(str) == cat).astype(int) for cat in categories if cat != reference_category}, index=category_series.index)
+    valid = category_series.notna()
+    dummy_columns: dict[str, pd.Series] = {}
+    for category in categories:
+        if category == reference_category:
+            continue
+        dummy = pd.Series(np.nan, index=category_series.index, dtype=float)
+        dummy.loc[valid] = (category_series.loc[valid].astype(str) == category).astype(float)
+        dummy_columns[f"{prefix}_{category}"] = dummy
+    dummies = pd.DataFrame(dummy_columns, index=category_series.index)
     table = pd.DataFrame({"kategori": categories, "referans": [cat == reference_category for cat in categories], "kod": ["0 (tüm kuklalar)" if cat == reference_category else f"{prefix}_{cat}=1" for cat in categories]})
     return DummyCoding(categories, reference_category, dummies, table)
 
