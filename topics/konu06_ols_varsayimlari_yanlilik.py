@@ -84,7 +84,7 @@ def _distribution_figure(result) -> go.Figure:
         add_reference(result.true_slope, f"Gerçek yapısal eğim: {format_student_number(result.true_slope)}", "#B3392F", "dash")
         add_reference(result.target_center, f"Tahmin dağılımının hedef merkezi: {format_student_number(result.target_center)}", "#2F9E6B", "dot")
     add_reference(result.mean_estimate, f"Ortalama tahmin: {format_student_number(result.mean_estimate)}", "#07373D", "solid")
-    return figure.update_layout(template="plotly_white", height=330, margin={"l": 10, "r": 10, "t": 40, "b": 10}, showlegend=True, legend_title_text="Referans çizgileri")
+    return figure.update_layout(template="plotly_white", height=330, margin={"l": 10, "r": 10, "t": 40, "b": 10}, showlegend=True, legend_title_text="Referans çizgileri", xaxis_title="Tahmin edilen eğim", yaxis_title="Tekrar sayısı")
 
 
 def _assumption_cards() -> None:

@@ -242,3 +242,6 @@ Thumbs.db
 
 # Local course-reference materials for Codex
 references_private/
+
+# Only for Review
+review_bundle/

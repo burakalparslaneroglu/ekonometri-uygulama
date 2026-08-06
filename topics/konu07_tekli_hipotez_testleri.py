@@ -91,7 +91,7 @@ def _confidence_figure(lower: float, upper: float, estimate: float, null: float)
     figure.add_trace(go.Scatter(x=[lower, upper], y=["Güven aralığı", "Güven aralığı"], mode="lines+markers", name="Güven aralığı", line={"color": BRAND["teal"], "width": 6}))
     figure.add_trace(go.Scatter(x=[estimate], y=["Güven aralığı"], mode="markers", name="Katsayı", marker={"color": BRAND["ink"], "size": 12}))
     figure.add_vline(x=null, line_dash="dash", line_color=BRAND["red"], annotation_text="null")
-    return figure.update_layout(template="plotly_white", height=230, margin={"l": 10, "r": 10, "t": 30, "b": 10}, xaxis_title="Katsayı değeri", yaxis_title="")
+    return figure.update_layout(template="plotly_white", height=230, margin={"l": 10, "r": 10, "t": 30, "b": 10}, xaxis_title="Katsayı değeri", yaxis_title="Aralık")
 
 
 def render() -> None:
@@ -120,7 +120,7 @@ def render() -> None:
     metric_columns[2].metric("Ortalama raporlanan standart hata", _display_number(simulation.mean_reported_standard_error, 4))
     fig_sim = px.histogram(x=simulation.slope_estimates, nbins=40, labels={"x": "Eğim tahminleri", "y": "Sıklık"}, color_discrete_sequence=[BRAND["teal"]])
     fig_sim.add_vline(x=simulation.true_slope, line_color=BRAND["green"], annotation_text="gerçek eğim")
-    st.plotly_chart(fig_sim.update_layout(template="plotly_white", height=300), width="stretch")
+    st.plotly_chart(fig_sim.update_layout(template="plotly_white", height=300, xaxis_title="Eğim tahmini", yaxis_title="Frekans"), width="stretch")
     st.caption("Raporlanan standart hata, tekrar tekrar örneklem alsaydık katsayı tahminlerinin ne kadar değişeceğini tek örneklemden tahmin etmeye çalışır; iki ölçünün birebir eşit olması beklenmez.")
 
     specs = konu07_model_specs()

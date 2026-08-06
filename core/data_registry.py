@@ -102,7 +102,7 @@ DATASETS: dict[str, DatasetMetadata] = {
             "sqrft100": VariableMetadata("sqrft100", "Konut alanı (100 kare fit)", "Konut alanının 100 kare fite bölünmüş halidir.", "100 kare fit"),
             "colonial": VariableMetadata("colonial", "Colonial tip", "Colonial mimari tip gösterge değişkenidir.", "0/1 gösterge"),
             "lotsize10k": VariableMetadata("lotsize10k", "Merkezlenmiş arsa alanı", "(lotsize−10.000)/1.000 türetilmiş arsa ölçeğidir.", "bin kare fit, 10 bin merkez"),
-            "colonial_lotsize10k": VariableMetadata("colonial_lotsize10k", "Colonial × arsa", "Türetilmiş etkileşim terimidir.", "10 bin kare fit"),
+            "colonial_lotsize10k": VariableMetadata("colonial_lotsize10k", "Colonial × merkezlenmiş arsa", "Colonial göstergesi ile (lotsize−10.000)/1.000 değişkeninin etkileşimidir.", "0/1 × bin kare fit; 10.000 kare fitte merkezlenmiş"),
             "lprice": VariableMetadata("lprice", "Fiyatın logaritması", "Konut fiyatının doğal logaritmasıdır.", "log birim"),
             "llotsize": VariableMetadata("llotsize", "Arsa alanının logaritması", "Arsa alanının doğal logaritmasıdır.", "log birim"),
             "lsqrft": VariableMetadata("lsqrft", "Konut alanının logaritması", "Konut alanının doğal logaritmasıdır.", "log birim"),
