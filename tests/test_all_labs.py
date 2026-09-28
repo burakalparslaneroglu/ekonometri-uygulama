@@ -21,13 +21,14 @@ import pytest
 from core.codegen.base import LANGUAGES, generator, render_script, render_step
 from core.labs.registry import LABS
 from core.labs.runner import LabState, execute, run_lab
+from core.labs.spec import MultiChoice, NumberChoice
 
 SPECS = list(LABS.values())
 
 
 def _experiments() -> list:
     found = []
-    for number in range(1, 13):
+    for number in range(0, 13):
         try:
             module = importlib.import_module(f"core.labs.sezgi_konu{number:02d}")
         except ModuleNotFoundError:
@@ -46,7 +47,7 @@ def _checks(spec) -> int:
 
 
 def _chapter(spec) -> str:
-    return spec.topic_key[-2:].lstrip("0")
+    return str(int(spec.topic_key[-2:]))
 
 
 # --- Tanım sözleşmesi -----------------------------------------------------------------
@@ -76,6 +77,48 @@ def test_app_reproduces_every_number_in_the_notes(spec) -> None:
     run = run_lab(spec)
     failures = [f"{c.check.label}: {c.value}" for items in run.checks.values() for c in items if not c.passed]
     assert not failures, failures
+
+
+
+def _single_changes(spec) -> list[dict[str, object]]:
+    """Her denetimin notlardakinden farklı değerleri, birer birer: kaydırıcıda iki uç ve orta nokta, çoklu seçimde
+    tek öğeli ve bir öğesi çıkarılmış kümeler."""
+
+    changes = []
+    for control in spec.controls:
+        if isinstance(control, NumberChoice):
+            span = control.maximum - control.minimum
+            candidates = [control.minimum, control.maximum, control.minimum + span / 2]
+        elif isinstance(control, MultiChoice):
+            candidates = [(value,) for value, _ in control.options]
+            candidates += [tuple(item for item in control.default if item != value) for value in control.default]
+        else:
+            candidates = [value for value, _ in control.options]
+        default, seen = control.normalize(control.default), set()
+        for candidate in candidates:
+            try:
+                value = control.normalize(candidate)
+            except ValueError:
+                continue
+            if value != default and value not in seen:
+                seen.add(value)
+                changes.append({control.key: value})
+    return changes
+
+
+@pytest.mark.parametrize("spec", [spec for spec in SPECS if spec.controls], ids=lambda s: s.topic_key)
+def test_a_choice_leaves_every_unmarked_step_at_the_notes(spec) -> None:
+    """``LabSpec.resolve`` notlardan farklı saymadığı adımlar, seçim ne olursa olsun notlardaki sayıları verir."""
+
+    changes = _single_changes(spec)
+    assert changes
+    for change in changes:
+        resolved = spec.resolve(change)
+        assert resolved.variant, change
+        run = run_lab(resolved)
+        failures = [f"Adım {number}: {c.check.label}" for number, items in run.checks.items() for c in items
+                    if not c.passed]
+        assert not failures, (change, resolved.variant, failures)
 
 
 # --- Üretilen kod: Python -------------------------------------------------------------
@@ -143,6 +186,34 @@ def test_generated_python_reproduces_the_experiment_exactly(experiment, monkeypa
     for name, value in state.scalars.items():
         if name in namespace:
             assert float(namespace[name]) == pytest.approx(value, abs=1e-12), name
+
+
+def _balanced(latex: str) -> bool:
+    """Kaçışsız süslü parantezler dengeli mi (``\\{`` ve ``\\}`` sayılmaz)."""
+
+    depth, index = 0, 0
+    while index < len(latex):
+        if latex[index] == "\\" and latex[index + 1:index + 2] in ("{", "}"):
+            index += 2
+            continue
+        depth += {"{": 1, "}": -1}.get(latex[index], 0)
+        if depth < 0:
+            return False
+        index += 1
+    return depth == 0
+
+
+@pytest.mark.parametrize("experiment", EXPERIMENTS, ids=lambda e: e.key)
+def test_dgp_lines_are_well_formed_latex_at_every_slider_end(experiment) -> None:
+    """DGP satırları st.latex ile çizilir; dengesiz bir süslü parantez satırı ham metin olarak (kırmızı) gösterir."""
+
+    settings = [experiment.defaults()]
+    for parameter in experiment.parameters:
+        for value in (parameter.minimum, parameter.maximum):
+            settings.append(dict(experiment.defaults(), **{parameter.key: value}))
+    for parameters in settings:
+        for line in experiment.dgp(parameters):
+            assert _balanced(line) and line.count("\\left") == line.count("\\right"), (parameters, line)
 
 
 def test_every_experiment_renders_in_every_language_without_checks() -> None:

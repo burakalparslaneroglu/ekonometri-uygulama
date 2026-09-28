@@ -27,22 +27,25 @@ def _metrics(app: AppTest) -> dict[str, str]:
     return {metric.label: metric.value for metric in app.metric}
 
 
-def test_app_opens_on_topic_01_with_three_tabs() -> None:
+def test_app_opens_on_topic_00_with_three_tabs() -> None:
     app = _run_app()
     assert not app.exception
     # app.py'nin açıklamaları Streamlit "magic" ile sayfaya yazılmamalı.
     shown = [item.value for item in app.markdown if not item.value.startswith("<style>")]
     assert not any("Kenar çubuğundaki konu adı" in text or "Çizilmediği çalıştırmalarda" in text for text in shown)
-    assert app.radio(key="selected_topic").value == get_topic("konu01").label
-    assert "Ekonometri ve Ampirik Araştırmanın Mantığı" in _markdown(app)
+    assert app.radio(key="selected_topic").value == get_topic("konu00").label
+    assert "Başlangıç Araç Kutusu: Veri, Notasyon ve Temel İstatistik" in _markdown(app)
     assert [tab.label for tab in app.tabs][:3] == ["Uygulama", "Sezgi", "Kendini sına"]
-    assert app.segmented_control(key="konu01_lab_step").value == 1
+    assert app.segmented_control(key="konu00_lab_step").value == 1
+    assert {"Gözlem sayısı n": "5", "Değişken sayısı": "4"}.items() <= _metrics(app).items()
+    _select(app, "konu01")
+    assert "Ekonometri ve Ampirik Araştırmanın Mantığı" in _markdown(app)
     assert {"Gözlem sayısı n": "526", "Değişken sayısı": "24"}.items() <= _metrics(app).items()
 
 
 def test_every_lab_step_renders_in_both_languages() -> None:
     app = _run_app()
-    for topic, steps in (("konu01", 6), ("konu02", 6)):
+    for topic, steps in (("konu00", 9), ("konu01", 6), ("konu02", 6)):
         _select(app, topic)
         for language in ("Python", "R"):
             app.segmented_control(key="code_language").set_value(language).run()
@@ -54,6 +57,7 @@ def test_every_lab_step_renders_in_both_languages() -> None:
 
 def test_lab_step_shows_the_notes_numbers_in_turkish_format() -> None:
     app = _run_app()
+    _select(app, "konu01")
     app.segmented_control(key="konu01_lab_step").set_value(5).run()
     metrics = _metrics(app)
     assert metrics["Sabit terim β̂₀"] == "−0,9049"
@@ -63,6 +67,7 @@ def test_lab_step_shows_the_notes_numbers_in_turkish_format() -> None:
 
 def test_a_choice_changes_the_model_carries_to_the_next_step_and_resets() -> None:
     app = _run_app()
+    _select(app, "konu01")
     app.segmented_control(key="konu01_lab_step").set_value(4).run()
     app.segmented_control(key="konu01_secim_adim4_x").set_value("exper").run()
     assert not app.exception
@@ -77,6 +82,7 @@ def test_a_choice_changes_the_model_carries_to_the_next_step_and_resets() -> Non
 
 def test_choices_survive_a_topic_switch() -> None:
     app = _run_app()
+    _select(app, "konu01")
     app.segmented_control(key="konu01_lab_step").set_value(3).run()
     app.segmented_control(key="konu01_secim_adim3_x").set_value("tenure").run()
     _select(app, "konu02")
@@ -100,10 +106,11 @@ def test_panel_step_writes_years_without_a_thousands_separator() -> None:
 
 def test_every_experiment_runs_and_reacts_to_its_sliders() -> None:
     app = _run_app()
+    _select(app, "konu01")
     app.slider(key="konu01_sezgi1_olcek").set_value(0.0).run()
     assert _metrics(app)["R²"] == "1,000"
     assert _metrics(app)["Tahmin β̂₁"] == _metrics(app)["Gerçek eğim β₁"] == "13,50"
-    for topic in ("konu01", "konu02"):
+    for topic in ("konu00", "konu01", "konu02"):
         _select(app, topic)
         for number in (1, 2, 3):
             app.segmented_control(key=f"{topic}_sezgi_deney").set_value(number).run()
@@ -112,6 +119,7 @@ def test_every_experiment_runs_and_reacts_to_its_sliders() -> None:
 
 def test_quiz_checks_an_answer_and_lists_sections_to_review() -> None:
     app = _run_app()
+    _select(app, "konu01")
     app.radio(key="konu01_quiz_k01").set_value(0).run()
     app.button(key="konu01_quiz_check_k01").click().run()
     assert not app.exception
@@ -128,3 +136,46 @@ def test_topic_switch_keeps_text_scale_and_code_language() -> None:
     assert app.session_state["text_scale"] == 1.2
     assert app.session_state["code_language"] == "R"
     assert "Ekonomik Veri Türleri, Nedensellik ve Ceteris Paribus" in _markdown(app)
+
+
+def test_konu00_percent_step_reacts_to_its_sliders_and_notes_default_returns() -> None:
+    app = _run_app()
+    app.segmented_control(key="konu00_lab_step").set_value(6).run()
+    metrics = _metrics(app)
+    assert metrics["Yüzde değişim: 100 → 120"] == "%20,00"
+    assert metrics["Geri dönüş: 120 → 100"] == "%−16,67"
+    app.slider(key="konu00_secim_adim6_x1").set_value(105).run()
+    assert not app.exception
+    metrics = _metrics(app)
+    assert metrics["Yüzde değişim: 100 → 105"] == "%5,00"
+    assert metrics["100·[ln(x₁) − ln(x₀)]: 100 → 105"] == "4,88"
+    assert any("notlardan farklı" in item.value for item in app.info)
+
+
+def test_konu00_conditional_mean_step_reacts_to_the_condition() -> None:
+    app = _run_app()
+    app.segmented_control(key="konu00_lab_step").set_value(7).run()
+    assert _metrics(app)["Koşullu ortalama: eğitim = 16"] == "8,04"
+    app.selectbox(key="konu00_secim_adim7_egitim").set_value("12").run()
+    assert not app.exception
+    assert _metrics(app)["Koşullu ortalama: eğitim = 12"] == "5,37"
+    assert _metrics(app)["Çalışan sayısı: eğitim = 12"] == "198"
+
+
+def test_konu00_notice_names_only_the_step_the_result_depends_on() -> None:
+    app = _run_app()
+    app.segmented_control(key="konu00_secim_adim1_gosterge").set_value("erkek").run()
+    app.segmented_control(key="konu00_lab_step").set_value(2).run()
+    app.segmented_control(key="konu00_secim_adim2_degisken").set_value("ucret").run()
+    app.segmented_control(key="konu00_lab_step").set_value(3).run()
+    assert not app.exception
+    notices = [item.value for item in app.info if "önceki bir adımdaki" in item.value]
+    assert notices and "(Adım 2)" in notices[0], notices
+
+
+def test_konu00_conditional_experiment_shows_its_level_table() -> None:
+    app = _run_app()
+    app.segmented_control(key="konu00_sezgi_deney").set_value(3).run()
+    assert not app.exception
+    columns = [set(map(str, frame.value.columns)) for frame in app.dataframe]
+    assert any({"Gözlem sayısı", "Gerçek E(Y | X)"} <= found for found in columns), columns

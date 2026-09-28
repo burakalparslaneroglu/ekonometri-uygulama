@@ -10,6 +10,11 @@ from core.types import TopicMetadata
 
 TOPICS: tuple[TopicMetadata, ...] = (
     TopicMetadata(
+        "konu00", 0, "Başlangıç Araç Kutusu: Veri, Notasyon ve Temel İstatistik", "Başlangıç Araç Kutusu",
+        "Verinin nasıl düzenlendiğini, değişkenliğin nasıl ölçüldüğünü ve örneklemden anakütle hakkında nasıl "
+        "konuşulduğunu hangi ortak dille anlatırız?",
+    ),
+    TopicMetadata(
         "konu01", 1, "Ekonometri ve Ampirik Araştırmanın Mantığı", "Ekonometri ve Ampirik Araştırma",
         "Bir iktisadi düşünce, verilerle incelenebilecek açık bir ekonometrik çalışmaya nasıl dönüştürülür?",
     ),

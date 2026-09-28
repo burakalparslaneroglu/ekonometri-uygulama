@@ -12,6 +12,7 @@ from core.quiz.registry import QUIZZES
 from core.topic_registry import get_topic, list_topics
 
 TOPIC_MODULES = {
+    "konu00": "topics.konu00_baslangic_arac_kutusu",
     "konu01": "topics.konu01_ampirik_arastirma",
     "konu02": "topics.konu02_veri_turleri_nedensellik",
     "konu03": "topics.konu03_basit_regresyon",
@@ -27,14 +28,14 @@ TOPIC_MODULES = {
 }
 
 # Uygulama + Sezgi + Kendini sına yapısına geçmiş konular: kod iki dilde, tek tanımdan üretilir.
-MIGRATED_TOPICS = {"konu01", "konu02"}
+MIGRATED_TOPICS = {"konu00", "konu01", "konu02"}
 
 
 def test_registry_has_exact_course_order() -> None:
     topics = list_topics()
-    assert [topic.number for topic in topics] == list(range(1, 13))
+    assert [topic.number for topic in topics] == list(range(0, 13))
     assert [topic.key for topic in topics] == list(TOPIC_MODULES)
-    assert len({topic.title for topic in topics}) == 12
+    assert len({topic.title for topic in topics}) == 13
     assert all(topic.label.startswith(f"Konu {topic.number:02d} · ") for topic in topics)
     assert list(TOPIC_LABELS.values()) == list(TOPIC_MODULES)
 

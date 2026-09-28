@@ -143,7 +143,7 @@ QUESTIONS = (
             (
                 "Sonucun hangi gözlem birimi ve örneklem için elde edildiğini",
                 "Katsayının işaretini, ölçü birimini ve ekonomik anlamını",
-                "Katsayının belirsizliğinin ne kadar olduğunu",
+                "Katsayının belirsizliğinin ne kadar olduğunu ve hangi ölçülerle raporlandığını",
                 "Katsayının basit ilişkiyi mi, diğer değişkenler sabitken ilişkiyi mi gösterdiğini",
             ),
             correct=3,
@@ -158,7 +158,7 @@ QUESTIONS = (
     Question(
         key="d01", concept="birlikte-hareket-yeterli-degil", note=_note("1.1"),
         prompt=(
-            "Reklam harcaması ile satışların birlikte arttığını gösteren bir serpilme diyagramı çizen araştırmacı "
+            "Reklam harcaması ile satışların birlikte arttığını gösteren bir saçılım grafiği çizen araştırmacı "
             "ekonometrik analizi tamamlamış olur."
         ),
         answer=TrueFalse(False),

@@ -9,7 +9,7 @@ import pytest
 from core.codegen.base import render_step, text, wrapped
 from core.labs import expr as E
 from core.labs import tables as T
-from core.labs.runner import LabState, execute, run_operations
+from core.labs.runner import LabState, execute, run_lab, run_operations
 from core.labs.spec import (
     TOTAL,
     BoxPlot,
@@ -428,3 +428,44 @@ def test_konu11_12_operations_in_the_app_and_both_languages() -> None:
         Scalar("phi", E.roundto(E.normcdf(1.25), 4), "Φ(1,25)", decimals=4),)),))
     assert "phi = np.round(stats.norm.cdf(1.25), 4)" in render_script(rounded, "Python")
     assert "phi <- round(pnorm(1.25), 4)" in render_script(rounded, "R")
+
+
+def test_resolve_tracks_choice_dependence_operation_by_operation() -> None:
+    """``LabSpec.resolve``: değişen adımda notlardakiyle birebir aynı ve seçime bağlı bir adı okumayan işlemler
+    çıktılarını notlardaki gibi kurar; yalnız farklı işlemlerin ve onları okuyan işlemlerin yazdığı adlar sonraki
+    adımları notlardan ayırır."""
+
+    from core.labs.spec import Choice, LabSpec, LabStep, NoteRef, ScalarTarget, interactive_step, tainted_writes
+
+    def build(choices) -> tuple:
+        return (
+            Scalar("sabit", E.add(2, 3), "sabit", decimals=0),
+            Scalar("secim", E.add(int(choices["k"]), 0), "seçim", decimals=0),
+            Scalar("turev", E.add(E.ref("secim"), 1), "türev", decimals=0),
+        )
+
+    def step(number: int, *operations, name: str, expected: float) -> LabStep:
+        return LabStep(number, f"Adım {number}", NoteRef("0.1"), "açıklama", operations=operations,
+                       checks=(Check(name, ScalarTarget(name), expected, 0),))
+
+    control = Choice("k", "k", (("1", "bir"), ("2", "iki")), "1")
+    spec = LabSpec("konu00", "deneme", "0", (
+        interactive_step(number=1, title="Adım 1", note=NoteRef("0.1"), explanation="açıklama", build=build,
+                         controls=(control,)),
+        step(2, Scalar("iki_kat", E.mul(E.ref("sabit"), 2), "2·sabit", decimals=0), name="iki_kat", expected=10),
+        step(3, Scalar("uc", E.add(E.ref("turev"), 1), "türev + 1", decimals=0), name="uc", expected=3),
+        step(4, Scalar("secim", E.add(7, 0), "yeniden kurulan ad", decimals=0),
+             Scalar("dort", E.mul(E.ref("secim"), 1), "seçim", decimals=0), name="dort", expected=7),
+    ))
+    assert spec.resolve({}).variant == ()
+    resolved = spec.resolve({"k": "2"})
+    # Adım 2 seçimden bağımsız sabiti, Adım 4 kendi yeniden kurduğu adı okur; yalnız Adım 3 türevi okur.
+    assert resolved.variant == (1, 3)
+    assert run_lab(resolved).all_passed
+    assert run_operations(resolved.operations_through(3)).scalars["uc"] == 4
+
+    default, changed = build({"k": "1"}), build({"k": "2"})
+    assert tainted_writes(default, changed, set()) == (True, {"secim", "turev"})
+    assert tainted_writes(default[2:], default[2:], {"secim"}) == (True, {"secim", "turev"})
+    assert tainted_writes(default, default, {"secim"}) == (False, set())  # aynı işlem adı notlardaki gibi kurar
+    assert tainted_writes(default, default[:2], set()) == (True, {"turev"})  # artık yazılmayan ad da farklıdır

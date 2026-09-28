@@ -4,13 +4,14 @@ from streamlit.testing.v1 import AppTest
 
 from core.assumption_diagnostics_utils import coefficient_sensitivity, generate_near_collinearity_data, simulate_repeated_ols, wage1_ovb_decomposition
 from core.data_registry import load_dataset
+from core.topic_registry import get_topic
 from topics.konu06_ols_varsayimlari_yanlilik import _distribution_figure, _sensitivity_table, _wage_table
 
 
 def _topic06() -> AppTest:
     app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py")
     app.run(timeout=60)
-    app.radio(key="selected_topic").set_value(app.radio(key="selected_topic").options[5]).run(timeout=90)
+    app.radio(key="selected_topic").set_value(get_topic("konu06").label).run(timeout=90)
     return app
 
 

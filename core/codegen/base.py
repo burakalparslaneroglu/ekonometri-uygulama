@@ -245,6 +245,14 @@ class Generator:
     def closing(self) -> list[str]:
         return []
 
+    def closing_message(self) -> str:
+        """Betiğin son satırı; seçilen spesifikasyonda yalnız notlarla karşılaştırılan adımlar anılır."""
+
+        if self.spec.variant:
+            compared = ", ".join(str(step.number) for step in self.spec.steps if step.checks)
+            return f"Karşılaştırılan adımlarda (Adım {compared}) bütün değerler ders notlarıyla uyuşuyor."
+        return "Bütün değerler ders notlarıyla uyuşuyor."
+
     # --- Ortak yapı -------------------------------------------------------
     def banner(self, title: str) -> list[str]:
         rule = self.comment + " " + "=" * 74
@@ -279,7 +287,7 @@ class Generator:
                        *closing]
         return [
             f"{c} {COURSE}",
-            f"{c} Konu {topic} uygulaması: {self.spec.title}",
+            f"{c} Konu {topic} uygulaması: {self.spec.title.removeprefix('Uygulama: ')}",
             f"{c} Ders notlarındaki çözümlü örneklerle aynı adımlar (§{self.spec.note_section}).",
             f"{c}",
             *source,

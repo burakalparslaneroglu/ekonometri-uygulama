@@ -433,10 +433,14 @@ class RGenerator(Generator):
         if isinstance(op, OLS):
             return [f"# {op.comment}", f"{op.name} <- lm({op.formula}, data = {op.frame})"]
         if isinstance(op, ShowModel):
+            summary = f"summary({op.model})" if op.stars else f"summary({op.model}), signif.stars = FALSE"
             return [
                 f"# {op.comment}",
-                f"print(summary({op.model}))",
+                "# R özetindeki karşılıklar: Estimate = coef, Std. Error = std err, t value = t, Pr(>|t|) = P>|t|,",
+                "# Multiple R-squared = R-squared. R özeti gözlem sayısını yazmaz; nobs() ile yazdırılır.",
+                f"print({summary})",
                 f"print(confint({op.model}))  # %95 güven aralıkları",
+                f'cat("Gözlem sayısı:", nobs({op.model}), "\\n")',
             ]
         if isinstance(op, ModelValue):
             value = (coef_expression(op.model, op.term, op.quantity) if op.term is not None
@@ -488,6 +492,8 @@ class RGenerator(Generator):
                 column, value = op.where
                 return [f"# {op.comment}",
                         f"print({op.frame}[{op.frame}${column} == {text(value)}, {columns}, drop = FALSE])"]
+            if op.decimals is not None:
+                return [f"# {op.comment}", f"print(round({op.frame}[, {columns}, drop = FALSE], {op.decimals}))"]
             return [f"# {op.comment}", f"print({op.frame}[, {columns}, drop = FALSE])"]
         if isinstance(op, MapCodes):
             pairs = ", ".join(f"{text(label)} = {text(code)}" for label, code in op.mapping)
@@ -541,12 +547,13 @@ class RGenerator(Generator):
         if isinstance(op, DrawDiscrete):
             return [
                 f"# {op.comment}",
-                "# u ~ Tek-düze(0, 1); X, birikimli olasılığı F(x) u'yu ilk aşan değerdir (ters dağılım fonksiyonu)",
-                f"u <- runif(nrow({op.frame}))",
+                "# tekduze ~ Tek-düze(0, 1); X, birikimli olasılığı F(x) bu sayıyı ilk aşan değerdir "
+                "(ters dağılım fonksiyonu)",
+                f"tekduze <- runif(nrow({op.frame}))",
                 f"{op.name}_degerler <- {_vector(op.values)}",
                 f"esik <- cumsum({_vector(op.probabilities)})",
                 "esik[length(esik)] <- 1  # yuvarlama hatasına karşı son eşik tam 1",
-                f"{op.frame}${op.name} <- {op.name}_degerler[findInterval(u, esik) + 1]",
+                f"{op.frame}${op.name} <- {op.name}_degerler[findInterval(tekduze, esik) + 1]",
             ]
         if isinstance(op, Shape):
             columns = (f"length(setdiff(names({op.frame}), {_vector(op.exclude)}))  # kimlik sütunu değişken sayılmaz"
@@ -1553,4 +1560,4 @@ class RGenerator(Generator):
         return lines
 
     def closing(self) -> list[str]:
-        return ['cat("\\nBütün değerler ders notlarıyla uyuşuyor.\\n")']
+        return [f'cat("\\n{_quote(self.closing_message())}\\n")']

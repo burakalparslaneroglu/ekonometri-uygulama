@@ -475,6 +475,8 @@ class PythonGenerator(Generator):
                 ]
             if op.where is not None:
                 return [f"# {op.comment}", f"print({op.frame}.loc[{_where(op.frame, op.where)}, {columns}])"]
+            if op.decimals is not None:
+                return [f"# {op.comment}", f"print({op.frame}[{columns}].round({op.decimals}))"]
             return [f"# {op.comment}", f"print({op.frame}[{columns}])"]
         if isinstance(op, MapCodes):
             pairs = ", ".join(f"{text(label)}: {text(code)}" for label, code in op.mapping)
@@ -527,12 +529,13 @@ class PythonGenerator(Generator):
         if isinstance(op, DrawDiscrete):
             return [
                 f"# {op.comment}",
-                "# u ~ Tek-düze(0, 1); X, birikimli olasılığı F(x) u'yu ilk aşan değerdir (ters dağılım fonksiyonu)",
-                f"u = rng.random(len({op.frame}))",
+                "# tekduze ~ Tek-düze(0, 1); X, birikimli olasılığı F(x) bu sayıyı ilk aşan değerdir "
+                "(ters dağılım fonksiyonu)",
+                f"tekduze = rng.random(len({op.frame}))",
                 f"{op.name}_degerler = np.array({_list(op.values)}, dtype=float)",
                 f"esik = np.cumsum({_list(op.probabilities)})",
                 "esik[-1] = 1.0  # yuvarlama hatasına karşı son eşik tam 1",
-                f'{op.frame}["{op.name}"] = {op.name}_degerler[np.searchsorted(esik, u, side="right")]',
+                f'{op.frame}["{op.name}"] = {op.name}_degerler[np.searchsorted(esik, tekduze, side="right")]',
             ]
         if isinstance(op, Shape):
             columns = f".drop(columns={_list(op.exclude)})" if op.exclude else ""
@@ -1349,7 +1352,8 @@ class PythonGenerator(Generator):
         dialect = self.dialect("")
         lines.append("    sonuclar.append({")
         for name, expression in op.collect:
-            lines.append(f'        "{name}": {_render(expression, dialect)},')
+            # float(): np.where gibi işlemler tek bir sayı için 0 boyutlu dizi döndürür; describe() onu atlar.
+            lines.append(f'        "{name}": float({_render(expression, dialect)}),')
         return lines + ["    })", f"{op.result} = pd.DataFrame(sonuclar)", f"print({op.result}.describe().round(3))"]
 
     # --- Notlarla karşılaştırma -----------------------------------------
@@ -1380,4 +1384,4 @@ class PythonGenerator(Generator):
         return lines
 
     def closing(self) -> list[str]:
-        return ['print("\\nBütün değerler ders notlarıyla uyuşuyor.")']
+        return [f'print("\\n{_quote(self.closing_message())}")']

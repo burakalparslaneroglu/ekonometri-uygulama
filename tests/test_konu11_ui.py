@@ -4,6 +4,8 @@ from pathlib import Path
 
 from streamlit.testing.v1 import AppTest
 
+from core.topic_registry import get_topic
+
 
 ROOT = Path(__file__).resolve().parents[1]
 ZERO_TEXT = "sayısal tolerans içinde 0"
@@ -12,7 +14,7 @@ ZERO_TEXT = "sayısal tolerans içinde 0"
 def _topic11() -> AppTest:
     app = AppTest.from_file(ROOT / "app.py")
     app.run(timeout=90)
-    app.radio(key="selected_topic").set_value(app.radio(key="selected_topic").options[10]).run(timeout=120)
+    app.radio(key="selected_topic").set_value(get_topic("konu11").label).run(timeout=120)
     return app
 
 

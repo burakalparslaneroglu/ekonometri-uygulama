@@ -182,7 +182,8 @@ class ShowFrame:
 
     ``head``: yalnız ilk ``head`` satır (pandas ``head``). ``rows``: yalnız bu gözlemler (1'den başlayan sıra
     numarası; notlardaki "1, 2, 3, …, 526" gibi). ``where``: yalnız koşulu sağlayan satırlar (ör. bir kişinin
-    panel gözlemleri). Üçü birlikte kullanılmaz.
+    panel gözlemleri). Üçü birlikte kullanılmaz. ``decimals``: kesirli sütunlar bu basamakla gösterilir (tam sayı
+    değerli sütunlar tam sayı kalır); verilmezse basamak sütunun değerlerinden seçilir.
     """
 
     frame: str
@@ -191,6 +192,7 @@ class ShowFrame:
     head: int = 0
     rows: tuple[int, ...] = ()
     where: tuple[str, object] | None = None
+    decimals: int | None = None
 
     def __post_init__(self) -> None:
         if sum((bool(self.head), bool(self.rows), self.where is not None)) > 1:
@@ -688,7 +690,7 @@ class LineChart:
 
 @dataclass(frozen=True)
 class ScatterPlot:
-    """Serpilme diyagramı: her gözlem bir (x, y) noktası.
+    """Saçılım grafiği: her gözlem bir (x, y) noktası.
 
     ``fit_line``: en küçük kareler doğrusu da çizilir (y'nin x üzerine basit regresyonu; notlardaki
     "tahmin edilen ortalama ilişkinin doğrusal özeti"). ``size``: nokta büyüklüğü, ``opacity``: saydamlık
@@ -982,12 +984,14 @@ class ShowModel:
 
     ``columns``: ekranda gösterilen katsayı sütunları (``COEF_QUANTITIES``'den); konu henüz standart hatayı
     işlemediyse yalnız ``("coef",)``. Üretilen kod yazılımın tam çıktısını yazdırır (notlardaki gibi).
-    ``stats``: model bilgisi (``MODEL_QUANTITIES``'den)."""
+    ``stats``: model bilgisi (``MODEL_QUANTITIES``'den). ``stars``: R özetindeki anlamlılık yıldızları; yıldızlar
+    henüz işlenmediyse (ör. Konu 0) ``False`` ve R çıktısı yıldızsız yazdırılır (statsmodels özetinde yıldız yoktur)."""
 
     model: str
     comment: str
     columns: tuple[str, ...] = COEF_QUANTITIES
     stats: tuple[str, ...] = ("nobs", "r2", "f")
+    stars: bool = True
 
 
 @dataclass(frozen=True)
@@ -1330,6 +1334,31 @@ def operation_writes(op) -> set[str]:
     return found
 
 
+def tainted_writes(default: tuple, operations: tuple, tainted: set[str]) -> tuple[bool, set[str]]:
+    """Bir adımın işlemlerinden sonra seçime bağlı adlar: ``(adımda seçime bağlı işlem var mı, yeni küme)``.
+
+    Bir işlem, notlardaki (varsayılan) tanımda birebir yoksa ya da seçime bağlı bir adı okuyorsa seçime bağlıdır ve
+    yazdığı adlar seçime bağlı olur. Seçime bağlı olmayan bir işlem yazdığı adları notlardaki gibi yeniden kurar.
+    Varsayılan tanımın yazdığı ama seçilen tanımın yazmadığı adlar da seçime bağlıdır (artık aynı değildir).
+    """
+
+    tainted = set(tainted)
+    known = set(default)
+    dirty = False
+    for op in operations:
+        if op not in known or operation_reads(op) & tainted:
+            dirty = True
+            tainted |= operation_writes(op)
+        else:
+            tainted -= operation_writes(op)
+    missing = set().union(set(), *(operation_writes(op) for op in default)) - set().union(
+        set(), *(operation_writes(op) for op in operations))
+    if missing:
+        dirty = True
+        tainted |= missing
+    return dirty, tainted
+
+
 # --- Adım ve uygulama --------------------------------------------------------
 
 @dataclass(frozen=True)
@@ -1469,8 +1498,12 @@ class LabSpec:
     def resolve(self, choices: Choices) -> "LabSpec":
         """Seçimlerle yeniden kurulan tanım.
 
-        Seçimi varsayılandan farklı bir adım notlardan farklıdır; o adımın yazdığı bir adı (veri çerçevesi, tablo,
-        model, skaler) okuyan sonraki adımlar da farklıdır. Farklı adımların notlarla karşılaştırması kaldırılır.
+        Seçimi varsayılandan farklı bir adım notlardan farklıdır; o adımın seçime bağlı bir çıktısını (veri çerçevesi,
+        tablo, model, skaler) okuyan sonraki adımlar da farklıdır. Farklı adımların notlarla karşılaştırması kaldırılır.
+
+        Bağımlılık işlem düzeyinde izlenir (``tainted_writes``): değişen bir adımda notlardaki tanımla birebir aynı
+        olan ve seçime bağlı bir adı okumayan işlemler (ör. veriyi yeniden yükleme) çıktılarını notlardaki gibi kurar;
+        yalnız farklı işlemlerin ve onlara bağlı işlemlerin yazdığı adlar sonraki adımlara geçer.
         """
 
         chosen = self.normalize(choices)
@@ -1483,15 +1516,11 @@ class LabSpec:
             own = {control.key: chosen[control.key] for control in relevant}
             changed = any(own[control.key] != defaults[control.key] for control in relevant)
             operations = tuple(step.build(own)) if step.build is not None and changed else step.operations
-            reads = set().union(*(operation_reads(op) for op in operations)) if operations else set()
-            writes = set().union(*(operation_writes(op) for op in operations)) if operations else set()
-            differs = changed or bool(reads & tainted)
-            if differs:
+            dirty, tainted = tainted_writes(step.operations, operations, tainted)
+            if changed or dirty:
                 variant.append(step.number)
-                tainted |= writes
                 # Denetimler özgün tanımda kalır (arayüz onları oradan çizer); bu adım artık seçimlerin sonucudur.
                 steps.append(replace(step, operations=operations, checks=(), controls=(), uses=(), build=None))
             else:
-                tainted -= writes  # adım bu adları notlardaki gibi yeniden kurdu
                 steps.append(step)
         return replace(self, steps=tuple(steps), variant=tuple(variant))

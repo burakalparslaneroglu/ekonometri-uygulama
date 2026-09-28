@@ -4,12 +4,14 @@ from pathlib import Path
 
 from streamlit.testing.v1 import AppTest
 
+from core.topic_registry import get_topic
+
 
 def _topic07() -> AppTest:
     """Uygulamayı Konu 07 seçili halde başlatır."""
     app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py")
     app.run(timeout=60)
-    app.radio(key="selected_topic").set_value(app.radio(key="selected_topic").options[6]).run(timeout=120)
+    app.radio(key="selected_topic").set_value(get_topic("konu07").label).run(timeout=120)
     return app
 
 

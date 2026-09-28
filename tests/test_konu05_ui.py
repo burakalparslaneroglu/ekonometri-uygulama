@@ -3,12 +3,13 @@ from pathlib import Path
 from streamlit.testing.v1 import AppTest
 from topics.konu05_coklu_regresyon import _article_table, _fit, _dataset
 from core.data_registry import konu05_model_specs
+from core.topic_registry import get_topic
 
 
 def test_konu05_loads_multiple_models_and_hidden_answer() -> None:
     app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py")
     app.run(timeout=40)
-    app.radio(key="selected_topic").set_value(app.radio(key="selected_topic").options[4]).run(timeout=40)
+    app.radio(key="selected_topic").set_value(get_topic("konu05").label).run(timeout=40)
     assert not app.exception
     app.selectbox(key="konu05_model").set_value("W1-M").run(timeout=40)
     text = "\n".join(str(item.value) for group in (app.header, app.subheader, app.markdown, app.caption) for item in group).casefold()

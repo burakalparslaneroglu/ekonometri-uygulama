@@ -1,8 +1,8 @@
 # Mimari
 
-## Yeni yapı: tek tanım, iki dil (Konu 1–2)
+## Yeni yapı: tek tanım, iki dil (Konu 0–2)
 
-Konu 1–2 üç sekmelidir: **Uygulama**, **Sezgi**, **Kendini sına**. Bir konunun bütün hesabı ve metni Streamlit'ten
+Konu 0–2 üç sekmelidir: **Uygulama**, **Sezgi**, **Kendini sına**. Bir konunun bütün hesabı ve metni Streamlit'ten
 bağımsız tanımlardan gelir; arayüz yalnız bu tanımları gösterir.
 
 - `core/wooldridge_data.py`: Wooldridge veri setlerini `wooldridge` Python paketinden yükler (önbellekli, bağımsız
@@ -12,26 +12,38 @@ bağımsız tanımlardan gelir; arayüz yalnız bu tanımları gösterir.
   `RegressionTable`, `PanelSummary`, `ScatterPlot`, `BarChart`, ...), `LabSpec` / `LabStep` / `Check` / `NoteRef`.
   Etkileşimli adımlar `interactive_step(build, controls, uses)` ile yazılır: denetimler (`Choice`, `MultiChoice`,
   `NumberChoice`) adımın işlemlerini seçime göre kurar. `LabSpec.resolve(choices)` seçimi sonraki adımlara geçirir;
-  notlardan farklı bir seçimin etkilediği adımların kontrolleri gösterilmez.
+  notlardan farklı bir seçimin etkilediği adımların kontrolleri gösterilmez. Bağımlılık işlem düzeyinde izlenir
+  (`tainted_writes`): değişen adımda notlardakiyle birebir aynı ve seçime bağlı bir adı okumayan işlemler (ör. veriyi
+  yeniden yükleme) çıktılarını notlardaki gibi kurar; yalnız farklı işlemlerin ve onları okuyan işlemlerin yazdığı
+  adlar sonraki adımları notlardan ayırır. Bir veri çerçevesine seçime bağlı `Derive` yazmak bütün çerçeveyi seçime
+  bağlı yapar; bu yüzden seçime bağlı türetmeler adımın kendi çerçevesinde ya da skalerle yapılır. İşaretlenmeyen
+  adımların notlardaki sayıları vermeye devam ettiği her denetimin her tek değişikliği için sınanır
+  (`tests/test_all_labs.py`).
 - `core/labs/runner.py`: tanımı çalıştırır (`LabState`), kontrolleri değerlendirir. `core/labs/regression.py` EKK'yı
   (statsmodels) ve model niceliklerini, makale tipi tabloyu hesaplar. `core/labs/expr.py` dilden bağımsız ifade dilidir.
 - `core/codegen/`: aynı tanımdan Python (`python_gen.py`) ve temel R (`r_gen.py`; tek paket `wooldridge`) kodu üretir.
   Model, tablo ve skaler adları iki dilde aynıdır. Veri üzerindeki deterministik hesaplar iki dilde basılı basamakta
   aynı sayıyı verir; Sezgi deneylerinde Python uygulamanın çekilişlerini birebir yapar, R yalnız dağılımda aynıdır.
-- `core/labs/konu01.py`, `konu02.py`: Uygulama laboratuvarları (notlardaki §1.6 ve Bölüm 2 uygulamaları); notlarda
-  basılı her sayı bir `Check`. `consistency_notes` notlarla eski sürüm arasındaki kalıcı açıklamaları tutar.
-- `core/labs/sezgi.py`, `sezgi_konu01.py`, `sezgi_konu02.py`: Sezgi deneyleri (`SimExperiment`): DGP LaTeX satırları,
-  kaydırıcılar, bilinen gerçek ile tahminin karşılaştırması, kaydırıcı değerine göre değişen metin; tohum 305.
+  Seçilen spesifikasyonun betiği son satırında yalnız notlarla karşılaştırılan adımları anar (`closing_message`);
+  `ShowModel(stars=False)` R özetini anlamlılık yıldızları olmadan yazdırır (yıldızlar Konu 7'den önce gösterilmez).
+- `core/labs/konu00.py`, `konu01.py`, `konu02.py`: Uygulama laboratuvarları (notlardaki Bölüm 0 araç kutusu, §1.6
+  ve Bölüm 2 uygulamaları); notlarda basılı her sayı bir `Check`. `consistency_notes` notlarla eski sürüm arasındaki
+  kalıcı açıklamaları tutar.
+- `core/labs/sezgi.py`, `sezgi_konu00.py`, `sezgi_konu01.py`, `sezgi_konu02.py`: Sezgi deneyleri (`SimExperiment`):
+  DGP LaTeX satırları, kaydırıcılar, bilinen gerçek ile tahminin karşılaştırması, kaydırıcı değerine göre değişen
+  metin; tohum 305.
 - `core/quiz/`: `model.py` (soru türleri ve notlandırma: Türkçe harf, tire ve binlik ayırıcı farklarını yok sayar),
-  `expression.py` (formül güvenli biçimde okunur; `eval` yok; eşdeğerlik rastgele noktalarda sayısal olarak denetlenir),
-  `konu01.py`, `konu02.py` (24'er soru), `registry.py`.
+  `expression.py` (formül güvenli biçimde okunur; `eval` yok; LaTeX alışkanlıkları (`\frac`, `\sqrt`, `\cdot`,
+  `\ln`) ve yazılan sol taraf (`r = …`) okunur; eşdeğerlik rastgele noktalarda sayısal olarak denetlenir),
+  `konu00.py`, `konu01.py`, `konu02.py` (24'er soru), `registry.py`.
 - `topics/lab_ui.py`, `sim_ui.py`, `quiz_ui.py`: üç sekmenin gösterimi; `topics/shared.py` konu başlığı ve widget
   durumunun konu geçişlerinde korunması (`keep_widget_state`). `core/charts.py` Plotly grafikleri Türkçe sayı biçimiyle
-  çizer.
-- Testler: `tests/test_konu01_02_content.py` (veri, EKK formülleri, seçimlerin geçişi, uygulama ile üretilen Python'un
-  1e-12 düzeyinde eşitliği, R'nin çalışması, Sezgi kuramsal değerleri ve metinlerin kaydırıcı uçlarında doğruluğu,
-  soru yazım çeşitleri), `tests/test_all_quizzes.py`, `tests/test_topic_contracts.py` (`MIGRATED_TOPICS`),
-  `tests/test_app_smoke.py`.
+  çizer. `lab_ui.upstream_steps`, bir adımın uyarısında yalnız o adımı gerçekten değiştiren önceki seçimleri anar
+  (her önceki seçim tek başına `LabSpec.resolve` ile denenir). Sezgi sekmesi `ShowFrame` tablolarını da gösterir.
+- Testler: `tests/test_konu00_content.py`, `tests/test_konu01_02_content.py` (veri, EKK formülleri, seçimlerin
+  geçişi, uygulama ile üretilen Python'un 1e-12 düzeyinde eşitliği, R'nin çalışması, Sezgi kuramsal değerleri ve
+  metinlerin kaydırıcı uçlarında doğruluğu, soru yazım çeşitleri), `tests/test_all_quizzes.py`,
+  `tests/test_topic_contracts.py` (`MIGRATED_TOPICS`), `tests/test_app_smoke.py`.
 
 Konu 3–12 aşağıda anlatılan eski sayfalarıyla çalışır; ikişerli bloklar hâlinde bu yapıya taşınır. Taşınan konunun eski
 modülleri ve testleri aynı blokta kaldırılır (Konu 1–2 için `core/research_question_utils.py`,

@@ -123,7 +123,9 @@ def _with_implicit_products(text: str, known: set[str] = frozenset()) -> str:
             if left_closed and right_open:
                 pieces.append("*")
         pieces.append(value)
-    return " ".join(pieces)
+    prepared = " ".join(pieces)
+    # "ln x1", "\\ln x_1": parantezsiz fonksiyon yalnız hemen ardından gelen tek sembole ya da sayıya uygulanır.
+    return re.sub(r"\b(exp|log|ln|sqrt)\s+(?!\()([A-Za-z_]\w*|\d+(?:\.\d+)?)", r"\1 ( \2 )", prepared)
 
 
 def _convert(node: ast.AST, symbols: dict[str, Symbol]) -> E.Expr:
@@ -150,19 +152,73 @@ def _convert(node: ast.AST, symbols: dict[str, Symbol]) -> E.Expr:
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and not node.keywords:
         function = FUNCTIONS.get(node.func.id.lower())
         if function is None or len(node.args) != 1:
-            raise FormulaError("Fonksiyon olarak yalnız exp(), log() ve sqrt() kullanılabilir.")
+            raise FormulaError("Fonksiyon olarak yalnız exp(), ln() (ya da log()) ve sqrt() kullanılabilir.")
         return E.Call(function, (_convert(node.args[0], symbols),))
     raise FormulaError("Bu ifade okunamadı. Yalnız sayılar, semboller ve + − * / ^ ( ) kullanın.")
 
 
+def _brace_group(text: str, start: int) -> tuple[str, int] | None:
+    """``text[start]`` bir ``{`` ise eşleşen ``}``'e kadarki içerik ve ondan sonraki konum."""
+
+    while start < len(text) and text[start] == " ":
+        start += 1
+    if start >= len(text) or text[start] != "{":
+        return None
+    depth = 0
+    for index in range(start, len(text)):
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start + 1:index], index + 1
+    return None
+
+
+_LATEX_COMMANDS = (("\\left", ""), ("\\right", ""), ("\\cdot", "*"), ("\\times", "*"), ("\\ln", " ln"),
+                   ("\\log", " log"), ("\\exp", " exp"), ("\\,", " "), ("\\;", " "), ("\\!", ""),
+                   ("\\ ", " "))
+
+
+def _latex_lite(text: str) -> str:
+    """Öğrencinin LaTeX alışkanlıkları: ``\\frac{a}{b}`` → ``((a)/(b))``, ``\\sqrt{a}`` → ``sqrt(a)``,
+    ``\\cdot`` → ``*``, ``\\left(`` → ``(``, ``\\ln`` → ``ln``."""
+
+    while True:
+        match = re.search(r"\\[dt]?frac(?=\s*\{)", text)
+        first = _brace_group(text, match.end()) if match else None
+        second = _brace_group(text, first[1]) if first else None
+        if second is None:
+            break
+        text = f"{text[:match.start()]}(({first[0]})/({second[0]})){text[second[1]:]}"
+    while True:
+        match = re.search(r"\\sqrt(?=\s*\{)", text)
+        group = _brace_group(text, match.end()) if match else None
+        if group is None:
+            break
+        text = f"{text[:match.start()]}sqrt({group[0]}){text[group[1]:]}"
+    for command, replacement in _LATEX_COMMANDS:
+        text = text.replace(command, replacement)
+    return text
+
+
 def parse(text: str, symbols: tuple[Symbol, ...]) -> E.Expr:
-    """Metni güvenli biçimde ifade ağacına çevirir; okunamazsa ``FormulaError``."""
+    """Metni güvenli biçimde ifade ağacına çevirir; okunamazsa ``FormulaError``.
+
+    Öğrenci denklemin sol tarafını da yazarsa (``r = …``) yalnız son ``=``, ``≈`` ya da ``\\approx`` işaretinden
+    sonrası okunur.
+    """
 
     if not text or not text.strip():
         raise FormulaError("Boş ifade.")
     if len(text) > 200:
         raise FormulaError("İfade çok uzun.")
+    text = re.split(r"=|≈|\\approx", text)[-1]
+    if not text.strip():
+        raise FormulaError("Eşittir işaretinden sonra bir ifade yazın.")
+    text = _latex_lite(text)
     text = text.replace("{", "").replace("}", "")  # LaTeX yazımı: y_{1}, e^{l}
+    text = re.sub(r"([A-Za-z])\^(\d+)_([A-Za-z0-9]+)", r"\1_\3^\2", text)  # s^2_x → s_x^2
     replacements = sorted(
         ((alias, symbol.name) for symbol in symbols for alias in symbol.aliases),
         key=lambda pair: -len(pair[0]),
@@ -229,7 +285,7 @@ def latex(expression: E.Expr, symbols: tuple[Symbol, ...]) -> str:
                 return f"e^{{{inner}}}"
             if node.fn == "sqrt":
                 return f"\\sqrt{{{inner}}}"
-            return f"\\log\\left({inner}\\right)"
+            return f"\\ln\\left({inner}\\right)"  # notlardaki gösterim: doğal logaritma ln
         if isinstance(node, E.BinOp):
             if node.op == "-" and isinstance(node.left, E.Const) and node.left.value == 0:
                 return f"-{wrap(node.right, 2)}"

@@ -26,7 +26,7 @@ def test_rich_and_non_overlapping(quiz) -> None:
 
 @pytest.mark.parametrize("quiz", SETS, ids=lambda q: q.topic_key)
 def test_every_numbered_section_of_the_chapter_is_covered(quiz) -> None:
-    chapter = quiz.topic_key[-2:].lstrip("0")
+    chapter = str(int(quiz.topic_key[-2:]))
     assert {q.note.section for q in quiz.questions} == set(quiz.sections)
     assert all(section.startswith(chapter + ".") for section in quiz.sections)
     numbers = sorted(int(section.split(".")[1]) for section in quiz.sections)
@@ -40,6 +40,17 @@ def test_answer_keys_are_balanced(quiz) -> None:
     assert len({a.correct for a in choices}) == 4
     truths = [q.answer.statement_is_true for q in quiz.questions if isinstance(q.answer, TrueFalse)]
     assert sum(truths) >= 3 and len(truths) - sum(truths) >= 3
+
+
+@pytest.mark.parametrize("quiz", SETS, ids=lambda q: q.topic_key)
+def test_the_key_is_not_given_away_by_its_length(quiz) -> None:
+    """Doğru seçenek, en uzun yanlış seçenekten belirgin biçimde uzun olmamalıdır (uzunluk ipucu)."""
+
+    for question in quiz.questions:
+        answer = question.answer
+        if isinstance(answer, MultipleChoice):
+            longest_wrong = max(len(option) for index, option in enumerate(answer.options) if index != answer.correct)
+            assert len(answer.options[answer.correct]) <= 1.25 * longest_wrong, question.key
 
 
 @pytest.mark.parametrize("quiz", SETS, ids=lambda q: q.topic_key)
@@ -57,3 +68,20 @@ def test_every_answer_key_grades_itself_and_cites_notes(quiz) -> None:
         assert grade(question, response).correct, (quiz.topic_key, question.key)
         assert correct_answer_text(question)
         assert "§" in question.explanation and len(question.explanation) > 60, question.key
+
+
+def test_formula_parser_reads_latex_habits_and_left_sides() -> None:
+    """Öğrencinin LaTeX alışkanlıkları ve sol tarafı da yazması: aynı ifade okunur."""
+
+    from core.quiz.expression import Symbol, equivalent, latex, parse
+
+    symbols = (Symbol("a", "a", "a"), Symbol("sx", "s_x", "s", aliases=("s_x",)),
+               Symbol("x1", "x_1", "x", 1, 5, aliases=("x_1",)))
+    reference = parse("a/sx^2 + sqrt(x1)", symbols)
+    for text in ("\\frac{a}{s_x^2} + \\sqrt{x_1}", "\\dfrac{a}{s^2_x}+\\sqrt{x_{1}}", "y = a/sx^2 + sqrt(x1)",
+                 "\\left(\\frac{a}{s_x^{2}}\\right) + \\sqrt{x1}", "a \\cdot \\frac{1}{s_x^2} + sqrt(x1)"):
+        assert equivalent(parse(text, symbols), reference, symbols), text
+    assert equivalent(parse("\\ln(x_1) \\times 2", symbols), parse("2*log(x1)", symbols), symbols)
+    assert latex(parse("ln(x1)", symbols), symbols) == "\\ln\\left(x_1\\right)"  # notlardaki gösterim
+    with pytest.raises(ValueError):
+        parse("a =", symbols)

@@ -460,7 +460,7 @@ TREND = SimExperiment(
     dgp_note="İki serinin dalgalanmaları birbirinden bağımsız çekilir; ortak olan tek şey zamanla artan eğilimdir.",
     look_at=(
         "**Çizgi grafiği** — iki seri zaman içinde birlikte yükseliyor mu?",
-        "**Serpilme diyagramı** — aynı yılların A ve B değerleri: noktalar bir doğru çevresinde mi?",
+        "**Saçılım grafiği** — aynı yılların A ve B değerleri: noktalar bir doğru çevresinde mi?",
         "**Metrikler** — r(A, B) ile eğilim çıkarıldıktan sonraki korelasyon.",
     ),
     build=_build_trend,

@@ -4,10 +4,11 @@
 
 Uygulama çalışma zamanında bir büyük dil modeli veya dış API kullanmaz. Wooldridge veri setleri `wooldridge` Python paketi üzerinden yerel olarak yüklenir.
 
-Konu 1–2 yeni yapıdadır: her konu **Uygulama**, **Sezgi** ve **Kendini sına** sekmelerinden oluşur. Uygulama sekmesi notlardaki laboratuvarın adımlarını izler ve notlarda basılı her sayıyı gerçek veriyle yeniden üretir; öğrenci bir adımda farklı bir spesifikasyon seçebilir (ör. açıklayıcı değişken), seçim sonraki adımlara geçer ve notlardaki modelle yan yana gösterilir. Her adımın ve her Sezgi deneyinin Python ve R kodu aynı tanımdan üretilir. Konu 3–12 eski sayfalarıyla çalışır ve ikişerli bloklar hâlinde yeni yapıya taşınır.
+Konu 0–2 yeni yapıdadır: her konu **Uygulama**, **Sezgi** ve **Kendini sına** sekmelerinden oluşur. Uygulama sekmesi notlardaki laboratuvarın adımlarını izler ve notlarda basılı her sayıyı gerçek veriyle yeniden üretir; öğrenci bir adımda farklı bir spesifikasyon seçebilir (ör. açıklayıcı değişken), seçim yalnız ona bağlı sonraki adımlara geçer ve notlardaki modelle yan yana gösterilir. Her adımın ve her Sezgi deneyinin Python ve R kodu aynı tanımdan üretilir. Konu 3–12 eski sayfalarıyla çalışır ve ikişerli bloklar hâlinde yeni yapıya taşınır.
 
 ## Kapsam
 
+0. Başlangıç Araç Kutusu: Veri, Notasyon ve Temel İstatistik
 1. Ekonometri ve Ampirik Araştırma
 2. Ekonomik Veri Türleri, Nedensellik ve Ceteris Paribus
 3. Basit Doğrusal Regresyon
@@ -23,6 +24,7 @@ Konu 1–2 yeni yapıdadır: her konu **Uygulama**, **Sezgi** ve **Kendini sına
 
 | Konu | Yapı | Uygulama verisi | Sezgi | Kendini sına |
 |---|---|---|---|---|
+| 0 | Uygulama · Sezgi · Kendini sına | Tablo 0.1–0.3 (küçük örnekler), WAGE1 | 3 deney | 24 soru |
 | 1 | Uygulama · Sezgi · Kendini sına | WAGE1 (§1.6) | 3 deney | 24 soru |
 | 2 | Uygulama · Sezgi · Kendini sına | WAGE1, PHILLIPS, CPS78_85, WAGEPAN, JTRAIN2 | 3 deney | 24 soru |
 | 3–12 | Eski sayfa (taşınacak) | — | — | — |
@@ -76,7 +78,7 @@ git diff --check
 
 `requirements-dev.txt` testlerin ihtiyaç duyduğu paketleri de kurar (üretilen Python kodu için matplotlib). Üretilen R kodunu çalıştıran testler `Rscript` ve `wooldridge` R paketini ister (`install.packages("wooldridge")`). `Rscript` önce `RSCRIPT` ortam değişkeninde, sonra PATH'te, Windows'ta sonra standart R kurulum klasörlerinde (`Program Files\R`, `AppData\Local\Programs\R`; en yeni sürüm) aranır. İkisinden biri yoksa R testleri atlanır; nedeni `pytest -rs` ile görülür.
 
-Sürüm adayı öncesinde otomatik testlere ek olarak Konu 01–12, metin ölçeği seçenekleri, soru düğmeleri, tablolar, metric kartları ve grafik eksenleri canlı Streamlit oturumunda kontrol edilmelidir.
+Sürüm adayı öncesinde otomatik testlere ek olarak Konu 00–12, metin ölçeği seçenekleri, soru düğmeleri, tablolar, metric kartları ve grafik eksenleri canlı Streamlit oturumunda kontrol edilmelidir.
 
 ## Veri kaynakları
 

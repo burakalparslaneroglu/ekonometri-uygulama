@@ -281,10 +281,11 @@ def _decimals(values: pd.Series) -> int:
     return 4
 
 
-def _frame(frame: pd.DataFrame, label: Callable[[str], str]):
+def frame_display(frame: pd.DataFrame, label: Callable[[str], str], decimals: int | None = None):
     """Veri çerçevesinin ekran biçimi: tam sayı değerli sütunlar tam sayı, kesirli sütunlar ondalık virgülle.
 
-    Kesirli sütunlar Styler ile biçimlenir; sütun sayısal kaldığı için sağa hizalı görünür.
+    Kesirli sütunlar Styler ile biçimlenir; sütun sayısal kaldığı için sağa hizalı görünür. ``decimals`` verilirse
+    bütün kesirli sütunlar o basamakla yazılır.
     """
 
     shown = frame.copy()
@@ -297,7 +298,8 @@ def _frame(frame: pd.DataFrame, label: Callable[[str], str]):
             if (shown[column] < 0).any():  # tipografik eksi: −10
                 formats[column] = lambda value: tr_number(value, 0)
         else:
-            formats[column] = lambda value, decimals=_decimals(shown[column]): tr_number(value, decimals)
+            digits = decimals if decimals is not None else _decimals(shown[column])
+            formats[column] = lambda value, digits=digits: tr_number(value, digits)
     rename = {column: _COLUMN_LABELS.get(str(column), label(str(column))) for column in shown.columns}
     shown = shown.rename(columns=rename)
     if not formats:
@@ -425,18 +427,18 @@ def render_operations(operations, state: LabState, label: Callable[[str], str], 
                 # Notlardaki gibi satır başına ``layout`` değer; sütun başlıkları satır içindeki sıradır.
                 values = frame[op.columns[0]].to_numpy()
                 grid = pd.DataFrame(values.reshape(-1, op.layout), columns=[str(i) for i in range(1, op.layout + 1)])
-                show_table(_frame(grid, str))
+                show_table(frame_display(grid, str))
             else:
-                show_table(_frame(frame, label))
+                show_table(frame_display(frame, label))
         elif isinstance(op, FromCounts):
             counts = pd.DataFrame([tuple(row) for row in op.rows], columns=[*op.columns, "sayi"])
             st.markdown(f"**{op.comment}**")
-            show_table(_frame(counts, label))
+            show_table(frame_display(counts, label))
             st.caption(f"Her satır sayısı kadar tekrarlanır: toplam {_count(len(state.frames[op.frame]))} gözlem.")
         elif isinstance(op, (Outcomes, Selections)):
             frame = state.frames[op.frame]
             st.markdown(f"**{op.comment}**")
-            show_table(_frame(frame, label))
+            show_table(frame_display(frame, label))
             noun = "Sonuç" if isinstance(op, Outcomes) else "Seçim"
             st.caption(f"{noun} sayısı: {_count(len(frame))}.")
         elif isinstance(op, ShowFrame):
@@ -446,11 +448,11 @@ def render_operations(operations, state: LabState, label: Callable[[str], str], 
                 shown = shown.copy()
                 shown.insert(0, "Gözlem", [position + 1 for position in
                                            (range(op.head) if op.head else [row - 1 for row in op.rows])][:len(shown)])
-            show_table(_frame(shown, label))
+            show_table(frame_display(shown, label, op.decimals))
         elif isinstance(op, MapCodes):
             frame = state.frames[op.frame][[op.source, op.name]].head(8)
             st.markdown(f"**{op.comment}**")
-            show_table(_frame(frame, label))
+            show_table(frame_display(frame, label))
         elif isinstance(op, CrossTab):
             st.markdown(crosstab_caption(op, label))
             show_table(display_table(op, state.tables[op.result], label))
@@ -527,8 +529,8 @@ def _render_downloads(notes: LabSpec, chosen: LabSpec) -> None:
     _download_row(notes, "")
     if chosen.variant:
         steps = ", ".join(str(number) for number in chosen.variant)
-        st.caption(f"Seçtiğiniz spesifikasyonla (adım {steps} notlardan farklı; bu adımlar notlarla "
-                   "karşılaştırılmaz):")
+        which = "bu adımlar" if len(chosen.variant) > 1 else "bu adım"
+        st.caption(f"Seçtiğiniz spesifikasyonla (Adım {steps} notlardan farklı; {which} notlarla karşılaştırılmaz):")
         _download_row(chosen, "_secim")
 
 
@@ -601,6 +603,28 @@ def _render_controls(spec: LabSpec, step: LabStep, problems: list[str]) -> None:
             st.warning(problem, icon=":material/warning:")
 
 
+def upstream_steps(spec: LabSpec, step: LabStep, choices: dict[str, object]) -> list[LabStep]:
+    """Seçimi notlardan farklı olan ve bu adımın sonucunu gerçekten değiştiren önceki adımlar.
+
+    Her önceki adımın seçimi tek başına uygulanır; ``LabSpec.resolve`` bu adımı notlardan farklı sayıyorsa o adım
+    listelenir (ör. Adım 3 yalnız Adım 2'nin seçimine bağlıysa Adım 1'deki seçim sayılmaz).
+    """
+
+    found = []
+    for item in spec.steps:
+        if item.number >= step.number or not item.controls:
+            continue
+        own = {control.key: choices[control.key] for control in item.controls
+               if choices[control.key] != control.normalize(control.default)}
+        if own and step.number in spec.resolve(own).variant:
+            found.append(item)
+    if found:
+        return found
+    # Adım yalnız seçimlerin birlikte etkisiyle farklıysa seçimi değişen bütün önceki adımlar listelenir.
+    return [item for item in spec.steps if item.number < step.number and item.controls and any(
+        choices[control.key] != control.normalize(control.default) for control in item.controls)]
+
+
 def _render_variant_notice(spec: LabSpec, step: LabStep, choices: dict[str, object]) -> None:
     own_changed = any(choices[control.key] != control.normalize(control.default) for control in step.controls)
     if own_changed:
@@ -609,12 +633,11 @@ def _render_variant_notice(spec: LabSpec, step: LabStep, choices: dict[str, obje
         right.button("Notlara dön", key=f"{spec.topic_key}_notlara_don_{step.number}", on_click=_reset,
                      args=(spec, step.controls), width="stretch")
         return
-    upstream = [item for item in spec.steps if item.number < step.number and item.controls and any(
-        choices[control.key] != control.normalize(control.default) for control in item.controls)]
+    upstream = upstream_steps(spec, step, choices)
     numbers = ", ".join(str(item.number) for item in upstream)
     left, right = st.columns([4, 1], vertical_alignment="center")
-    left.info(f"Bu adım, Adım {numbers}'deki seçiminize göre hesaplandı; notlardaki sayılardan farklı olabilir.",
-              icon=":material/tune:")
+    left.info(f"Bu adım, önceki bir adımdaki seçiminize göre hesaplandı (Adım {numbers}); notlardaki sayılardan "
+              "farklı olabilir.", icon=":material/tune:")
     right.button("Notlara dön", key=f"{spec.topic_key}_notlara_don_{step.number}", on_click=_reset,
                  args=(spec, tuple(control for item in upstream for control in item.controls)), width="stretch")
 

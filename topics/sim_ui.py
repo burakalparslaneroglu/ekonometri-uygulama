@@ -10,10 +10,10 @@ import streamlit as st
 
 from core.charts import CHART_TYPES, figure_for, show_figure
 from core.codegen.base import LANGUAGE_INFO, LANGUAGES, generator
-from core.labs.runner import LabState, execute
+from core.labs.runner import LabState, execute, shown_frame
 from core.labs.sezgi import SimExperiment
-from core.labs.spec import REPRO_DESCRIPTIONS, ReproClass
-from topics.lab_ui import CODE_LANGUAGE_KEY, display_table, show_table
+from core.labs.spec import REPRO_DESCRIPTIONS, ReproClass, ShowFrame
+from topics.lab_ui import CODE_LANGUAGE_KEY, display_table, frame_display, show_table
 
 
 @st.cache_resource(show_spinner=False, max_entries=48)
@@ -114,6 +114,9 @@ def render_experiments(experiments: tuple[SimExperiment, ...]) -> None:
     for index, op in enumerate(operations):
         if isinstance(op, CHART_TYPES):
             show_figure(figure_for(op, state, experiment.label), key=f"{experiment.key}_grafik_{index}")
+        elif isinstance(op, ShowFrame):
+            st.markdown(f"**{op.comment}**")
+            show_table(frame_display(shown_frame(op, state), experiment.label, op.decimals))
 
     metrics = experiment.metrics(state, parameters)
     for column, metric in zip(st.columns(len(metrics)), metrics):

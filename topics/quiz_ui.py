@@ -144,7 +144,9 @@ def _input(quiz: QuestionSet, question: Question) -> None:
         text = st.session_state.get(key) or ""
         if text.strip():
             try:
-                st.latex(f"{answer.lhs} = {latex(parse(text, answer.symbols), answer.symbols)}")
+                # Sol taraf "≈" gibi bir ilişkiyle bitiyorsa ikinci bir "=" yazılmaz.
+                relation = "" if answer.lhs.rstrip().endswith(("\\approx", "=")) else " ="
+                st.latex(f"{answer.lhs}{relation} {latex(parse(text, answer.symbols), answer.symbols)}")
             except FormulaError as error:
                 st.caption(f"Önizleme: {error}")
 

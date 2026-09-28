@@ -5,7 +5,7 @@ görsel inceleme (Şekil 1.2), ekonometrik model ve tahmin (Kod 1.4, Tablo 1.3),
 yorumu (Denklem 1.4) ve sonucun sınırı. Her ``Check`` notlarda basılı bir sayıdır; değer notlardan
 kopyalanmıştır, hesaplanmamıştır.
 
-Etkileşim: betimsel özetin değişkenleri (Adım 2), serpilme diyagramının ve modelin açıklayıcı değişkeni
+Etkileşim: betimsel özetin değişkenleri (Adım 2), saçılım grafiğinin ve modelin açıklayıcı değişkeni
 (Adım 3–4; bağımlı değişken ücrettir). Konu 1'de yalnız basit regresyon kurulur; çoklu regresyon Konu 5'in
 konusudur. Standart hata, t, p ve güven aralığı notlardaki gibi yazılım çıktısında görünür; yorumları Konu 7'dedir.
 """

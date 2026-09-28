@@ -180,7 +180,7 @@ COFFEE = SimExperiment(
         "ortalaması 560 · 2/7 · k = 160·k TL'dir; gerçek ortalama ilişkinin sabiti bu yüzden 3100 + 160·k'dır."
     ),
     look_at=(
-        "**Serpilme diyagramı** — noktaların doğru çevresindeki dağılımı hata terimidir.",
+        "**Saçılım grafiği** — noktaların doğru çevresindeki dağılımı hata terimidir.",
         "**İki doğru** — kesikli çizgi bilinen gerçek ortalama ilişki, düz çizgi veriden tahmin edilen doğru.",
         "**R²** — k büyüdükçe satıştaki değişkenliğin reklamla açıklanan payı.",
     ),
@@ -455,7 +455,7 @@ INTERCEPT_RANGE = SimExperiment(
         "yerine bir doğru tahmin eder; sabit terim doğrunun eğitim = 0'daki değeridir."
     ),
     look_at=(
-        "**Serpilme diyagramı** — örneklemin eğitim aralığı ve tahmin edilen doğru.",
+        "**Saçılım grafiği** — örneklemin eğitim aralığı ve tahmin edilen doğru.",
         "**Çizgi grafiği** — doğru eğitim = 0'a uzatıldığında gerçek ortalama ücretten ne kadar ayrılıyor?",
         "**Metrikler** — sabit terim ile eğitim = 0'daki gerçek ortalama ücret.",
     ),
