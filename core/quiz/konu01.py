@@ -365,7 +365,7 @@ QUESTIONS = (
         ),
         explanation=(
             "Tahmin edilen değer sabit terim ile eğim × eğitim toplamıdır. Denklem (1.4)'e göre eğitimi 12 yıl olan "
-            "bir çalışanın tahmin edilen ücreti −0,9049 + 0,5414 × 12 ≈ 5,59 ücret birimidir (§1.6, (1.4))."
+            "bir çalışanın tahmin edilen ücreti −0,9049 + 0,5414 × 12 ≈ 5,59 dolardır (§1.6, (1.4))."
         ),
     ),
     Question(
@@ -382,7 +382,7 @@ QUESTIONS = (
         ),
         explanation=(
             "Sabit terim c iki tahminde de aynı olduğu için farkta birbirini götürür: eğitimler x₁ ve x₂ = x₁ + d ise "
-            "(c + m x₂) − (c + m x₁) = m d. WAGE1'de 3 yıllık fark 3 × 0,5414 ≈ 1,62 ücret birimidir (§1.6)."
+            "(c + m x₂) − (c + m x₁) = m d. WAGE1'de 3 yıllık fark 3 × 0,5414 ≈ 1,62 dolardır (§1.6)."
         ),
     ),
     Question(

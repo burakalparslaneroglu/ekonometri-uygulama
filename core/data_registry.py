@@ -191,11 +191,6 @@ DATASETS: dict[str, DatasetMetadata] = {
 }
 
 
-def list_datasets(dataset_keys: tuple[str, ...] = ("wage1", "hprice1")) -> tuple[DatasetMetadata, ...]:
-    """Katalogdaki veri setlerini kararlı sırada döndürür."""
-    return tuple(get_dataset_metadata(key) for key in dataset_keys)
-
-
 def get_dataset_metadata(dataset_key: str) -> DatasetMetadata:
     """Veri seti anahtarını doğrular ve katalog bilgisini döndürür."""
     try:
@@ -232,18 +227,6 @@ def allowed_explanatory_variables(dataset_key: str, dependent: str) -> tuple[str
         raise ValueError(
             f"{dependent!r}, {metadata.title} için desteklenen bağımlı değişken değildir."
         ) from error
-
-
-def konu04_model_pairs(dataset_key: str) -> tuple[tuple[str, str], ...]:
-    """Konu 04 notlarıyla uyumlu, sınırlı Y–X eşleşmelerini verir."""
-    pairs = {
-        "wage1": (("wage", "educ"),),
-        "hprice1": (("price", "sqrft"),),
-    }
-    try:
-        return pairs[dataset_key]
-    except KeyError as error:
-        raise ValueError(f"{dataset_key!r} Konu 04 için desteklenmeyen veri setidir.") from error
 
 
 def konu05_model_specs() -> tuple[RegressionModelSpec, ...]:

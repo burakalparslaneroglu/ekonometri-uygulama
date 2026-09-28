@@ -433,7 +433,11 @@ def execute(op: Operation, state: LabState) -> None:
             slope, intercept = np.polyfit(data[op.x].to_numpy(dtype=float), data[op.y].to_numpy(dtype=float), 1)
             line = (float(intercept), float(slope))
         known = [(parameter(first, state), parameter(second, state), label) for first, second, label in op.lines]
-        state.plots[plot_key(op)] = {"veri": data.copy(), "dogru": line, "cizgiler": known}
+        means = None
+        if op.means:  # aynı x değerindeki gözlemlerin y ortalaması (koşullu ortalamanın örneklem karşılığı)
+            grouped = data.groupby(op.x)[op.y].mean()
+            means = pd.DataFrame({op.x: grouped.index.to_numpy(dtype=float), op.y: grouped.to_numpy(dtype=float)})
+        state.plots[plot_key(op)] = {"veri": data.copy(), "dogru": line, "cizgiler": known, "ortalamalar": means}
     elif isinstance(op, BoxPlot):
         boxes = []
         for frame, variable, label in op.series:

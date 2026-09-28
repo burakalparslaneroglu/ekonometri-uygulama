@@ -12,9 +12,13 @@ from core.labs.registry import LABS
 from core.session_utils import synchronize_active_topic
 from core.topic_registry import list_topics
 from core.ui_preferences import DEFAULT_TEXT_SCALE_LABEL, TEXT_SCALE_OPTIONS, normalize_text_scale, text_scale_css
-from topics import konu00_baslangic_arac_kutusu, konu01_ampirik_arastirma, konu02_veri_turleri_nedensellik
-from topics.konu03_basit_regresyon import render as render_konu03
-from topics.konu04_ols_cikti_fonksiyonel_bicimler import render as render_konu04
+from topics import (
+    konu00_baslangic_arac_kutusu,
+    konu01_ampirik_arastirma,
+    konu02_veri_turleri_nedensellik,
+    konu03_basit_regresyon,
+    konu04_ols_cikti_fonksiyonel_bicimler,
+)
 from topics.konu05_coklu_regresyon import render as render_konu05
 from topics.konu06_ols_varsayimlari_yanlilik import render as render_konu06
 from topics.konu07_tekli_hipotez_testleri import render as render_konu07
@@ -28,14 +32,20 @@ from topics.shared import keep_widget_state
 
 # Uygulama, Sezgi ve Kendini sına sekmeli konular. (app.py Streamlit'in ana betiğidir: modül düzeyindeki çıplak
 # metinleri "magic" ile sayfaya yazar; bu yüzden burada açıklamalar docstring değil yorum satırıdır.)
-MIGRATED_PAGES = (konu00_baslangic_arac_kutusu, konu01_ampirik_arastirma, konu02_veri_turleri_nedensellik)
+MIGRATED_PAGES = (
+    konu00_baslangic_arac_kutusu,
+    konu01_ampirik_arastirma,
+    konu02_veri_turleri_nedensellik,
+    konu03_basit_regresyon,
+    konu04_ols_cikti_fonksiyonel_bicimler,
+)
 
 TOPIC_RENDERERS = {
     "konu00": konu00_baslangic_arac_kutusu.render,
     "konu01": konu01_ampirik_arastirma.render,
     "konu02": konu02_veri_turleri_nedensellik.render,
-    "konu03": render_konu03,
-    "konu04": render_konu04,
+    "konu03": konu03_basit_regresyon.render,
+    "konu04": konu04_ols_cikti_fonksiyonel_bicimler.render,
     "konu05": render_konu05,
     "konu06": render_konu06,
     "konu07": render_konu07,

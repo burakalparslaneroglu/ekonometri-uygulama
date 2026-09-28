@@ -45,6 +45,20 @@ from core.labs.spec import (
 LANGUAGES = ("Python", "R")
 
 COURSE = "İKT 305 Ekonometri I"
+STAT_NAMES = {
+    "nobs": "gözlem sayısı", "r2": "R²", "adj_r2": "düzeltilmiş R²", "f": "F istatistiği",
+    "f_p": "F testinin p-değeri", "ssr": "artık kareleri toplamı", "df_resid": "artık serbestlik derecesi",
+}
+"""Model bilgisinin kod yorumlarındaki Türkçe adı (``MODEL_QUANTITIES``)."""
+
+
+def listing(items) -> str:
+    """Türkçe sıralama: "a", "a ve b", "a, b ve c"."""
+
+    items = list(items)
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " ve " + items[-1]
+
+
 PALETTE = ("#107C89", "#B3392F", "#2F9E6B", "#C98A1B", "#6B4C9A", "#07373D")
 """Grafik serilerinin renkleri; uygulamada ve iki dilde aynı sırayla kullanılır."""
 REFERENCE_COLORS = ("#07373D", "#6B4C9A", "#C98A1B")

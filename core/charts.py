@@ -221,7 +221,14 @@ def _scatter(op: ScatterPlot, plot: dict) -> go.Figure:
             x=x, y=intercept + slope * x, mode="lines", name=label, hoverinfo="skip",
             line={"color": REFERENCE_COLORS[index % len(REFERENCE_COLORS)], "width": 3, "dash": "dash"},
         ))
-    if plot["dogru"] is not None or plot.get("cizgiler"):
+    means = plot.get("ortalamalar")
+    if means is not None:
+        figure.add_trace(go.Scatter(
+            x=means[op.x], y=means[op.y], mode="markers", name=op.means,
+            marker={"color": PALETTE[3], "size": 11, "line": {"color": "white", "width": 1}},
+            hovertemplate=f"{op.x_label}: %{{x}}<br>Ortalama: %{{y:.2f}}<extra></extra>",
+        ))
+    if plot["dogru"] is not None or plot.get("cizgiler") or means is not None:
         figure.update_layout(legend={"orientation": "h", "y": -0.2})
     else:
         figure.update_layout(showlegend=False)

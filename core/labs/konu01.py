@@ -74,7 +74,7 @@ def _describe_note(state, choices) -> str:
     variables = choices["adim2_degiskenler"]
     if tuple(variables) == NOTES_DESCRIBED:
         return (
-            "Her değişken için 526 gözlem kullanılır. Ortalama saatlik ücret yaklaşık 5,90 ücret birimi, ortalama "
+            "Her değişken için 526 gözlem kullanılır. Ortalama saatlik ücret yaklaşık 5,90 dolar, ortalama "
             "eğitim süresi yaklaşık 12,56 yıldır. Eğitim 0 ile 18 yıl arasında değişir; bu aralık sabit terimi "
             "yorumlarken önem taşır. Deneyim ve kıdem de ücretle ilişkili olabileceği için geniş dağılımları, yalnız "
             "eğitimi kullanan ilk modelin sınırlılığını düşündürür."
@@ -174,7 +174,7 @@ def _interpretation_note(state, choices) -> str:
     phrase = IN_WORDS[x][0]
     equation = f"Tahmin edilen denklem: ŵage = {plain(b0, 4)} + {plain(b1, 4)} · {x}."
     slope = (f"Örneklemde {phrase} bir yıl daha yüksek olan çalışanların tahmin edilen saatlik ücreti ortalama "
-             f"olarak yaklaşık {plain(abs(b1), 2)} ücret birimi daha {signed_difference(b1)}.")
+             f"olarak yaklaşık {plain(abs(b1), 2)} dolar daha {signed_difference(b1)}.")
     fit = (f"R² = {plain(r2, 3)}: örneklemdeki ücret değişkenliğinin yaklaşık %{plain(100 * r2, 1)} kadarı bu "
            "doğrusal modelde açıklanır. Bu, modelin nedensel olarak doğru olduğunu kanıtlamaz.")
     constant = ""
@@ -182,7 +182,7 @@ def _interpretation_note(state, choices) -> str:
         constant = (" Sabit terim negatiftir: eğitim yılı sıfır olduğunda tahmin edilen ücret ekonomik olarak "
                     "anlamlı değildir; bu değer verinin merkezinden uzaktır.")
     return f"{equation} {slope} Yorum sonucun örnekleme ait olduğunu, değişimin birimini (bir yıl) ve sonucun " \
-           f"birimini (ücret birimi) söyler; nedensel fiil kullanmaz.{constant} {fit}"
+           f"birimini (dolar) söyler; nedensel fiil kullanmaz.{constant} {fit}"
 
 
 def _coef(term: str, quantity: str, expected: float, decimals: int, label: str) -> Check:
@@ -211,8 +211,8 @@ STEPS = (
         explanation=(
             "İlk soru bilinçli olarak ilişki düzeyindedir: **Örneklemde eğitim yılı daha yüksek çalışanların saatlik "
             "ücreti ortalama olarak ne kadar farklıdır?** Bağımlı değişken `wage` (ortalama saatlik kazanç), temel "
-            "açıklayıcı değişken `educ` (tamamlanan eğitim yılı). Katsayı, bir eğitim yılı farkına karşılık saatlik "
-            "ücret birimi cinsinden yorumlanacaktır."
+            "açıklayıcı değişken `educ` (tamamlanan eğitim yılı). Katsayı, bir eğitim yılı farkına karşılık dolar "
+            "cinsinden saatlik ücret farkı olarak yorumlanacaktır."
         ),
         operations=(
             _load(),

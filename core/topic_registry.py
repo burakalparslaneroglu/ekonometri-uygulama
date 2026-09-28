@@ -23,10 +23,15 @@ TOPICS: tuple[TopicMetadata, ...] = (
         "Elimizdeki verinin yapısı nedir ve bu veriyle hangi karşılaştırmalar anlamlıdır; gözlenen bir ilişki ne "
         "zaman nedensel bir etki olarak okunabilir?",
     ),
-    TopicMetadata("konu03", 3, "Basit Doğrusal Regresyon Modeli", "Basit Doğrusal Regresyon"),
+    TopicMetadata(
+        "konu03", 3, "Basit Doğrusal Regresyon Modeli", "Basit Doğrusal Regresyon",
+        "Bir sonuç değişkeninin ortalama düzeyi, tek bir açıklayıcı değişkenle nasıl özetlenebilir?",
+    ),
     TopicMetadata(
         "konu04", 4, "EKK Tahminini Değerlendirme: Uyum, Ölçü Birimleri ve Temel Fonksiyonel Biçimler",
         "EKK Çıktısı, Uyum ve Fonksiyonel Biçimler",
+        "Tahmin edilen doğru örneklemdeki gözlemlere ne ölçüde uyuyor; değişkenleri farklı ölçülerde yazdığımızda "
+        "katsayıyı nasıl yorumlamalıyız?",
     ),
     TopicMetadata("konu05", 5, "Çoklu Regresyon Modeli ve Ceteris Paribus Yorumu", "Çoklu Regresyon"),
     TopicMetadata(

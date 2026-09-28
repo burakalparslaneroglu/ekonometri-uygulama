@@ -13,7 +13,7 @@ from core.codegen.base import LANGUAGE_INFO, LANGUAGES, generator
 from core.labs.runner import LabState, execute, shown_frame
 from core.labs.sezgi import SimExperiment
 from core.labs.spec import REPRO_DESCRIPTIONS, ReproClass, ShowFrame
-from topics.lab_ui import CODE_LANGUAGE_KEY, display_table, frame_display, show_table
+from topics.lab_ui import CODE_LANGUAGE_KEY, decimal_slider, display_table, frame_display, show_table
 
 
 @st.cache_resource(show_spinner=False, max_entries=48)
@@ -44,9 +44,9 @@ def _render_sliders(experiment: SimExperiment) -> None:
             column.slider(item.label, min_value=int(item.minimum), max_value=int(item.maximum), step=int(item.step),
                           key=_parameter_key(experiment, item.key), help=item.help)
         else:
-            column.slider(item.label, min_value=float(item.minimum), max_value=float(item.maximum),
-                          step=float(item.step), key=_parameter_key(experiment, item.key), help=item.help,
-                          format=f"%.{item.decimals}f")
+            decimal_slider(column, item.label, minimum=float(item.minimum), maximum=float(item.maximum),
+                           step=float(item.step), decimals=item.decimals, key=_parameter_key(experiment, item.key),
+                           help=item.help)
 
 
 def _render_code(experiment: SimExperiment, parameters: dict[str, float]) -> None:

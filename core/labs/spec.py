@@ -709,6 +709,9 @@ class ScatterPlot:
     lines: tuple[tuple["Parameter", "Parameter", str], ...] = ()
     """(sabit, eğim, etiket): kesikli çizgiyle çizilen bilinen doğrular y = sabit + eğim·x (ör. simülasyonda gerçek
     ortalama ilişki); sabit ve eğim sayı ya da önceden hesaplanmış bir skalerin adıdır."""
+    means: str = ""
+    """Boş değilse aynı x değerindeki gözlemlerin y ortalamaları (koşullu ortalamanın örneklem karşılığı) bu etiketle
+    ayrı noktalar olarak çizilir (ör. eğitim düzeylerine göre ortalama ücret)."""
 
 
 @dataclass(frozen=True)
@@ -1020,7 +1023,10 @@ class RegressionTable:
     ``models``: (sütun başlığı, model adı). ``terms``: tablodaki sırayla terimler (sabit terim ``INTERCEPT``).
     Sonuç tablosunun satırları ``terim`` (katsayı), ``terim_sh`` (standart hata), ``n`` ve ``r2``'dir; modelde
     olmayan terimin hücresi boştur. ``stars``: katsayının yanında p-değerine göre yıldız (*** p < 0,01;
-    ** p < 0,05; * p < 0,10); eşikler tablonun altında yazılır."""
+    ** p < 0,05; * p < 0,10); eşikler tablonun altında yazılır.
+
+    ``standard_errors=False``: standart hata satırları yoktur (konu standart hatayı henüz işlemediyse, ör. Konu 3–4);
+    yıldızlar da gösterilmez. ``r2=False``: R² satırı yoktur (ör. Konu 3; R² Konu 4'te tanımlanır)."""
 
     models: tuple[tuple[str, str], ...]
     terms: tuple[str, ...]
@@ -1028,6 +1034,12 @@ class RegressionTable:
     comment: str
     stars: bool = True
     decimals: int = 3
+    standard_errors: bool = True
+    r2: bool = True
+
+    def __post_init__(self) -> None:
+        if self.stars and not self.standard_errors:
+            raise ValueError("Yıldızlar standart hatalarla birlikte gösterilir (standard_errors=False ise stars=False).")
 
 
 @dataclass(frozen=True)
@@ -1307,6 +1319,9 @@ _WRITE_FIELDS = ("result", "name")
 _FRAME_WRITERS = ("LoadWooldridge", "InlineData", "FromCounts", "Outcomes", "Selections", "Support", "Rectangles",
                   "NewSample", "Derive", "Event", "MapCodes", "Groups", "RowSum", "Draw", "DrawCount", "DrawCategory",
                   "DrawDiscrete", "SortRows")
+_FRAME_CREATORS = ("LoadWooldridge", "InlineData", "FromCounts", "Outcomes", "Selections", "Support", "Rectangles",
+                   "NewSample")
+"""Çerçeveyi baştan kuran işlemler: eski çerçeveyi okumaz, yerine yenisini yazar (ör. veriyi yeniden yükleme)."""
 
 
 def operation_reads(op) -> set[str]:
@@ -1314,14 +1329,16 @@ def operation_reads(op) -> set[str]:
 
     from core.labs import expr as E
 
+    creator = type(op).__name__ in _FRAME_CREATORS
     found: set[str] = set()
     for item in fields(op):
         value = getattr(op, item.name)
-        if item.name in _READ_FIELDS:
+        if item.name in _READ_FIELDS and not (creator and item.name in ("frame", "columns")):
             found |= _names(value)
         elif isinstance(value, (E.Var, E.Const, E.BinOp, E.Call, E.Ref)):
             found |= E.references(value)
-    found |= {getattr(op, "frame")} if hasattr(op, "frame") else set()
+    if hasattr(op, "frame") and not creator:
+        found.add(op.frame)
     return found
 
 

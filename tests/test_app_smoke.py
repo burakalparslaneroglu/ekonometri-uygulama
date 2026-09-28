@@ -45,7 +45,7 @@ def test_app_opens_on_topic_00_with_three_tabs() -> None:
 
 def test_every_lab_step_renders_in_both_languages() -> None:
     app = _run_app()
-    for topic, steps in (("konu00", 9), ("konu01", 6), ("konu02", 6)):
+    for topic, steps in (("konu00", 9), ("konu01", 6), ("konu02", 6), ("konu03", 8), ("konu04", 10)):
         _select(app, topic)
         for language in ("Python", "R"):
             app.segmented_control(key="code_language").set_value(language).run()
@@ -53,6 +53,19 @@ def test_every_lab_step_renders_in_both_languages() -> None:
                 app.segmented_control(key=f"{topic}_lab_step").set_value(number).run()
                 assert not app.exception, (topic, language, number)
                 assert any(item.value.startswith(f"Adım {number}:") for item in app.subheader)
+
+
+def test_step_buttons_move_one_step_and_are_disabled_at_the_ends() -> None:
+    app = _run_app()
+    _select(app, "konu04")
+    assert app.button(key="konu04_lab_prev").disabled and not app.button(key="konu04_lab_next").disabled
+    app.button(key="konu04_lab_next").click().run()
+    assert app.segmented_control(key="konu04_lab_step").value == 2
+    app.segmented_control(key="konu04_lab_step").set_value(10).run()
+    assert app.button(key="konu04_lab_next").disabled and not app.button(key="konu04_lab_prev").disabled
+    app.button(key="konu04_lab_prev").click().run()
+    assert app.segmented_control(key="konu04_lab_step").value == 9
+    assert not app.exception
 
 
 def test_lab_step_shows_the_notes_numbers_in_turkish_format() -> None:
@@ -107,10 +120,12 @@ def test_panel_step_writes_years_without_a_thousands_separator() -> None:
 def test_every_experiment_runs_and_reacts_to_its_sliders() -> None:
     app = _run_app()
     _select(app, "konu01")
-    app.slider(key="konu01_sezgi1_olcek").set_value(0.0).run()
+    olcek = app.select_slider(key="konu01_sezgi1_olcek")
+    assert olcek.options[:2] == ["0,00", "0,25"] and olcek.value == 1.0  # ondalık virgül, değer sayı olarak kalır
+    olcek.set_value(0.0).run()
     assert _metrics(app)["R²"] == "1,000"
     assert _metrics(app)["Tahmin β̂₁"] == _metrics(app)["Gerçek eğim β₁"] == "13,50"
-    for topic in ("konu00", "konu01", "konu02"):
+    for topic in ("konu00", "konu01", "konu02", "konu03", "konu04"):
         _select(app, topic)
         for number in (1, 2, 3):
             app.segmented_control(key=f"{topic}_sezgi_deney").set_value(number).run()
@@ -179,3 +194,58 @@ def test_konu00_conditional_experiment_shows_its_level_table() -> None:
     assert not app.exception
     columns = [set(map(str, frame.value.columns)) for frame in app.dataframe]
     assert any({"Gözlem sayısı", "Gerçek E(Y | X)"} <= found for found in columns), columns
+
+
+def test_konu03_regressor_choice_carries_to_later_steps_and_resets() -> None:
+    app = _run_app()
+    _select(app, "konu03")
+    assert "Basit Doğrusal Regresyon Modeli" in _markdown(app)
+    app.segmented_control(key="konu03_lab_step").set_value(5).run()
+    metrics = _metrics(app)
+    assert metrics["Sabit terim β̂₀"] == "−0,9049" and metrics["Eğim β̂₁ (educ)"] == "0,5414"
+    app.segmented_control(key="konu03_lab_step").set_value(4).run()
+    app.segmented_control(key="konu03_secim_adim4_x").set_value("exper").run()
+    assert not app.exception
+    assert any("notlardan farklı" in item.value for item in app.info)
+    app.segmented_control(key="konu03_lab_step").set_value(7).run()
+    assert not app.exception
+    assert any("(Adım 4)" in item.value for item in app.info)
+    app.button(key="konu03_notlara_don_7").click().run()
+    app.segmented_control(key="konu03_lab_step").set_value(5).run()
+    assert _metrics(app)["Eğim β̂₁ (educ)"] == "0,5414"
+
+
+def test_konu03_small_ols_step_reacts_to_the_fifth_score() -> None:
+    app = _run_app()
+    _select(app, "konu03")
+    app.segmented_control(key="konu03_lab_step").set_value(3).run()
+    assert _metrics(app)["Eğim β̂₁ = pay / payda (Denklem 3.8)"] == "2,9"
+    app.slider(key="konu03_secim_adim3_y5").set_value(88).run()
+    assert not app.exception
+    assert _metrics(app)["Eğim β̂₁ = pay / payda (Denklem 3.8)"] == "3,9"
+
+
+def test_konu04_four_forms_and_article_table_columns() -> None:
+    app = _run_app()
+    _select(app, "konu04")
+    app.segmented_control(key="konu04_lab_step").set_value(7).run()
+    metrics = _metrics(app)
+    assert metrics["Düzey–düzey: 100 kare fit → bin dolar (100 β̂₁)"] == "14,02"
+    assert metrics["Log–log eğim"] == "0,8727"
+    app.segmented_control(key="konu04_lab_step").set_value(9).run()
+    app.multiselect(key="konu04_secim_adim9_sutunlar").set_value(["duzey_duzey", "duzey_log"]).run()
+    assert not app.exception
+    assert any("notlardan farklı" in item.value for item in app.info)
+
+
+def test_konu03_and_konu04_quizzes_grade_answers() -> None:
+    app = _run_app()
+    _select(app, "konu04")
+    app.radio(key="konu04_quiz_k01").set_value(1).run()
+    app.button(key="konu04_quiz_check_k01").click().run()
+    assert not app.exception
+    assert any(item.value == "Doğru." for item in app.success)
+    _select(app, "konu03")
+    app.radio(key="konu03_quiz_k01").set_value(0).run()
+    app.button(key="konu03_quiz_check_k01").click().run()
+    assert any("Tekrar edilecek bölümler" in item.value and "§3.1" in item.value for item in app.markdown)

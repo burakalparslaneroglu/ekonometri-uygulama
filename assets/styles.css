@@ -14,6 +14,17 @@
 .lesson-note { background: var(--brandSurface); border-left: 4px solid var(--brandTeal); border-radius: .3rem; color: var(--brandInk); margin: .5rem 0 1.2rem; padding: .85rem 1rem; }
 [data-testid="stMetric"] { background: #F7FBFB; border: 1px solid #D4E8EA; border-radius: .55rem; padding: .65rem; min-width: 0; }
 [data-testid="stMetricLabel"], [data-testid="stMetricValue"], [data-testid="stWidgetLabel"], [data-testid="stSidebar"] p { overflow-wrap: anywhere; }
+/* Metrik etiketi ve değeri üç noktayla kesilmez, dar sütunda alt satıra geçer; aynı satırdaki kutular eşit yükseklikte
+   kalır. */
+[data-testid="stMetricLabel"] [data-testid="stMarkdownContainer"], [data-testid="stMetricLabel"] p,
+[data-testid="stMetricValue"] [data-testid="stMarkdownContainer"], [data-testid="stMetricValue"] p {
+  white-space: normal; overflow: visible; text-overflow: clip;
+}
+[data-testid="stColumn"]:has(> [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"] > [data-testid="stMetric"]) {
+  display: flex; flex-direction: column;
+}
+[data-testid="stElementContainer"]:has(> [data-testid="stMetric"]) { display: flex; flex-direction: column; flex: 1 1 auto; }
+[data-testid="stMetric"] { flex: 1 1 auto; }
 [data-testid="stDataFrame"], [data-testid="stTable"] { max-width: 100%; overflow-x: auto; }
 [data-testid="stSidebar"] { border-right: 1px solid #D4E8EA; }
 [data-testid="column"] { min-width: 0; }

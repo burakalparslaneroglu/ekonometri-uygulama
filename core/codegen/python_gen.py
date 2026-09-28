@@ -11,9 +11,11 @@ from core.codegen.base import (
     HEAT_LOW,
     PALETTE,
     REFERENCE_COLORS,
+    STAT_NAMES,
     Generator,
     flatten,
     functions_used,
+    listing,
     text,
     uses_charts,
     wrapped,
@@ -267,6 +269,35 @@ _REGRESSION_TABLE = [
     '    satirlar = [ad for terim in terimler for ad in (terim, terim + "_sh")] + ["n", "r2"]',
     "    return pd.DataFrame(sutunlar, index=satirlar, dtype=float)",
 ]
+def _read_fields_note(op: ShowModel) -> list[str]:
+    """Konu standart hatayı henüz işlemediyse (``columns == ("coef",)``) tam çıktının hangi alanlarının okunduğu."""
+
+    if "se" in op.columns:
+        return []
+    read = listing(("katsayılar (coef)", *(STAT_NAMES[stat] for stat in op.stats)))
+    return [f"# Tam çıktı yazdırılır; bu adımda yalnız {read} okunur.",
+            "# std err, t, P>|t| ve güven aralığı Konu 7'de yorumlanır."]
+
+
+_REGRESSION_TABLE_OPTIONS = [
+    "def makale_tablosu(modeller, terimler, sh=True, r2=True):",
+    '    """Makale tipi tablo: her terim için katsayı ve (sh=True ise) standart hata (terim_sh), sonra n ve',
+    '    (r2=True ise) R²."""',
+    "    sutunlar = {}",
+    "    for baslik, m in modeller.items():",
+    "        hucreler = []",
+    "        for terim in terimler:",
+    "            hucreler.append(m.params.get(terim, np.nan))",
+    "            if sh:",
+    "                hucreler.append(m.bse.get(terim, np.nan))",
+    "        hucreler.append(m.nobs)",
+    "        if r2:",
+    "            hucreler.append(m.rsquared)",
+    "        sutunlar[baslik] = hucreler",
+    '    satirlar = [ad for terim in terimler for ad in ((terim, terim + "_sh") if sh else (terim,))]',
+    '    satirlar += ["n", "r2"] if r2 else ["n"]',
+    "    return pd.DataFrame(sutunlar, index=satirlar, dtype=float)",
+]
 _STARS = [
     "def yildiz(p):",
     '    """Katsayının yanındaki yıldız: *** p < 0,01; ** p < 0,05; * p < 0,10."""',
@@ -343,7 +374,8 @@ class PythonGenerator(Generator):
         if any(isinstance(op, (BoxSummary, BoxPlot)) for op in flat):
             lines += _BOX_SUMMARY + ["", ""]
         if any(isinstance(op, RegressionTable) for op in flat):
-            lines += _REGRESSION_TABLE + ["", ""]
+            options = any(isinstance(op, RegressionTable) and not (op.standard_errors and op.r2) for op in flat)
+            lines += (_REGRESSION_TABLE_OPTIONS if options else _REGRESSION_TABLE) + ["", ""]
             if any(isinstance(op, RegressionTable) and op.stars for op in flat):
                 lines += _STARS + ["", ""]
         if with_checks:
@@ -410,7 +442,7 @@ class PythonGenerator(Generator):
         if isinstance(op, OLS):
             return [f"# {op.comment}", f'{op.name} = smf.ols("{op.formula}", data={op.frame}).fit()']
         if isinstance(op, ShowModel):
-            return [f"# {op.comment}", f"print({op.model}.summary())"]
+            return [f"# {op.comment}", *_read_fields_note(op), f"print({op.model}.summary())"]
         if isinstance(op, ModelValue):
             value = (coef_expression(op.model, op.term, op.quantity) if op.term is not None
                      else model_expression(op.model, op.quantity))
@@ -421,9 +453,10 @@ class PythonGenerator(Generator):
             ]
         if isinstance(op, RegressionTable):
             models = ", ".join(f"{text(heading)}: {name}" for heading, name in op.models)
+            flags = ("" if op.standard_errors else ", sh=False") + ("" if op.r2 else ", r2=False")
             lines = [
                 f"# {op.comment}",
-                f"{op.result} = makale_tablosu({{{models}}}, {_list(op.terms)})",
+                f"{op.result} = makale_tablosu({{{models}}}, {_list(op.terms)}{flags})",
                 f"print({op.result}.round({op.decimals}))",
             ]
             if op.stars:
@@ -996,7 +1029,7 @@ class PythonGenerator(Generator):
         size = E.format_number(4 * op.size)  # matplotlib noktanın alanını (pt²) alır; Plotly çapını
         alpha = "" if op.opacity >= 1 else f", alpha={E.format_number(op.opacity)}"
         lines = ["fig, ax = plt.subplots(figsize=(7, 5))"]
-        if not (op.fit_line or op.lines):
+        if not (op.fit_line or op.lines or op.means):
             return lines + [
                 f'ax.scatter({op.frame}["{op.x}"], {op.frame}["{op.y}"], color="{PALETTE[0]}", s={size}{alpha}, '
                 f"zorder=3)",
@@ -1006,8 +1039,16 @@ class PythonGenerator(Generator):
         lines += [
             f'nokta = {op.frame}[["{op.x}", "{op.y}"]].dropna()',
             f'ax.scatter(nokta["{op.x}"], nokta["{op.y}"], color="{PALETTE[0]}", s={size}{alpha}, zorder=3)',
-            f'x_dogru = np.linspace(nokta["{op.x}"].min(), nokta["{op.x}"].max(), 100)',
         ]
+        if op.means:
+            lines += [
+                f"# {op.means}: aynı {op.x} değerindeki gözlemlerin {op.y} ortalaması",
+                f'ortalama = nokta.groupby("{op.x}")["{op.y}"].mean()',
+                f'ax.scatter(ortalama.index, ortalama.values, color="{PALETTE[3]}", s=64, edgecolor="white", '
+                f"zorder=4, label={text(op.means)})",
+            ]
+        if op.fit_line or op.lines:
+            lines.append(f'x_dogru = np.linspace(nokta["{op.x}"].min(), nokta["{op.x}"].max(), 100)')
         if op.fit_line:
             lines += [
                 "# Tahmin edilen doğru: eğim ve sabit terim veriden (birinci dereceden polinom)",
@@ -1017,9 +1058,13 @@ class PythonGenerator(Generator):
             ]
         for index, (first, second, label) in enumerate(op.lines):
             color = REFERENCE_COLORS[index % len(REFERENCE_COLORS)]
+            if isinstance(second, str) or second >= 0:
+                line = f"{_parameter(first)} + {_parameter(second)} * x_dogru"
+            else:  # "+ -0.5 * x" yazılmasın
+                line = f"{_parameter(first)} - {_parameter(-second)} * x_dogru"
             lines += [
-                f"# {label}: y = sabit + eğim · x (veri üretim sürecinden bilinen doğru)",
-                f"ax.plot(x_dogru, {_parameter(first)} + {_parameter(second)} * x_dogru, color=\"{color}\", "
+                f"# {label}: y = sabit + eğim · x (kesikli çizgi)",
+                f"ax.plot(x_dogru, {line}, color=\"{color}\", "
                 f'linestyle="--", linewidth=2.5, label={text(label)})',
             ]
         return lines + ["ax.grid(alpha=0.3)", *self._axes(op.x_label, op.y_label, op.title, legend=True)]

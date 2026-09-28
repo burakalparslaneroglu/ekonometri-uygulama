@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -30,45 +29,6 @@ class SimpleOLSResult:
         """Tahmin denklemini açık bir metin olarak döndürür."""
         sign = "+" if self.slope >= 0 else "−"
         return f"ŷ = {self.intercept:.4f} {sign} {abs(self.slope):.4f} × {self.explanatory}"
-
-
-FunctionalForm = Literal["düzey-düzey", "log-düzey", "düzey-log", "log-log"]
-MIN_UNIT_SCALE = 1e-6
-MAX_UNIT_SCALE = 1e6
-
-
-@dataclass(frozen=True)
-class ObservationDecomposition:
-    """Bir gözlemdeki toplam sapmanın iki parçalı ayrıştırması."""
-
-    observed: float
-    mean_observed: float
-    fitted: float
-    residual: float
-    total_deviation: float
-    model_deviation: float
-    residual_deviation: float
-
-
-@dataclass(frozen=True)
-class SumOfSquares:
-    """Sabit terimli EKK modelinin TKT, MKT ve HKT değerleri."""
-
-    total: float
-    model: float
-    error: float
-
-
-@dataclass(frozen=True)
-class FunctionalFormData:
-    """Fonksiyonel biçim için dönüştürülmüş, tam örneklem verisi."""
-
-    form: FunctionalForm
-    data: pd.DataFrame
-    dependent_name: str
-    explanatory_name: str
-    logged_dependent: bool
-    logged_explanatory: bool
 
 
 def prepare_model_data(frame: pd.DataFrame, dependent: str, explanatory: str) -> pd.DataFrame:
@@ -188,81 +148,6 @@ def observation_result(result: SimpleOLSResult, position: int) -> dict[str, floa
     }
 
 
-def observation_decomposition(result: SimpleOLSResult, position: int) -> ObservationDecomposition:
-    """Seçili gözlem için Y−Ȳ=(Ŷ−Ȳ)+û eşitliğini hesaplar."""
-    item = observation_result(result, position)
-    mean_observed = float(result.observed_values.mean())
-    total_deviation = float(item["observed"]) - mean_observed
-    model_deviation = float(item["predicted"]) - mean_observed
-    residual = float(item["residual"])
-    return ObservationDecomposition(
-        observed=float(item["observed"]), mean_observed=mean_observed, fitted=float(item["predicted"]),
-        residual=residual, total_deviation=total_deviation, model_deviation=model_deviation,
-        residual_deviation=residual,
-    )
-
-
-def sum_of_squares(result: SimpleOLSResult) -> SumOfSquares:
-    """TKT, MKT ve HKT'yi model sonucundan hesaplar."""
-    observed = result.observed_values.to_numpy(dtype=float)
-    fitted = result.fitted_values.to_numpy(dtype=float)
-    residuals = result.residuals.to_numpy(dtype=float)
-    if not (np.isfinite(observed).all() and np.isfinite(fitted).all() and np.isfinite(residuals).all()):
-        raise ValueError("Kareler toplamları için tüm model değerleri sonlu olmalıdır.")
-    mean_observed = float(observed.mean())
-    total = float(np.square(observed - mean_observed).sum())
-    if np.isclose(total, 0.0, atol=1e-12):
-        raise ValueError("TKT sıfır olduğunda R-kare tanımlı değildir.")
-    return SumOfSquares(
-        total=total,
-        model=float(np.square(fitted - mean_observed).sum()),
-        error=float(np.square(residuals).sum()),
-    )
-
-
-def validate_sum_of_squares(sums: SumOfSquares, *, tolerance: float = 1e-8) -> bool:
-    """TKT=MKT+HKT ayrıştırmasını uygun sayısal toleransla doğrular."""
-    if tolerance < 0:
-        raise ValueError("Tolerans negatif olamaz.")
-    return bool(np.isclose(sums.total, sums.model + sums.error, rtol=tolerance, atol=tolerance))
-
-
-def r_squared_from_model_sum(sums: SumOfSquares) -> float:
-    """R-kareyi MKT/TKT biçiminde hesaplar."""
-    if np.isclose(sums.total, 0.0, atol=1e-12):
-        raise ValueError("TKT sıfır olduğunda R-kare tanımlı değildir.")
-    return sums.model / sums.total
-
-
-def r_squared_from_error_sum(sums: SumOfSquares) -> float:
-    """R-kareyi 1−HKT/TKT biçiminde hesaplar."""
-    if np.isclose(sums.total, 0.0, atol=1e-12):
-        raise ValueError("TKT sıfır olduğunda R-kare tanımlı değildir.")
-    return 1.0 - sums.error / sums.total
-
-
-def rescaled_coefficients(result: SimpleOLSResult, *, dependent_scale: float = 1.0, explanatory_scale: float = 1.0) -> tuple[float, float]:
-    """Y'=aY ve X'=bX için yeni sabit ve eğimi cebirsel olarak verir."""
-    a = validate_unit_scale(dependent_scale, label="Y çarpanı")
-    b = validate_unit_scale(explanatory_scale, label="X çarpanı")
-    return result.intercept * a, result.slope * a / b
-
-
-def validate_unit_scale(value: float, *, label: str = "Ölçü birimi çarpanı") -> float:
-    """Ölçü birimi dönüşüm çarpanının pozitif ve belirlenen aralıkta olduğunu doğrular."""
-    try:
-        scale = float(value)
-    except (TypeError, ValueError) as error:
-        raise ValueError(f"{label} sayısal olmalıdır.") from error
-    if not np.isfinite(scale):
-        raise ValueError(f"{label} sonlu bir sayı olmalıdır.")
-    if scale <= 0:
-        raise ValueError(f"{label} pozitif olmalıdır; negatif değer ölçü birimi değil işaret dönüşümüdür.")
-    if not MIN_UNIT_SCALE <= scale <= MAX_UNIT_SCALE:
-        raise ValueError(f"{label} {MIN_UNIT_SCALE:g} ile {MAX_UNIT_SCALE:g} arasında olmalıdır.")
-    return scale
-
-
 def format_number(value: float, *, decimals: int = 4) -> str:
     """Sonlu sayıyı büyüklüğüne göre kısa ondalık veya bilimsel gösterimle biçimler."""
     try:
@@ -297,41 +182,3 @@ def format_numerical_difference(value: float, *, decimals: int = 6, zero_toleran
     if abs(number) <= zero_tolerance:
         return "sayısal tolerans içinde 0"
     return format_student_number(number, decimals=decimals, zero_tolerance=zero_tolerance)
-
-
-def transform_functional_form(
-    frame: pd.DataFrame, dependent: str, explanatory: str, form: FunctionalForm
-) -> FunctionalFormData:
-    """Dört temel biçim için dönüşümü, log uygunluğunu açıkça doğrulayarak uygular."""
-    if form not in {"düzey-düzey", "log-düzey", "düzey-log", "log-log"}:
-        raise ValueError("Desteklenmeyen fonksiyonel biçim.")
-    raw = prepare_model_data(frame, dependent, explanatory)
-    logged_dependent = form in {"log-düzey", "log-log"}
-    logged_explanatory = form in {"düzey-log", "log-log"}
-    for column, logged in ((dependent, logged_dependent), (explanatory, logged_explanatory)):
-        if logged:
-            invalid_count = int((raw[column] <= 0).sum())
-            if invalid_count:
-                raise ValueError(
-                    f"{column} için log dönüşümü yapılamaz: {invalid_count} gözlem sıfır veya negatiftir; örneklem değiştirilmedi."
-                )
-    transformed = pd.DataFrame(index=raw.index)
-    dependent_name = f"ln({dependent})" if logged_dependent else dependent
-    explanatory_name = f"ln({explanatory})" if logged_explanatory else explanatory
-    transformed[dependent_name] = np.log(raw[dependent]) if logged_dependent else raw[dependent]
-    transformed[explanatory_name] = np.log(raw[explanatory]) if logged_explanatory else raw[explanatory]
-    return FunctionalFormData(
-        form=form, data=transformed, dependent_name=dependent_name, explanatory_name=explanatory_name,
-        logged_dependent=logged_dependent, logged_explanatory=logged_explanatory,
-    )
-
-
-def functional_form_interpretation(form: FunctionalForm, slope: float) -> str:
-    """Ders notundaki yaklaşık ve tam yüzde yorum bileşenini üretir."""
-    if form == "düzey-düzey":
-        return f"X bir birim arttığında Y'nin tahmin edilen değeri {format_number(slope)} birim değişir."
-    if form == "log-düzey":
-        return f"X bir birim arttığında Y yaklaşık %{format_number(100 * slope)} değişir; tam yüzde karşılığı %{format_number(100 * (np.exp(slope) - 1))}'dir."
-    if form == "düzey-log":
-        return f"X yüzde 1 arttığında Y yaklaşık {format_number(slope / 100)} birim değişir."
-    return f"X yüzde 1 arttığında Y yaklaşık %{format_number(slope)} değişir; eğim katsayısı esnekliktir."

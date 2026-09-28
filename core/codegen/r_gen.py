@@ -10,8 +10,10 @@ from core.codegen.base import (
     HEAT_LOW,
     PALETTE,
     REFERENCE_COLORS,
+    STAT_NAMES,
     Generator,
     flatten,
+    listing,
     text,
     uses_charts,
     wrapped,
@@ -268,6 +270,25 @@ _REGRESSION_TABLE = [
     "  tablo",
     "}",
 ]
+_REGRESSION_TABLE_OPTIONS = [
+    "# Makale tipi tablo: her terim için katsayı ve (sh = TRUE ise) standart hata (terim_sh), sonra n ve",
+    "# (r2 = TRUE ise) R²",
+    "makale_tablosu <- function(modeller, terimler, sh = TRUE, r2 = TRUE) {",
+    "  sutunlar <- lapply(modeller, function(m) {",
+    "    kt <- summary(m)$coefficients",
+    '    rownames(kt)[rownames(kt) == "(Intercept)"] <- "Intercept"',
+    '    sutun <- if (sh) c("Estimate", "Std. Error") else "Estimate"',
+    "    hucreler <- unlist(lapply(terimler, function(terim) {",
+    "      if (terim %in% rownames(kt)) kt[terim, sutun] else rep(NA, length(sutun))",
+    "    }))",
+    "    c(hucreler, nobs(m), if (r2) summary(m)$r.squared)",
+    "  })",
+    "  tablo <- do.call(cbind, sutunlar)",
+    '  satirlar <- if (sh) as.vector(rbind(terimler, paste0(terimler, "_sh"))) else terimler',
+    '  rownames(tablo) <- c(satirlar, "n", if (r2) "r2")',
+    "  tablo",
+    "}",
+]
 _STARS = [
     "# Katsayının yanındaki yıldız: *** p < 0,01; ** p < 0,05; * p < 0,10",
     'yildiz <- function(p) if (p < 0.01) "***" else if (p < 0.05) "**" else if (p < 0.10) "*" else ""',
@@ -355,7 +376,8 @@ class RGenerator(Generator):
         if any(isinstance(op, TreeDiagram) for op in flat):
             lines += _TREE_BOX + [""]
         if any(isinstance(op, RegressionTable) for op in flat):
-            lines += _REGRESSION_TABLE + [""]
+            options = any(isinstance(op, RegressionTable) and not (op.standard_errors and op.r2) for op in flat)
+            lines += (_REGRESSION_TABLE_OPTIONS if options else _REGRESSION_TABLE) + [""]
             if any(isinstance(op, RegressionTable) and op.stars for op in flat):
                 lines += _STARS + [""]
         if with_checks:
@@ -434,12 +456,19 @@ class RGenerator(Generator):
             return [f"# {op.comment}", f"{op.name} <- lm({op.formula}, data = {op.frame})"]
         if isinstance(op, ShowModel):
             summary = f"summary({op.model})" if op.stars else f"summary({op.model}), signif.stars = FALSE"
+            limited = "se" not in op.columns  # konu standart hatayı henüz işlemedi
+            note = []
+            if limited:
+                read = listing(("katsayılar (Estimate)", *(STAT_NAMES[stat] for stat in op.stats)))
+                note = [f"# Tam çıktı yazdırılır; bu adımda yalnız {read} okunur.",
+                        "# Std. Error, t value, Pr(>|t|) ve güven aralıkları Konu 7'de yorumlanır."]
             return [
                 f"# {op.comment}",
                 "# R özetindeki karşılıklar: Estimate = coef, Std. Error = std err, t value = t, Pr(>|t|) = P>|t|,",
                 "# Multiple R-squared = R-squared. R özeti gözlem sayısını yazmaz; nobs() ile yazdırılır.",
+                *note,
                 f"print({summary})",
-                f"print(confint({op.model}))  # %95 güven aralıkları",
+                f"print(confint({op.model}))  # %95 güven aralıkları" + (" (Konu 7)" if limited else ""),
                 f'cat("Gözlem sayısı:", nobs({op.model}), "\\n")',
             ]
         if isinstance(op, ModelValue):
@@ -454,7 +483,8 @@ class RGenerator(Generator):
             models = ", ".join(f"{text(heading)} = {name}" for heading, name in op.models)
             lines = [
                 f"# {op.comment}",
-                f"{op.result} <- makale_tablosu(list({models}), {_vector(op.terms)})",
+                f"{op.result} <- makale_tablosu(list({models}), {_vector(op.terms)}"
+                f"{'' if op.standard_errors else ', sh = FALSE'}{'' if op.r2 else ', r2 = FALSE'})",
                 f"print(round({op.result}, {op.decimals}))",
             ]
             if op.stars:
@@ -653,6 +683,13 @@ class RGenerator(Generator):
                 "grid()",
             ]
             names, colors, types = [], [], []
+            if op.means:
+                lines += [
+                    f"# {op.means}: aynı {op.x} değerindeki gözlemlerin {op.y} ortalaması",
+                    f"ortalama <- aggregate({op.y} ~ {op.x}, data = {op.frame}, FUN = mean)",
+                    f'points(ortalama${op.x}, ortalama${op.y}, pch = 21, bg = "{PALETTE[3]}", '
+                    'col = "white", cex = 1.6)',
+                ]
             if op.fit_line:
                 lines += [
                     "# Tahmin edilen doğru (sabit terim ve eğim veriden)",
@@ -664,13 +701,24 @@ class RGenerator(Generator):
             for index, (first, second, label) in enumerate(op.lines):
                 color = REFERENCE_COLORS[index % len(REFERENCE_COLORS)]
                 lines += [
-                    f"# {label}: y = sabit + eğim · x (veri üretim sürecinden bilinen doğru)",
+                    f"# {label}: y = sabit + eğim · x (kesikli çizgi)",
                     f'abline(a = {_parameter(first)}, b = {_parameter(second)}, col = "{color}", lty = 2, lwd = 2.5)',
                 ]
                 names.append(label)
                 colors.append(color)
                 types.append("2")
-            if names:
+            if op.means:
+                # Açıklama: ortalamalar nokta (pch), doğrular çizgi (lty) olarak.
+                entries = [op.means, *names]
+                legend = ", ".join(f'"{_quote(name)}"' for name in entries)
+                palette = ", ".join(f'"{color}"' for color in (PALETTE[3], *colors))
+                marks = ", ".join(["19", *("NA" for _ in names)])
+                kinds = ", ".join(["NA", *types])
+                lines += [
+                    f'legend("topleft", legend = c({legend}),',
+                    f'       col = c({palette}), pch = c({marks}), lty = c({kinds}), lwd = 2.5, bty = "n")',
+                ]
+            elif names:
                 legend = ", ".join(f'"{_quote(name)}"' for name in names)
                 palette = ", ".join(f'"{color}"' for color in colors)
                 if len(names) == 1:

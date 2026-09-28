@@ -14,6 +14,7 @@ from __future__ import annotations
 import ast
 import math
 import re
+import unicodedata
 from dataclasses import dataclass
 
 import numpy as np
@@ -36,6 +37,37 @@ class Symbol:
     low: float = 0.5
     high: float = 3.0
     aliases: tuple[str, ...] = ()
+
+
+def bar_aliases(letter: str) -> tuple[str, ...]:
+    """Ortalama için öğrencinin yazabileceği biçimler: X̄, \\bar{X}, \\overline{X}, X_bar (büyük ve küçük harf)."""
+
+    forms: list[str] = []
+    for item in (letter.upper(), letter.lower()):
+        forms += [f"{item}\u0304", f"{item}\u0305", f"\\bar{item}", f"\\bar {item}", f"\\overline{item}",
+                  f"\\overline {item}", f"{item}_bar"]
+        composed = unicodedata.normalize("NFC", f"{item}\u0304")  # Ȳ, ȳ tek karakterdir; X̄ değildir
+        if len(composed) == 1:
+            forms.append(composed)
+    return tuple(forms)
+
+
+def beta_aliases(index: int) -> tuple[str, ...]:
+    """Anakütle parametresi için biçimler: β₀, β_0, \\beta_0, beta0."""
+
+    number, subscript = str(index), "₀₁₂₃"[index]
+    return (f"\\beta_{number}", f"\\beta{number}", f"β_{number}", f"β{number}", f"β{subscript}",
+            f"beta_{number}", f"beta{number}")
+
+
+def beta_hat_aliases(index: int) -> tuple[str, ...]:
+    """Tahmin için biçimler: β̂₀, \\hat{\\beta}_0, \\widehat{\\beta}_0, b0hat. Süslü parantezler okunmadan önce
+    silindiği için ``\\hat{\\beta}_0`` metni ``\\hat\\beta_0`` olarak eşleşir."""
+
+    number, subscript, hat = str(index), "₀₁₂₃"[index], "\u0302"
+    return (f"\\hat\\beta_{number}", f"\\widehat\\beta_{number}", f"\\hat\\beta{number}",
+            f"\\widehat\\beta{number}", f"β{hat}_{number}", f"β{hat}{number}", f"β{hat}{subscript}",
+            f"betahat_{number}", f"betahat{number}", f"beta{number}hat", f"bhat{number}", f"b{number}hat")
 
 
 _TOKEN = re.compile(r"\s*(?:(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|([A-Za-z_]\w*)|(\*\*|[-+*/()]))")

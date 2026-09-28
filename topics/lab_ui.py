@@ -217,18 +217,30 @@ def display_table(op, table: pd.DataFrame, label: Callable[[str], str] = lambda 
     raise TypeError(f"Tablo türü tanınmıyor: {type(op).__name__}")
 
 
+def coefficient_number(value: float, decimals: int) -> str:
+    """Katsayının ekran biçimi: çok küçük katsayıda (ör. 0,000402) en az üç anlamlı basamak gösterilir; aksi hâlde
+    ``decimals`` basamak (4 basamakta 0,0004 yazılıp bilgi kaybolmasın)."""
+
+    if value != 0 and np.isfinite(value) and abs(value) < 10 ** (2 - decimals):
+        decimals = max(decimals, 2 - int(np.floor(np.log10(abs(value)))))
+    return tr_number(value, decimals)
+
+
 def coefficient_display(op: ShowModel, result, label: Callable[[str], str]) -> pd.DataFrame:
     """Yazılım çıktısının katsayı tablosu, Türkçe sayılarla; satırlar terimler (sabit terim ilk)."""
 
     table = RG.coefficient_table(result)
     shown = pd.DataFrame({"Terim": [f"{RG.term_label(term, label)} · {term}" for term in table.index]})
     for column in op.columns:
-        shown[_COEF_LABELS[column]] = [tr_number(value, _COEF_DECIMALS[column]) for value in table[column]]
+        if column == "coef":
+            shown[_COEF_LABELS[column]] = [coefficient_number(value, _COEF_DECIMALS[column]) for value in table[column]]
+        else:
+            shown[_COEF_LABELS[column]] = [tr_number(value, _COEF_DECIMALS[column]) for value in table[column]]
     return shown
 
 
 def regression_display(op: RegressionTable, state: LabState, label: Callable[[str], str]) -> pd.DataFrame:
-    """Makale tipi tablo: katsayı (yıldızla) ve altında parantez içinde standart hata."""
+    """Makale tipi tablo: katsayı (yıldızla) ve altında parantez içinde standart hata (``standard_errors`` ise)."""
 
     table = state.tables[op.result]
     marks = RG.table_stars(op, state.models) if op.stars else {}
@@ -236,12 +248,17 @@ def regression_display(op: RegressionTable, state: LabState, label: Callable[[st
     for term in op.terms:
         coefficients, errors = {"": RG.term_label(term, label)}, {"": ""}
         for heading, _ in op.models:
-            value, error = table.loc[term, heading], table.loc[f"{term}_sh", heading]
-            coefficients[heading] = "" if pd.isna(value) else tr_number(value, op.decimals) + marks.get((term, heading), "")
-            errors[heading] = "" if pd.isna(error) else f"({tr_number(error, op.decimals)})"
-        rows += [coefficients, errors]
+            value = table.loc[term, heading]
+            coefficients[heading] = ("" if pd.isna(value)
+                                     else coefficient_number(value, op.decimals) + marks.get((term, heading), ""))
+            if op.standard_errors:
+                error = table.loc[f"{term}_sh", heading]
+                errors[heading] = "" if pd.isna(error) else f"({tr_number(error, op.decimals)})"
+        rows += [coefficients, errors] if op.standard_errors else [coefficients]
     rows.append({"": "Gözlem sayısı", **{heading: _count(table.loc["n", heading]) for heading, _ in op.models}})
-    rows.append({"": "R²", **{heading: tr_number(table.loc["r2", heading], op.decimals) for heading, _ in op.models}})
+    if op.r2:
+        rows.append({"": "R²", **{heading: tr_number(table.loc["r2", heading], op.decimals)
+                                  for heading, _ in op.models}})
     return pd.DataFrame(rows).rename(columns={"": "Değişken"})
 
 
@@ -326,14 +343,18 @@ def _render_navigation(spec: LabSpec) -> LabStep:
     numbers = [step.number for step in spec.steps]
     if st.session_state.get(key) not in numbers:
         st.session_state[key] = numbers[0]
-    left, middle, right = st.columns([1, 6, 1], vertical_alignment="bottom")
-    left.button("‹ Önceki", key=f"{spec.topic_key}_lab_prev", on_click=_shift, args=(spec, -1), width="stretch")
-    middle.segmented_control(
+    # Adım düğmeleri satırın tamamını kullanır; on adımlı bir konu da geniş ekranda tek satıra sığar.
+    st.segmented_control(
         "Adım", options=numbers, format_func=lambda number: f"Adım {number}", key=key,
         label_visibility="collapsed", width="stretch",
     )
-    right.button("Sonraki ›", key=f"{spec.topic_key}_lab_next", on_click=_shift, args=(spec, 1), width="stretch")
-    return spec.step(st.session_state.get(key) or numbers[0])
+    current = st.session_state.get(key) or numbers[0]
+    left, _, right = st.columns([1, 4, 1])
+    left.button("‹ Önceki", key=f"{spec.topic_key}_lab_prev", on_click=_shift, args=(spec, -1), width="stretch",
+                disabled=current == numbers[0])
+    right.button("Sonraki ›", key=f"{spec.topic_key}_lab_next", on_click=_shift, args=(spec, 1), width="stretch",
+                 disabled=current == numbers[-1])
+    return spec.step(current)
 
 
 # --- Sonuçlar ----------------------------------------------------------------------
@@ -415,8 +436,10 @@ def render_operations(operations, state: LabState, label: Callable[[str], str], 
             if op.stars:
                 st.caption("Parantez içinde standart hatalar. *** p < 0,01; ** p < 0,05; * p < 0,10 "
                            "(p-değerleri Konu 7'de ayrıntılı işlenir).")
-            else:
+            elif op.standard_errors:
                 st.caption("Parantez içinde standart hatalar.")
+            else:
+                st.caption("Yalnız katsayılar; standart hatalar tabloya Konu 7'de eklenir.")
             continue
         if isinstance(op, InlineData):
             frame = state.frames[op.frame]
@@ -596,11 +619,23 @@ def _render_controls(spec: LabSpec, step: LabStep, problems: list[str]) -> None:
                     st.slider(control.label, min_value=int(control.minimum), max_value=int(control.maximum),
                               step=int(control.step), key=key, help=control.help or None)
                 else:
-                    st.slider(control.label, min_value=float(control.minimum), max_value=float(control.maximum),
-                              step=float(control.step), key=key, help=control.help or None,
-                              format=f"%.{control.decimals}f")
+                    decimal_slider(st, control.label, minimum=float(control.minimum), maximum=float(control.maximum),
+                                   step=float(control.step), decimals=control.decimals, key=key,
+                                   help=control.help or None)
         for problem in problems:
             st.warning(problem, icon=":material/warning:")
+
+
+def decimal_slider(container, label: str, *, minimum: float, maximum: float, step: float, decimals: int, key: str,
+                   help: str | None = None) -> None:
+    """Kesirli kaydırıcı; değerler ondalık virgülle yazılır (``st.slider`` biçimi yalnız ondalık noktayı bilir)."""
+
+    options = [round(minimum + index * step, decimals) for index in range(int(round((maximum - minimum) / step)) + 1)]
+    current = st.session_state.get(key)
+    if current is not None and current not in options:
+        st.session_state[key] = min(options, key=lambda option: abs(option - float(current)))
+    container.select_slider(label, options=options, key=key, help=help,
+                            format_func=lambda value: tr_number(value, decimals))
 
 
 def upstream_steps(spec: LabSpec, step: LabStep, choices: dict[str, object]) -> list[LabStep]:

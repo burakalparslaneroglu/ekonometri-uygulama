@@ -28,7 +28,7 @@ TOPIC_MODULES = {
 }
 
 # Uygulama + Sezgi + Kendini sına yapısına geçmiş konular: kod iki dilde, tek tanımdan üretilir.
-MIGRATED_TOPICS = {"konu00", "konu01", "konu02"}
+MIGRATED_TOPICS = {"konu00", "konu01", "konu02", "konu03", "konu04"}
 
 
 def test_registry_has_exact_course_order() -> None:
@@ -65,5 +65,6 @@ def test_migrated_topics_use_three_tabs_and_single_source_definitions() -> None:
 def test_legacy_modules_of_migrated_topics_are_gone() -> None:
     for name in ("core/research_question_utils.py", "core/scenario_registry.py", "core/data_structure_utils.py",
                  "core/group_comparison_utils.py", "tests/test_konu01_ui.py", "tests/test_konu02_ui.py",
-                 "tests/test_konu01_questions.py", "tests/test_konu02_questions.py"):
+                 "tests/test_konu01_questions.py", "tests/test_konu02_questions.py", "core/konu04_questions.py",
+                 "tests/test_konu03_ui.py", "tests/test_konu04_ui.py", "tests/test_konu04_utils.py"):
         assert not Path(name).exists(), name
