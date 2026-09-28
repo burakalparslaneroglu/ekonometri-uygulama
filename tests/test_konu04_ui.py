@@ -19,7 +19,7 @@ def _visible_text(app: AppTest) -> str:
 def test_konu04_ui_loads_blocks_forms_and_questions() -> None:
     app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py")
     app.run(timeout=30)
-    app.radio[0].set_value(app.radio[0].options[3]).run(timeout=30)
+    app.radio(key="selected_topic").set_value(app.radio(key="selected_topic").options[3]).run(timeout=30)
     assert len(app.exception) == 0
     visible = _visible_text(app)
     for term in ("tkt", "mkt", "hkt", "r-kare", "olcu birimi", "fonksiyonel bicim"):

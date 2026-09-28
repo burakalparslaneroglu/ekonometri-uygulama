@@ -12,7 +12,7 @@ def _visible_text(app: AppTest) -> str:
 def test_konu03_ui_shows_fitted_values_and_residuals_without_konu04_content() -> None:
     app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py")
     app.run(timeout=30)
-    app.radio[0].set_value(app.radio[0].options[2]).run(timeout=30)
+    app.radio(key="selected_topic").set_value(app.radio(key="selected_topic").options[2]).run(timeout=30)
     assert len(app.exception) == 0
     visible_text = _visible_text(app)
     assert "r-kare" not in visible_text

@@ -141,10 +141,12 @@ def white_auxiliary_design(result:OLSInferenceResult)->tuple[pd.DataFrame,tuple[
 def white_test_details(result:OLSInferenceResult)->WhiteTestDetails:
     """White LM testini açık yardımcı tasarım ve manuel nR² ile üretir."""
     design,squares,interactions=white_auxiliary_design(result)
-    independent=[]; current=np.empty((len(design),0))
+    independent=[]; current=np.empty((len(design),0)); current_rank=0
     for name in design.columns:
         candidate=np.column_stack((current,design[name].to_numpy(float)))
-        if np.linalg.matrix_rank(candidate)>np.linalg.matrix_rank(current): independent.append(name); current=candidate
+        # Boş matrisin rankı 0'dır; np.linalg.matrix_rank sıfır sütunlu matriste ValueError verir (numpy 1.26–2.4).
+        candidate_rank=int(np.linalg.matrix_rank(candidate))
+        if candidate_rank>current_rank: independent.append(name); current=candidate; current_rank=candidate_rank
     reduced=design.loc[:,independent]
     auxiliary=sm.OLS(result.residuals.to_numpy(float)**2,reduced).fit()
     white=het_white(result.residuals,sm.add_constant(result.design_data,has_constant="add"))

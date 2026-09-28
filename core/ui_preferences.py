@@ -41,6 +41,7 @@ def text_scale_css(scale: object) -> str:
         "code": 0.90 * value,
         "panel": 0.95 * value,
         "badge": 0.78 * value,
+        "lead": 1.08 * value,
         "h1": min(2.95, 2.35 * value),
         "h2": min(2.30, 1.80 * value),
         "h3": min(1.80, 1.40 * value),
@@ -49,7 +50,9 @@ def text_scale_css(scale: object) -> str:
     <style>
     :root {{ --app-font-scale: {value:.2f}; }}
     .stApp {{ font-size: {sizes['body']:.3f}rem; }}
-    .app-kicker, .topic-badge {{ font-size: {sizes['badge']:.3f}rem; }}
+    .app-kicker, .topic-badge, .topic-band .topic-number, .guiding-question .label {{
+      font-size: {sizes['badge']:.3f}rem; }}
+    .guiding-question p {{ font-size: {sizes['lead']:.3f}rem; }}
     [data-testid="stSidebar"], [data-testid="stSidebar"] .stRadio label,
     [data-testid="stSidebar"] p {{ font-size: {sizes['sidebar']:.3f}rem; }}
     [data-testid="stCaptionContainer"] {{ font-size: {sizes['caption']:.3f}rem; }}

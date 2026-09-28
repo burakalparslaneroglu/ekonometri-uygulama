@@ -4,6 +4,8 @@
 
 Uygulama çalışma zamanında bir büyük dil modeli veya dış API kullanmaz. Wooldridge veri setleri `wooldridge` Python paketi üzerinden yerel olarak yüklenir.
 
+Konu 1–2 yeni yapıdadır: her konu **Uygulama**, **Sezgi** ve **Kendini sına** sekmelerinden oluşur. Uygulama sekmesi notlardaki laboratuvarın adımlarını izler ve notlarda basılı her sayıyı gerçek veriyle yeniden üretir; öğrenci bir adımda farklı bir spesifikasyon seçebilir (ör. açıklayıcı değişken), seçim sonraki adımlara geçer ve notlardaki modelle yan yana gösterilir. Her adımın ve her Sezgi deneyinin Python ve R kodu aynı tanımdan üretilir. Konu 3–12 eski sayfalarıyla çalışır ve ikişerli bloklar hâlinde yeni yapıya taşınır.
+
 ## Kapsam
 
 1. Ekonometri ve Ampirik Araştırma
@@ -19,6 +21,12 @@ Uygulama çalışma zamanında bir büyük dil modeli veya dış API kullanmaz. 
 11. Etkileşim Terimleri ve Grup Farkları
 12. Heteroskedastisite ve Dayanıklı Çıkarım
 
+| Konu | Yapı | Uygulama verisi | Sezgi | Kendini sına |
+|---|---|---|---|---|
+| 1 | Uygulama · Sezgi · Kendini sına | WAGE1 (§1.6) | 3 deney | 24 soru |
+| 2 | Uygulama · Sezgi · Kendini sına | WAGE1, PHILLIPS, CPS78_85, WAGEPAN, JTRAIN2 | 3 deney | 24 soru |
+| 3–12 | Eski sayfa (taşınacak) | — | — | — |
+
 ## Teknik yapı
 
 - Python 3.12
@@ -28,6 +36,9 @@ Uygulama çalışma zamanında bir büyük dil modeli veya dış API kullanmaz. 
 - Plotly
 - Wooldridge veri paketi
 - pytest ve Streamlit AppTest
+- Üretilen kod: Python (`wooldridge`, pandas, statsmodels, matplotlib) ve temel R (tek paket: `wooldridge`)
+
+İki dilde aynı sayı sözleşmesi: veri üzerindeki deterministik hesaplar (betimsel özet, EKK) iki dilde basılı basamakta aynı sayıyı verir; Sezgi deneylerinde Python kodu uygulamanın sayılarını birebir üretir, R farklı rastgele sayı üreteci kullandığı için yalnız dağılımda aynıdır.
 
 Arayüz kodu `topics/`, ortak hesaplama ve soru altyapısı `core/`, görsel stiller `assets/`, otomatik kontroller `tests/` altında bulunur. Ayrıntılı mimari açıklama için [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) dosyasına bakın.
 
@@ -63,11 +74,13 @@ Yalnız uygulamayı çalıştırmak için geliştirme bağımlılıkları yerine
 git diff --check
 ```
 
+`requirements-dev.txt` testlerin ihtiyaç duyduğu paketleri de kurar (üretilen Python kodu için matplotlib). Üretilen R kodunu çalıştıran testler `Rscript` ve `wooldridge` R paketini ister (`install.packages("wooldridge")`). `Rscript` önce `RSCRIPT` ortam değişkeninde, sonra PATH'te, Windows'ta sonra standart R kurulum klasörlerinde (`Program Files\R`, `AppData\Local\Programs\R`; en yeni sürüm) aranır. İkisinden biri yoksa R testleri atlanır; nedeni `pytest -rs` ile görülür.
+
 Sürüm adayı öncesinde otomatik testlere ek olarak Konu 01–12, metin ölçeği seçenekleri, soru düğmeleri, tablolar, metric kartları ve grafik eksenleri canlı Streamlit oturumunda kontrol edilmelidir.
 
 ## Veri kaynakları
 
-Uygulama Wooldridge veri paketindeki başlıca `WAGE1`, `HPRICE1`, `PHILLIPS`, `CPS78_85`, `WAGEPAN` ve `JTRAIN2` veri setlerini kullanır. Veri açıklamaları ve uygulamada izin verilen model eşleşmeleri `core/data_registry.py` içinde tanımlıdır.
+Uygulama Wooldridge veri paketindeki başlıca `WAGE1`, `HPRICE1`, `PHILLIPS`, `CPS78_85`, `WAGEPAN` ve `JTRAIN2` veri setlerini kullanır (kitabın 7. baskısının verisi). Yeni yapıdaki konular veriyi ve Türkçe değişken etiketlerini `core/wooldridge_data.py` üzerinden yükler; eski sayfalar `core/data_registry.py` kullanır. Veri dosyası depoda tutulmaz: uygulama ve üretilen Python kodu `wooldridge` Python paketinden, üretilen R kodu `wooldridge` R paketinden okur; iki paketin aynı veriyi verdiği testle denetlenir.
 
 ## Dağıtım
 

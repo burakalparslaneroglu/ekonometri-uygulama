@@ -12,7 +12,7 @@ ZERO_TEXT = "sayısal tolerans içinde 0"
 def _topic10() -> AppTest:
     app = AppTest.from_file(ROOT / "app.py")
     app.run(timeout=90)
-    app.radio[0].set_value(app.radio[0].options[9]).run(timeout=120)
+    app.radio(key="selected_topic").set_value(app.radio(key="selected_topic").options[9]).run(timeout=120)
     return app
 
 

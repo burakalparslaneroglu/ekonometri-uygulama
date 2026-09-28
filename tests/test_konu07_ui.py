@@ -9,7 +9,7 @@ def _topic07() -> AppTest:
     """Uygulamayı Konu 07 seçili halde başlatır."""
     app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py")
     app.run(timeout=60)
-    app.radio[0].set_value(app.radio[0].options[6]).run(timeout=120)
+    app.radio(key="selected_topic").set_value(app.radio(key="selected_topic").options[6]).run(timeout=120)
     return app
 
 

@@ -10,7 +10,8 @@ ROOT=Path(__file__).resolve().parents[1]
 
 
 def test_all_topics_use_shared_question_actions_and_badges() -> None:
-    for number in range(1,13):
+    # Konu 1–2 Uygulama, Sezgi ve Kendini sına sekmelerine taşındı; ortak başlıkları topics/shared.py'dedir.
+    for number in range(3,13):
         topic=next((ROOT/"topics").glob(f"konu{number:02d}_*.py"))
         source=topic.read_text(encoding="utf-8")
         assert "render_question_actions" in source

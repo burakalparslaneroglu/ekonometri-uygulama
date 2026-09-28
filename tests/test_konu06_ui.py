@@ -10,7 +10,7 @@ from topics.konu06_ols_varsayimlari_yanlilik import _distribution_figure, _sensi
 def _topic06() -> AppTest:
     app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py")
     app.run(timeout=60)
-    app.radio[0].set_value(app.radio[0].options[5]).run(timeout=90)
+    app.radio(key="selected_topic").set_value(app.radio(key="selected_topic").options[5]).run(timeout=90)
     return app
 
 

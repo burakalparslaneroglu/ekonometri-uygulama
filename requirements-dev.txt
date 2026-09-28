@@ -1,2 +1,4 @@
 -r requirements.txt
 pytest>=8.0
+# Üretilen Python kodunu testlerde çalıştırmak için (uygulamanın kendisi kullanmaz)
+matplotlib>=3.8,<4

@@ -8,7 +8,7 @@ from core.data_registry import konu05_model_specs
 def test_konu05_loads_multiple_models_and_hidden_answer() -> None:
     app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py")
     app.run(timeout=40)
-    app.radio[0].set_value(app.radio[0].options[4]).run(timeout=40)
+    app.radio(key="selected_topic").set_value(app.radio(key="selected_topic").options[4]).run(timeout=40)
     assert not app.exception
     app.selectbox(key="konu05_model").set_value("W1-M").run(timeout=40)
     text = "\n".join(str(item.value) for group in (app.header, app.subheader, app.markdown, app.caption) for item in group).casefold()

@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def _topic12() -> AppTest:
     app = AppTest.from_file(ROOT / "app.py")
     app.run(timeout=90)
-    app.radio[0].set_value(app.radio[0].options[11]).run(timeout=120)
+    app.radio(key="selected_topic").set_value(app.radio(key="selected_topic").options[11]).run(timeout=120)
     return app
 
 

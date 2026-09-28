@@ -1,4 +1,4 @@
-"""Ekonometriye Giriş uygulamasının ortak arayüzü ve konu yönlendirmesi."""
+"""İKT 305 Ekonometri I uygulamasının ortak arayüzü ve konu yönlendirmesi."""
 
 from __future__ import annotations
 
@@ -7,10 +7,12 @@ from pathlib import Path
 import streamlit as st
 
 from core.app_config import APP_CONFIG
+from core.codegen.base import LANGUAGES
+from core.labs.registry import LABS
 from core.session_utils import synchronize_active_topic
+from core.topic_registry import list_topics
 from core.ui_preferences import DEFAULT_TEXT_SCALE_LABEL, TEXT_SCALE_OPTIONS, normalize_text_scale, text_scale_css
-from topics.konu01_ampirik_arastirma import render as render_konu01
-from topics.konu02_veri_turleri_nedensellik import render as render_konu02
+from topics import konu01_ampirik_arastirma, konu02_veri_turleri_nedensellik
 from topics.konu03_basit_regresyon import render as render_konu03
 from topics.konu04_ols_cikti_fonksiyonel_bicimler import render as render_konu04
 from topics.konu05_coklu_regresyon import render as render_konu05
@@ -21,11 +23,16 @@ from topics.konu09_fonksiyonel_bicimler import render as render_konu09
 from topics.konu10_kukla_degiskenler import render as render_konu10
 from topics.konu11_etkilesimler_grup_farklari import render as render_konu11
 from topics.konu12_heteroskedastisite import render as render_konu12
+from topics.lab_ui import CODE_LANGUAGE_KEY
+from topics.shared import keep_widget_state
 
+# Uygulama, Sezgi ve Kendini sına sekmeli konular. (app.py Streamlit'in ana betiğidir: modül düzeyindeki çıplak
+# metinleri "magic" ile sayfaya yazar; bu yüzden burada açıklamalar docstring değil yorum satırıdır.)
+MIGRATED_PAGES = (konu01_ampirik_arastirma, konu02_veri_turleri_nedensellik)
 
 TOPIC_RENDERERS = {
-    "konu01": render_konu01,
-    "konu02": render_konu02,
+    "konu01": konu01_ampirik_arastirma.render,
+    "konu02": konu02_veri_turleri_nedensellik.render,
     "konu03": render_konu03,
     "konu04": render_konu04,
     "konu05": render_konu05,
@@ -38,9 +45,15 @@ TOPIC_RENDERERS = {
     "konu12": render_konu12,
 }
 
+# Kenar çubuğundaki konu adı → konu anahtarı ("Konu 01 · Ekonometri ve Ampirik Araştırma" → "konu01").
+TOPIC_LABELS = {topic.label: topic.key for topic in list_topics()}
+
+# Çizilmediği çalıştırmalarda da korunan seçimler: kod dili, adım, spesifikasyon, deney ve kaydırıcılar.
+WIDGET_KEYS = frozenset({CODE_LANGUAGE_KEY}).union(*(page.widget_keys() for page in MIGRATED_PAGES))
+
 
 def load_styles(scale: float) -> None:
-    """Yerel stil dosyasını uygulamaya ekler."""
+    """Yerel stil dosyasını ve metin ölçeğini uygulamaya ekler."""
     style_path = Path(__file__).parent / "assets" / "styles.css"
     try:
         css = style_path.read_text(encoding="utf-8")
@@ -59,6 +72,7 @@ def main() -> None:
         layout="wide",
         initial_sidebar_state="expanded",
     )
+    keep_widget_state(WIDGET_KEYS)
     scale_label = st.session_state.get("text_scale_label", DEFAULT_TEXT_SCALE_LABEL)
     if scale_label not in TEXT_SCALE_OPTIONS:
         scale_label = DEFAULT_TEXT_SCALE_LABEL
@@ -69,42 +83,31 @@ def main() -> None:
     with st.sidebar:
         st.markdown(f"### {APP_CONFIG.course_name}")
         st.caption(APP_CONFIG.application_subtitle)
-        topic = st.radio(
-            "Konu seçimi",
-            options=[
-                "Konu 01 — Ekonometri ve Ampirik Araştırma",
-                "Konu 02 — Ekonomik Veri Türleri, Nedensellik ve Ceteris Paribus",
-                "Konu 03 — Basit Doğrusal Regresyon",
-                "Konu 04 — EKK Tahminini Değerlendirme: Uyum, Ölçü Birimleri ve Temel Fonksiyonel Biçimler",
-                "Konu 05 — Çoklu Regresyon Modeli ve Ceteris Paribus Yorumu",
-                "Konu 06 — EKK Varsayımları, Yansızlık ve Model Sorunları",
-                "Konu 07 — Tek Katsayı İçin Hipotez Testleri",
-                "Konu 08 — Birden Fazla Kısıtın Sınanması: F Testi ve Büyük Örneklem Mantığı",
-                "Konu 09 — Ölçekleme, Logaritmik Modeller, Karesel Terimler ve Model Seçimi",
-                "Konu 10 — Kukla Değişkenler ve Kategorik Açıklayıcı Değişkenler",
-                "Konu 11 — Etkileşim Terimleri ve Grup Farkları",
-                "Konu 12 — Heteroskedastisite ve Dayanıklı Çıkarım",
-            ],
-            label_visibility="collapsed",
-        )
+        label = st.radio("Konu seçimi", options=list(TOPIC_LABELS), key="selected_topic", label_visibility="collapsed")
+        topic_id = TOPIC_LABELS[label]
+        if topic_id in LABS:
+            st.divider()
+            st.markdown("#### Kod dili")
+            if st.session_state.get(CODE_LANGUAGE_KEY) not in LANGUAGES:
+                st.session_state[CODE_LANGUAGE_KEY] = LANGUAGES[0]
+            st.segmented_control(
+                "Kod dili", options=LANGUAGES, key=CODE_LANGUAGE_KEY, label_visibility="collapsed", width="stretch",
+                required=True,
+            )
+            st.caption("Uygulama ve Sezgi sekmelerindeki kodlar bu dilde gösterilir.")
         st.divider()
         st.markdown("#### Görünüm")
-        selected_scale = st.selectbox(
-            "Metin boyutu", tuple(TEXT_SCALE_OPTIONS), key="text_scale_label"
-        )
+        selected_scale = st.selectbox("Metin boyutu", tuple(TEXT_SCALE_OPTIONS), key="text_scale_label")
         st.session_state["text_scale"] = normalize_text_scale(TEXT_SCALE_OPTIONS[selected_scale])
         st.divider()
+        st.caption("Ders notları içerik, terminoloji ve konu sırası açısından bağlayıcı kaynaktır.")
         st.caption(APP_CONFIG.institution_name)
 
     st.markdown(f"<div class='app-kicker'>{APP_CONFIG.institution_name.upper()}</div>", unsafe_allow_html=True)
     st.title(APP_CONFIG.course_name)
     st.caption(APP_CONFIG.application_subtitle)
 
-    topic_id = next(identifier for prefix, identifier in {
-        "Konu 01": "konu01", "Konu 02": "konu02", "Konu 03": "konu03", "Konu 04": "konu04", "Konu 05": "konu05", "Konu 06": "konu06", "Konu 07": "konu07", "Konu 08": "konu08", "Konu 09": "konu09", "Konu 10": "konu10", "Konu 11": "konu11", "Konu 12": "konu12",
-    }.items() if topic.startswith(prefix))
     synchronize_active_topic(st.session_state, topic_id)
-
     TOPIC_RENDERERS[topic_id]()
 
 

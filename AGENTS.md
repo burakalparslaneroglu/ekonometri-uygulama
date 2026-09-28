@@ -1,128 +1,69 @@
-\# Ekonometri Uygulaması ve Proje Talimatları
-
-
-
-\## Proje amacı
-
-
-
-Bu depo, lisans düzeyindeki Ekonometriye Giriş dersi için Python ve
-
-Streamlit tabanlı etkileşimli bir öğretim uygulamasıdır.
-
-
-
-Ders notları konu kapsamı, terminoloji, notasyon, konu sırası ve
-
-ekonometrik yorumlar bakımından bağlayıcı kaynaktır.
-
-
-
-\## Teknik çerçeve
-
-
-
-\- Python 3.12 kullan.
-
-\- Streamlit Community Cloud ile uyumlu kod yaz.
-
-\- Sabit yerel dosya yolları kullanma.
-
-\- iş mantığını Streamlit arayüzünden ayır.
-
-\- app.py yalnızca ortak arayüz ve konu yönlendirmesi taşısın.
-
-\- Konu modülleri topics/ altında bulunsun.
-
-\- Ortak veri, model, soru ve oturum işlevleri core/ altında bulunsun.
-
-\- Ağır veya tekrarlı işlemlerde uygun Streamlit cache mekanizmasını kullan.
-
-\- Çalışma zamanı LLM veya dış API bağımlılığı ekleme.
-
-\- Secret, parola veya kişisel veri commit etme.
-
-
-
-\## Görsel tasarım
-
-
-
-Sunumlarla aynı renk paletini kullan:
-
-
-
-\- brandInk: #07373D
-
-\- brandDeep: #0C5B65
-
-\- brandTeal: #107C89
-
-\- brandBright: #15A4B5
-
-\- brandGreen: #2F9E6B
-
-\- brandRed: #B3392F
-
-
-
-Açık tema kullan. Ana metin ve vurgularda yeterli renk karşıtlığını koru.
-
-Doğru cevaplarda brandGreen, uyarılarda brandRed kullan; ancak yalnızca
-
-renge dayalı bilgi verme.
-
-\## Veri politikası
-
-
-
-\- Wooldridge verilerini wooldridge Python paketi üzerinden yükle.
-
-\- Wooldridge Excel dosyalarını depoya kopyalama.
-
-\- Her veri setinde kaynak ve değişken açıklamasını göster.
-
-\- Benzetimlerde sabit ve açık bir seed kullan.
-
-\- Kullanıcının yüklediği verileri kalıcı olarak kaydetme.
-
-
-
-\## Pedagojik kurallar
-
-
-
-\- Arayüz dili Türkçe olsun.
-
-\- Önemli ingilizce terimler ilk kullanımda parantez içinde verilebilir.
-
-\- Cross-sectional data için yatay kesit verisi terimini kullan.
-
-\- Kavramları ders sırasından önce kullanma.
-
-\- Sorular ders notlarındaki egzersizlerin kopyası olmasın.
-
-\- Soruları hesaplanan sonuçlara göre deterministik olarak üret.
-
-\- Cevabı yalnızca öğrenci Cevabı göster düğmesine bastığında göster.
-
-\- istatistiksel anlamlılık ile iktisadi önemi ayır.
-
-\- Araştırma tasarımı desteklemiyorsa nedensel dil kullanma.
-
-
-
-\## Kod kalitesi
-
-
-
-\- Fonksiyonlarda type hint ve kısa docstring kullan.
-
-\- Sessizce hata yutma.
-
-\- Kullanıcıya anlaşılır hata mesajı göster.
-
-\- Sayısal hesaplamalar için pytest testleri yaz.
-
-\- Değişiklik sonrasında testleri ve Streamlit başlangıç kontrolünü çalıştır.
-
+# İKT 305 Ekonometri I — Depo Kuralları
+
+Bu depo, İzmir Bakırçay Üniversitesi İKT 305 Ekonometri I dersi (2026–2027) için Python ve Streamlit tabanlı
+etkileşimli öğretim uygulamasıdır. Ana kaynak: Wooldridge, J. M. (2020). *Introductory Econometrics: A Modern
+Approach* (7. baskı). Cengage.
+
+## Bağlayıcı kurallar
+
+1. Güncel yerel ders notları konu sırası, terminoloji, notasyon, estimand, varsayım dili ve yorumlama sınırları için
+   bağlayıcıdır.
+2. Ders notu, sunum, uygulama veya literatür arasında uyuşmazlık ya da notlarda hata bulunursa sessiz düzeltme
+   yapılmaz. Düzeltme aynı turda kaynağından başlar: önce ders notu (LaTeX), sonra ilgili sunum, sonra uygulama; notlar
+   ve sunumlar sıfır hatayla yeniden derlenir. Her değişiklik raporlanır. Notasyon veya terim gibi yoruma açık seçimler
+   gerekçesiyle bildirilir; içerik kararı gerektiren uyuşmazlıklar `NOTE_CONSISTENCY_ISSUE` olarak raporlanır ve
+   kullanıcı kararı beklenir. Notlar ve sunumlar bu depoda değil, öğretim elemanının yerel klasöründe tutulur (kural 12).
+3. Look-ahead öğretim yapılmaz. Sonraki konunun yöntemi önceki konuda aktif laboratuvar olarak açılmaz: standart hata,
+   t, p-değeri ve güven aralığı Konu 7'de; F testi Konu 8'de; heteroskedastisiteye dayanıklı çıkarım Konu 12'de açılır.
+4. Ekonometrik hesaplama, veri hazırlama, simülasyon ve soru üretimi Streamlit'ten bağımsız `core/` katmanında tutulur.
+5. `app.py` yalnız ortak kabuk, gezinme ve seçili konunun `render()` çağrısını içerir.
+6. Çalışma zamanında büyük dil modeli, dış yapay zekâ API'si veya gizli anahtar kullanılmaz.
+7. Rassallık `np.random.default_rng(seed)` ile yönetilir; Sezgi deneylerinde tohum 305'tir. Seed ve ayarlar sonuç
+   bilgisinde görünür.
+8. Yeni yöntem sayısal benchmark testi olmadan eklenmez.
+9. Araştırma tasarımı desteklemiyorsa nedensel dil kullanılmaz.
+10. Estimand, estimator ve estimate ayrımı arayüz metninde ve sonuç sözleşmelerinde korunur.
+11. Dayanıklı standart hata içselliği, eksik değişken yanlılığını veya nedensel tasarımı düzeltiyor gibi sunulmaz.
+12. Private ders materyali ve lisansı doğrulanmamış veri public depoya commit edilmez; `references_private/` izlenmez.
+    Veri depoya kopyalanmaz: Wooldridge verileri çalışma anında `wooldridge` Python paketinden, üretilen R kodunda
+    `wooldridge` R paketinden okunur. Wooldridge Excel veya CSV dosyaları depoya girmez.
+13. Her grafikte eksen adı, gerektiğinde birim, legend ve model/veri bağlamı bulunur.
+14. Ham teknik değişken adları öğrenci arayüzünde açıklamasız gösterilmez; her ad Türkçe bir etiket alır.
+15. Her dal sonunda `pytest`, `compileall` ve `git diff --check` çalıştırılır.
+16. Her konu üç sekmeden oluşur ve bu sıra korunur: **Uygulama** (notlardaki laboratuvarın adımları birebir; notlarda
+    basılı her sayı bir `Check`), **Sezgi** (DGP'si açıkça yazılmış kontrollü deneyler; soru → DGP ve parametreler →
+    neye bakıyoruz → sonuç → ne gördük → kod), **Kendini sına** (çoktan seçmeli, doğru–yanlış, boşluk doldurma,
+    denklem yazma; her soru tek kavram ve bir bölüm; bölüm sonu egzersizleri ve mini quizler tekrar edilmez).
+17. Python ve R kodu aynı tanımdan üretilir; elle yazılmış dile özgü şablon eklenmez. Notlarda Stata kodu olmadığı
+    için Stata üretilmez (kullanıcı kararı). Her adım veya deney, iki dilde aynı sayının hangi anlamda beklendiğini
+    (birebir / ayar sabitlenince / yalnız dağılımda) gösterir.
+18. Uygulama adımlarında öğrencinin seçimi (ör. açıklayıcı değişken) notlardaki spesifikasyonu varsayılan olarak
+    korur. Notlardan farklı bir seçimde kontroller gösterilmez; seçim sonraki adımlara geçer ve notlardaki model ile
+    seçilen model yan yana gösterilir.
+19. Yeni yapıya taşınan konu `tests/test_topic_contracts.py` içindeki `MIGRATED_TOPICS` kümesine eklenir. Taşınan
+    konunun eski modülleri ve testleri aynı blokta kaldırılır.
+
+## Teknik çerçeve
+
+- Python 3.12; Streamlit Community Cloud ile uyumlu kod.
+- Sabit yerel dosya yolu kullanılmaz; üretilen kod çalıştığı klasörde dosya bırakmaz.
+- Ağır veya tekrarlı işlemlerde uygun Streamlit önbelleği kullanılır.
+- Fonksiyonlarda type hint ve kısa docstring; hata sessizce yutulmaz, kullanıcıya anlaşılır Türkçe mesaj gösterilir.
+- Sayısal hesaplamalar için pytest testleri yazılır.
+
+## Görsel tasarım
+
+Sunumlarla aynı renk paleti: brandInk `#07373D`, brandDeep `#0C5B65`, brandTeal `#107C89`, brandBright `#15A4B5`,
+brandGreen `#2F9E6B`, brandRed `#B3392F`. Açık tema; yeterli renk karşıtlığı. Doğru cevaplarda brandGreen, uyarılarda
+brandRed kullanılır; bilgi yalnız renge dayandırılmaz.
+
+## Metin ve biçim
+
+- Arayüz dili Türkçedir. Önemli İngilizce terimler ilk kullanımda parantez içinde verilebilir. Cross-sectional data
+  için "yatay kesit verisi" terimi kullanılır.
+- Ondalık virgül, önde yüzde işareti (%16,5) ve tipografik eksi (−) kullanılır. Değişken bir sayıya Türkçe ek
+  getirilmez ("0,35'ye" yazılmaz). Metin "80. ..." gibi sayı ve noktayla başlamaz.
+- Beklenen değer LaTeX'te `\mathbb{E}(Y \mid X)`, düz metinde `E(Y | X)` biçiminde yazılır. Kod adları backtick ile
+  yazılır.
+- Kendini sına sekmesinde doğru cevap ve açıklama yalnız öğrenci cevabını "Kontrol et" düğmesiyle denetlediğinde
+  gösterilir. İstatistiksel anlamlılık ile iktisadi önem ayrılır.

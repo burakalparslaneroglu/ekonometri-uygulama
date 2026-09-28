@@ -1,0 +1,65 @@
+"""İKT 305 Ekonometri I konu sırası. Başlıklar ders notlarındaki bölüm adlarıdır.
+
+Yönlendirici soru yalnız yeni yapıya (Uygulama, Sezgi, Kendini sına) taşınan konularda gösterilir; metni notların
+bölüm girişindeki bağlantı kutusundan gelir.
+"""
+
+from __future__ import annotations
+
+from core.types import TopicMetadata
+
+TOPICS: tuple[TopicMetadata, ...] = (
+    TopicMetadata(
+        "konu01", 1, "Ekonometri ve Ampirik Araştırmanın Mantığı", "Ekonometri ve Ampirik Araştırma",
+        "Bir iktisadi düşünce, verilerle incelenebilecek açık bir ekonometrik çalışmaya nasıl dönüştürülür?",
+    ),
+    TopicMetadata(
+        "konu02", 2, "Ekonomik Veri Türleri, Nedensellik ve Ceteris Paribus", "Veri Türleri ve Nedensellik",
+        "Elimizdeki verinin yapısı nedir ve bu veriyle hangi karşılaştırmalar anlamlıdır; gözlenen bir ilişki ne "
+        "zaman nedensel bir etki olarak okunabilir?",
+    ),
+    TopicMetadata("konu03", 3, "Basit Doğrusal Regresyon Modeli", "Basit Doğrusal Regresyon"),
+    TopicMetadata(
+        "konu04", 4, "EKK Tahminini Değerlendirme: Uyum, Ölçü Birimleri ve Temel Fonksiyonel Biçimler",
+        "EKK Çıktısı, Uyum ve Fonksiyonel Biçimler",
+    ),
+    TopicMetadata("konu05", 5, "Çoklu Regresyon Modeli ve Ceteris Paribus Yorumu", "Çoklu Regresyon"),
+    TopicMetadata(
+        "konu06", 6, "EKK Varsayımları, Yansızlık, Eksik Değişken Yanlılığı ve Çoklu Doğrusal Bağlantı",
+        "EKK Varsayımları ve Yansızlık",
+    ),
+    TopicMetadata(
+        "konu07", 7, "Tek Katsayı İçin Hipotez Testleri: Standart Hata, t İstatistiği, p-Değeri ve Güven Aralığı",
+        "Tek Katsayı İçin Hipotez Testleri",
+    ),
+    TopicMetadata(
+        "konu08", 8, "Birden Fazla Kısıtın Sınanması: F Testi ve Büyük Örneklem Mantığı",
+        "F Testi ve Büyük Örneklem",
+    ),
+    TopicMetadata(
+        "konu09", 9, "Ölçekleme, Logaritmik Modeller, Karesel Terimler ve Model Seçimi",
+        "Ölçekleme, Log ve Karesel Terimler",
+    ),
+    TopicMetadata("konu10", 10, "Kukla Değişkenler ve Kategorik Açıklayıcı Değişkenler", "Kukla Değişkenler"),
+    TopicMetadata(
+        "konu11", 11, "Etkileşim Terimleri ve Gruplar Arasında Sabit ile Eğim Farklılıkları",
+        "Etkileşimler ve Grup Farkları",
+    ),
+    TopicMetadata(
+        "konu12", 12, "Heteroskedastisite ve Heteroskedastisiteye Dayanıklı Çıkarım",
+        "Heteroskedastisite ve Dayanıklı Çıkarım",
+    ),
+)
+
+_BY_KEY = {topic.key: topic for topic in TOPICS}
+
+
+def list_topics() -> tuple[TopicMetadata, ...]:
+    return TOPICS
+
+
+def get_topic(key: str) -> TopicMetadata:
+    try:
+        return _BY_KEY[key]
+    except KeyError as error:
+        raise KeyError(f"Tanımsız konu: {key}") from error

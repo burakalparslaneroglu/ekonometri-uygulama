@@ -38,3 +38,22 @@
   [class*="st-key-question_actions_"] [data-testid="stHorizontalBlock"] { flex-wrap: wrap; }
   [class*="st-key-question_actions_"] [data-testid="column"] { min-width: 100%; }
 }
+
+/* Uygulama, Sezgi ve Kendini sına sekmeli konuların başlığı (topics/shared.py). Yazı boyutları metin ölçeğiyle
+   birlikte core/ui_preferences.py içinde verilir. */
+.topic-band {
+  background: var(--brandInk);
+  border-left: 6px solid var(--brandBright);
+  border-radius: 6px;
+  color: #FFFFFF;
+  margin: .4rem 0 1.1rem;
+  padding: 1rem 1.2rem 1.1rem;
+}
+.topic-band .topic-number { color: #CFE9EC; font-weight: 700; letter-spacing: .08em; margin-bottom: .25rem; text-transform: uppercase; }
+.topic-band h2 { color: #FFFFFF; margin: 0; padding: 0; }
+.guiding-question { border-left: 4px solid var(--brandGreen); margin: .2rem 0 1.1rem; padding: .15rem 0 .15rem 1rem; }
+.guiding-question .label { color: var(--brandDeep); font-weight: 700; text-transform: uppercase; }
+.guiding-question p { color: var(--brandInk); margin: .25rem 0 0; }
+@media (max-width: 640px) {
+  .topic-band { padding: .9rem 1rem; }
+}
