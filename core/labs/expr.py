@@ -56,14 +56,20 @@ COMPARISONS = {"le": "<=", "lt": "<", "ge": ">=", "gt": ">", "eq": "==", "ne": "
 DISTRIBUTION_FUNCTIONS = ("dbinom", "pbinom", "dpois", "ppois", "dhyper", "phyper", "dnorm")
 """Olasılık fonksiyonları ve birikimli olasılıklar (vektör üzerinde de çalışır): Python'da ``scipy.stats``, R'de
 ``dbinom``/``pbinom``, ``dpois``/``ppois``, ``dhyper``/``phyper`` ve ``dnorm``."""
+TEST_FUNCTIONS = ("tcdf", "tsf", "tinv", "fsf", "finv")
+"""Test istatistiklerinin dağılımları: t dağılımının birikimli olasılığı P(T ≤ x), üst kuyruğu P(T > x) ve ters
+fonksiyonu (kritik değer), F dağılımının üst kuyruğu P(F > x) ve ters fonksiyonu. Python'da ``scipy.stats`` (``t``,
+``f``), R'de ``pt``/``qt``/``pf``/``qf``. Üst kuyruk doğrudan hesaplanır: 1 − P(T ≤ x) çok küçük p-değerlerinde
+(ör. 10⁻²²) sıfıra yuvarlanırdı."""
 FUNCTIONS = (
     "neg", "log", "exp", "sqrt", "abs", "maximum", "minimum", "round", "roundto", "floor", "normcdf", "normpdf",
     "norminv",
-    "cumprod", "cummean", "seq", "factorial", "comb", "perm", *DISTRIBUTION_FUNCTIONS, *COMPARISONS,
+    "cumprod", "cummean", "seq", "factorial", "comb", "perm", *DISTRIBUTION_FUNCTIONS, *TEST_FUNCTIONS, *COMPARISONS,
 )
 ARITY = {
-    **{name: 2 for name in ("maximum", "minimum", "roundto", "comb", "perm", "dpois", "ppois", *COMPARISONS)},
-    **{name: 3 for name in ("dbinom", "pbinom", "dnorm")},
+    **{name: 2 for name in ("maximum", "minimum", "roundto", "comb", "perm", "dpois", "ppois", "tcdf", "tsf", "tinv",
+                            *COMPARISONS)},
+    **{name: 3 for name in ("dbinom", "pbinom", "dnorm", "fsf", "finv")},
     "dhyper": 4, "phyper": 4,
 }
 """Birden fazla argüman alan fonksiyonların argüman sayısı; diğerleri tek argüman alır."""
@@ -251,6 +257,36 @@ def dnorm(x, mean, sd) -> Call:
     return Call("dnorm", (_wrap(x), _wrap(mean), _wrap(sd)))
 
 
+def tcdf(x, df) -> Call:
+    """t dağılımının birikimli olasılığı P(T ≤ x), serbestlik derecesi ``df`` (sol kuyruk p-değeri)."""
+
+    return Call("tcdf", (_wrap(x), _wrap(df)))
+
+
+def tsf(x, df) -> Call:
+    """t dağılımının üst kuyruğu P(T > x) (sağ kuyruk p-değeri; iki taraflı p = 2·P(T > |t|))."""
+
+    return Call("tsf", (_wrap(x), _wrap(df)))
+
+
+def tinv(q, df) -> Call:
+    """t dağılımının ters fonksiyonu: P(T ≤ c) = q olan c (ör. q = 0,975 ile yüzde 5 iki taraflı kritik değer)."""
+
+    return Call("tinv", (_wrap(q), _wrap(df)))
+
+
+def fsf(x, df1, df2) -> Call:
+    """F(df1, df2) dağılımının üst kuyruğu P(F > x): F testinin p-değeri."""
+
+    return Call("fsf", (_wrap(x), _wrap(df1), _wrap(df2)))
+
+
+def finv(q, df1, df2) -> Call:
+    """F(df1, df2) dağılımının ters fonksiyonu: P(F ≤ c) = q olan c (ör. q = 0,95 ile yüzde 5 kritik değeri)."""
+
+    return Call("finv", (_wrap(q), _wrap(df1), _wrap(df2)))
+
+
 def compare(name: str, a, b) -> Call:
     """Gösterge: ``a`` ile ``b`` karşılaştırması doğruysa 1, değilse 0 (``name``: le, lt, ge, gt, eq, ne)."""
 
@@ -413,6 +449,16 @@ def evaluate(
             return stats.hypergeom.cdf(*values)
         if expr.fn == "dnorm":
             return stats.norm.pdf(*values)
+        if expr.fn == "tcdf":
+            return stats.t.cdf(*values)
+        if expr.fn == "tsf":
+            return stats.t.sf(*values)
+        if expr.fn == "tinv":
+            return stats.t.ppf(*values)
+        if expr.fn == "fsf":
+            return stats.f.sf(*values)
+        if expr.fn == "finv":
+            return stats.f.ppf(*values)
         if expr.fn in COMPARISONS:
             left, right = np.asarray(values[0]), np.asarray(values[1])
             outcome = {
@@ -443,7 +489,10 @@ class Dialect:
 
 
 def format_number(value: float) -> str:
-    if float(value).is_integer():
+    """Koddaki sayı yazımı: tam sayı ondalıksız; çok büyük tam sayı (≥ 10¹⁶, ör. ölçek 10⁴¹) bilimsel gösterimle
+    (``1e+41``; Python ve R'de aynı sayı)."""
+
+    if float(value).is_integer() and abs(value) < 1e16:
         return str(int(value))
     return repr(float(value))
 

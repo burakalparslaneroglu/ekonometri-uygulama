@@ -229,23 +229,6 @@ def allowed_explanatory_variables(dataset_key: str, dependent: str) -> tuple[str
         ) from error
 
 
-def konu07_model_specs() -> tuple[RegressionModelSpec, ...]:
-    """Konu 07 için ham ölçekli, sabit çıkarım modellerini döndürür."""
-    return (
-        RegressionModelSpec("W7-W", "wage1", "WAGE1 — Ücret modeli", "wage", "educ", ("exper", "tenure")),
-        RegressionModelSpec("W7-L", "wage1", "WAGE1 — Log ücret modeli", "lwage", "educ", ("exper", "tenure")),
-        RegressionModelSpec("H7-P", "hprice1", "HPRICE1 — Konut fiyatı modeli", "price", "lotsize", ("sqrft", "bdrms")),
-    )
-
-
-def konu08_model_specs() -> tuple[RegressionModelSpec, ...]:
-    """Konu 08 ortak F uygulamalarının sabit model tanımlarını döndürür."""
-    return (
-        RegressionModelSpec("W8-W", "wage1", "WAGE1 — Ücret ortak testi", "wage", "educ", ("exper", "tenure")),
-        RegressionModelSpec("H8-P", "hprice1", "HPRICE1 — Konut ortak testi", "price", "sqrft", ("lotsize", "bdrms")),
-    )
-
-
 def konu09_model_specs() -> tuple[RegressionModelSpec, ...]:
     """Konu 09 WAGE1 log-ücret fonksiyonel biçim modellerini döndürür."""
     return (

@@ -1,15 +1,12 @@
-"""Konu 07 ortak çıkarım katmanının sayısal doğrulamaları."""
+"""Ortak EKK çıkarım çekirdeğinin (Konu 9–12 sayfaları) sayısal doğrulamaları."""
 
 import numpy as np
 import pandas as pd
 import pytest
+import statsmodels.formula.api as smf
 
 from core.data_registry import load_dataset
-from core.regression_inference_utils import (
-    ci_test_equivalence, coefficient_confidence_interval, coefficient_test,
-    critical_t_value, fit_ols_inference, format_p_value, scale_coefficient_inference,
-    significance_stars, simulate_confidence_coverage, simulate_standard_errors,
-)
+from core.regression_inference_utils import fit_ols_inference, format_p_value, significance_stars
 
 
 @pytest.fixture(scope="module")
@@ -18,7 +15,7 @@ def wage_result():
 
 
 def test_wage1_matches_documented_conventional_inference(wage_result) -> None:
-    """WAGE1 sonuçları ders notundaki geleneksel EKK değerleriyle uyumludur."""
+    """WAGE1 sonuçları ders notundaki geleneksel EKK değerleriyle uyumludur (Tablo 7.3)."""
     assert (wage_result.nobs, wage_result.df_resid, wage_result.covariance_type) == (526, 522, "nonrobust")
     assert wage_result.coefficients["educ"] == pytest.approx(0.5990, abs=0.0002)
     assert wage_result.standard_errors["educ"] == pytest.approx(0.0513, abs=0.0002)
@@ -27,48 +24,35 @@ def test_wage1_matches_documented_conventional_inference(wage_result) -> None:
     assert tuple(wage_result.confidence_intervals_95.loc["educ"]) == pytest.approx((0.498, 0.700), abs=0.002)
 
 
+def test_matches_statsmodels_formula_fit(wage_result) -> None:
+    """Katsayı, standart hata, SSR, R² ve artık standart sapması statsmodels ile birebir aynıdır."""
+    reference = smf.ols("wage ~ educ + exper + tenure", data=load_dataset("wage1")).fit()
+    names = ("educ", "exper", "tenure")
+    assert np.allclose(wage_result.coefficients[list(names)], reference.params[list(names)], rtol=0, atol=1e-12)
+    assert np.allclose(wage_result.standard_errors[list(names)], reference.bse[list(names)], rtol=0, atol=1e-12)
+    assert wage_result.ssr == pytest.approx(reference.ssr, rel=1e-12)
+    assert wage_result.r_squared == pytest.approx(reference.rsquared, rel=1e-12)
+    assert wage_result.residual_standard_deviation == pytest.approx(np.sqrt(reference.scale), rel=1e-12)
+
+
 def test_hprice1_uses_raw_scale() -> None:
-    """HPRICE1 Konu 07 modelinin ham ölçekli katsayıları doğrulanır."""
+    """HPRICE1 ham ölçekli katsayıları doğrulanır."""
     result = fit_ols_inference(load_dataset("hprice1"), "price", ("lotsize", "sqrft", "bdrms"))
     assert (result.nobs, result.df_resid) == (88, 84)
     assert result.coefficients["sqrft"] == pytest.approx(0.1228, abs=0.0002)
     assert result.standard_errors["bdrms"] == pytest.approx(9.0101, abs=0.001)
 
 
-def test_coefficient_tests_and_ci_equivalence(wage_result) -> None:
-    """Sıfır dışı null, kuyruk seçimi ve GA eşdeğerliği denetlenir."""
-    zero = coefficient_test(wage_result, "educ")
-    half = coefficient_test(wage_result, "educ", null_value=0.5)
-    high = coefficient_test(wage_result, "educ", null_value=0.75)
-    experience = coefficient_test(wage_result, "exper", alternative="greater")
-    assert zero.t_statistic == pytest.approx(11.68, abs=0.02)
-    assert half.t_statistic == pytest.approx(1.93, abs=0.02) and not half.reject_null
-    assert high.reject_null
-    assert experience.p_value == pytest.approx(0.032, abs=0.002)
-    assert ci_test_equivalence(half).consistent
-    assert ci_test_equivalence(experience).applicable is False
-
-
-def test_validation_and_presentation_rules(wage_result) -> None:
-    """Geçersiz girdiler, katı eşikler ve öğrenci biçimlendirmesi denetlenir."""
+def test_validation_and_presentation_rules() -> None:
+    """Geçersiz girdiler, katı yıldız eşikleri ve p-değeri biçimi denetlenir."""
     with pytest.raises(ValueError):
         fit_ols_inference(pd.DataFrame({"y": [1, 2, 3, 4], "x": [1, 1, 1, 1]}), "y", ("x",))
     with pytest.raises(ValueError):
-        coefficient_test(wage_result, "educ", alpha=1.0)
-    assert critical_t_value(10, 0.05, "two-sided") == pytest.approx(2.228, abs=0.001)
-    assert format_p_value(0.0001) == "< 0.001"
-    assert significance_stars(0.009) == "***" and significance_stars(0.10) == ""
-
-
-def test_scale_and_vectorized_simulations_are_deterministic() -> None:
-    """Ölçekleme ile iki benzetimin seed'li temel özellikleri doğrulanır."""
-    scaled = scale_coefficient_inference(0.1228, 0.0965, 0.1491, 100)
-    assert (scaled.scaled_estimate, scaled.scaled_lower, scaled.scaled_upper) == pytest.approx((12.28, 9.65, 14.91), abs=0.01)
-    first = simulate_standard_errors(nobs=50, repetitions=500, seed=19)
-    second = simulate_standard_errors(nobs=50, repetitions=500, seed=19)
-    assert np.array_equal(first.slope_estimates, second.slope_estimates)
-    assert first.empirical_slope_std == pytest.approx(first.mean_reported_standard_error, rel=0.15)
-    coverage = simulate_confidence_coverage(nobs=50, repetitions=3000, seed=19)
-    assert coverage.coverage_rate == pytest.approx(0.95, abs=0.03)
-    lower, upper = coefficient_confidence_interval(fit_ols_inference(load_dataset("wage1"), "wage", ("educ", "exper", "tenure")), "educ")
-    assert lower < 0.5 < upper
+        fit_ols_inference(load_dataset("wage1"), "wage", ("educ",), covariance_type="HC1")
+    with pytest.raises(ValueError):
+        fit_ols_inference(load_dataset("wage1"), "wage", ("educ", "educ"))
+    assert format_p_value(0.0001) == "< 0.001" and format_p_value(0.0641) == "0.064"
+    assert significance_stars(0.009) == "***" and significance_stars(0.03) == "**"
+    assert significance_stars(0.07) == "*" and significance_stars(0.10) == ""
+    with pytest.raises(ValueError):
+        format_p_value(1.2)

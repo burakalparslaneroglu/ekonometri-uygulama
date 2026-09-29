@@ -12,12 +12,14 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from core.codegen.base import HEAT_LOW, PALETTE, REFERENCE_COLORS
+from core.labs import inference as I
 from core.labs.runner import LabState, parameter, plot_key
 from core.labs.spec import (
     CHARTS,
     BarChart,
     BoxPlot,
     ClassHistogram,
+    CoefficientPlot,
     CompareBarChart,
     DensityCompare,
     DensityPlot,
@@ -25,6 +27,8 @@ from core.labs.spec import (
     GroupedBarChart,
     HeatMap,
     Histogram,
+    HypothesisPlot,
+    IntervalPlot,
     LineChart,
     MosaicChart,
     Operation,
@@ -547,6 +551,139 @@ def _pmf_density(op: PmfWithDensity, data: dict) -> go.Figure:
     return style_figure(figure, title=op.title, x_title=op.x_label, y_title=op.y_label)
 
 
+def _vertical(figure: go.Figure, value: float, name: str, color: str, dash: str, *, legend: bool = True) -> None:
+    """Tam boy dikey çizgi (yardımcı eksende 0–1); açıklamada ``name`` ile görünür."""
+
+    figure.add_trace(go.Scatter(
+        x=[value, value], y=[0, 1], mode="lines", name=name, yaxis="y2", hoverinfo="skip", showlegend=legend,
+        line={"color": color, "width": 2.5, "dash": dash},
+    ))
+
+
+def _area(figure: go.Figure, x: np.ndarray, y: np.ndarray, *, name: str, color: str, legend: bool,
+          pattern: bool = False) -> None:
+    figure.add_trace(go.Scatter(
+        x=np.r_[x[0], x, x[-1]], y=np.r_[0.0, y, 0.0], fill="toself", mode="lines", line={"width": 0},
+        fillcolor=_rgba(color, 0.18 if pattern else 0.3), name=name, showlegend=legend, hoverinfo="skip",
+        fillpattern={"shape": "/", "fgcolor": color, "solidity": 0.35} if pattern else None,
+    ))
+
+
+def hypothesis_labels(op: HypothesisPlot, data: dict) -> dict[str, str]:
+    """Test grafiğinin açıklama metinleri (üretilen kodla aynı): reddetme bölgesi, p alanı, kritik ve gözlenen değer."""
+
+    symbol = "F" if op.distribution == "f" else "t"
+    level = tr_number(100 * op.alpha, 0 if float(100 * op.alpha).is_integer() else 1)
+    critical = data["kritik"]
+    if op.distribution == "t" and op.alternative == "iki":
+        shown = f"±{tr_number(critical[1], 2)}"
+    else:
+        shown = tr_number(critical[0], 2)
+    observed = f"Gözlenen {symbol} = {tr_number(data['gozlenen'], 2)}"
+    if data["disarida"]:
+        observed += " (eksenin dışında)"
+    return {
+        "reddetme": f"Yüzde {level} reddetme bölgesi",
+        "p": "p-değeri alanı",
+        "kritik": f"Kritik değer {shown}",
+        "gozlenen": observed,
+    }
+
+
+def p_text(value: float, decimals: int = 3) -> str:
+    """p-değerinin ekran yazımı: gösterim basamağında 0'a yuvarlanıyorsa "< 0,001", 1'e yuvarlanıyorsa "> 0,999"."""
+
+    if value < 0.5 * 10 ** (-decimals):
+        return "< " + tr_number(10 ** (-decimals), decimals)
+    if value > 1 - 0.5 * 10 ** (-decimals):
+        return "> " + tr_number(1 - 10 ** (-decimals), decimals)
+    return tr_number(value, decimals)
+
+
+def _hypothesis(op: HypothesisPlot, data: dict) -> go.Figure:
+    """Test dağılımı: reddetme bölgesi boyalı, p-değeri alanı taralı; kritik değer kesikli, gözlenen değer düz çizgi."""
+
+    labels = hypothesis_labels(op, data)
+    df, df2 = data["sd"]
+    figure = go.Figure()
+    for index, (low, high) in enumerate(data["reddetme"]):
+        x = np.linspace(low, high, 200)
+        _area(figure, x, I.density(op.distribution, x, df, df2), name=labels["reddetme"], color=PALETTE[1],
+              legend=index == 0)
+    for index, (low, high) in enumerate(data["p_alani"]):
+        x = np.linspace(low, high, 200)
+        _area(figure, x, I.density(op.distribution, x, df, df2), name=labels["p"], color=REFERENCE_COLORS[0],
+              legend=index == 0, pattern=True)
+    figure.add_trace(go.Scatter(
+        x=data["x"], y=data["f"], mode="lines", name="Yoğunluk", showlegend=False,
+        line={"color": PALETTE[0], "width": 2.5}, hovertemplate="%{x:.2f}: %{y:.4f}<extra></extra>",
+    ))
+    for index, value in enumerate(data["kritik"]):
+        _vertical(figure, value, labels["kritik"], PALETTE[1], "dash", legend=index == 0)
+    if not data["disarida"]:
+        _vertical(figure, data["gozlenen"], labels["gozlenen"], REFERENCE_COLORS[0], "solid")
+    else:  # gözlenen değer eksende değil: açıklamada yazılır
+        figure.add_trace(go.Scatter(x=[None], y=[None], mode="lines", name=labels["gozlenen"],
+                                    line={"color": REFERENCE_COLORS[0], "width": 2.5}))
+    figure.update_xaxes(range=list(data["sinirlar"]))
+    figure.update_layout(yaxis={"rangemode": "tozero"}, yaxis2={"overlaying": "y", "range": [0, 1], "visible": False},
+                         legend={"orientation": "h", "y": -0.25})
+    return style_figure(figure, title=op.title, x_title=op.x_label, y_title=op.y_label)
+
+
+def _coefficients(op: CoefficientPlot, data: pd.DataFrame, label) -> go.Figure:
+    """Katsayılar ve güven aralıkları; ilk terim en üstte, sıfırda kesikli dikey çizgi."""
+
+    names = [label(term) for term in data["terim"]]
+    level = tr_number(100 * op.level, 0)
+    figure = go.Figure(go.Scatter(
+        x=data["tahmin"], y=names, mode="markers", name=f"Tahmin ve yüzde {level} güven aralığı",
+        marker={"color": PALETTE[0], "size": 10},
+        error_x={"type": "data", "symmetric": False, "array": data["ust"] - data["tahmin"],
+                 "arrayminus": data["tahmin"] - data["alt"], "color": PALETTE[0], "thickness": 2.5, "width": 8},
+        customdata=np.column_stack([data["alt"], data["ust"]]),
+        hovertemplate="%{y}: %{x:.3f}<br>aralık [%{customdata[0]:.3f}; %{customdata[1]:.3f}]<extra></extra>",
+    ))
+    figure.add_vline(x=0, line={"color": REFERENCE_COLORS[0], "width": 2, "dash": "dash"})
+    figure.update_yaxes(categoryorder="array", categoryarray=names[::-1])
+    figure.update_layout(showlegend=False)
+    return style_figure(figure, title=op.title, x_title=op.x_label, y_title=op.y_label)
+
+
+def _intervals(op: IntervalPlot, data: pd.DataFrame, truth: float) -> go.Figure:
+    """Tekrarların güven aralıkları: gerçek değeri kapsayanlar düz, kapsamayanlar kesikli ve ikinci renkte."""
+
+    figure = go.Figure()
+    for covered, name, color, dash in ((True, "Gerçek değeri kapsıyor", PALETTE[0], "solid"),
+                                       (False, "Gerçek değeri kapsamıyor", PALETTE[1], "dash")):
+        rows = data[data["kapsiyor"] == covered]
+        if rows.empty:
+            continue
+        x = np.column_stack([rows["alt"], rows["ust"], np.full(len(rows), np.nan)]).ravel()
+        y = np.column_stack([rows["tekrar"], rows["tekrar"], np.full(len(rows), np.nan)]).ravel()
+        figure.add_trace(go.Scatter(x=x, y=y, mode="lines", name=name, line={"color": color, "width": 2.5,
+                                                                              "dash": dash}, hoverinfo="skip"))
+        figure.add_trace(go.Scatter(
+            x=rows["tahmin"], y=rows["tekrar"], mode="markers", showlegend=False, marker={"color": color, "size": 7},
+            hovertemplate="Tekrar %{y}: tahmin %{x:.3f}<extra></extra>",
+        ))
+    figure.add_vline(x=truth, line={"color": REFERENCE_COLORS[0], "width": 2.5, "dash": "dash"})
+    figure.add_trace(go.Scatter(x=[None], y=[None], mode="lines", name=f"Gerçek değer = {tr_number(truth, 2)}",
+                                line={"color": REFERENCE_COLORS[0], "width": 2.5, "dash": "dash"}))
+    if op.reference is not None:
+        value, name = op.reference
+        figure.add_vline(x=value, line={"color": REFERENCE_COLORS[1], "width": 2.5, "dash": "dot"})
+        figure.add_trace(go.Scatter(x=[None], y=[None], mode="lines", name=name,
+                                    line={"color": REFERENCE_COLORS[1], "width": 2.5, "dash": "dot"}))
+        # Başvuru çizgisi aralıkların dışında kalsa da eksende görünür.
+        low = min(float(data["alt"].min()), truth, value)
+        high = max(float(data["ust"].max()), truth, value)
+        pad = 0.05 * (high - low or 1.0)
+        figure.update_xaxes(range=[low - pad, high + pad])
+    figure.update_layout(legend={"orientation": "h", "y": -0.25})
+    return style_figure(figure, title=op.title, x_title=op.x_label, y_title=op.y_label)
+
+
 def figure_for(op: Operation, state: LabState, label=lambda name: name) -> go.Figure:
     """Bir grafik işleminin Plotly karşılığı; ``label`` seri başlıkları için Türkçe ad verir."""
 
@@ -588,4 +725,10 @@ def figure_for(op: Operation, state: LabState, label=lambda name: name) -> go.Fi
         return _density_compare(op, data)
     if isinstance(op, PmfWithDensity):
         return _pmf_density(op, data)
+    if isinstance(op, HypothesisPlot):
+        return _hypothesis(op, data)
+    if isinstance(op, CoefficientPlot):
+        return _coefficients(op, data, label)
+    if isinstance(op, IntervalPlot):
+        return _intervals(op, data, parameter(op.truth, state))
     raise TypeError(f"Grafik türü tanınmıyor: {type(op).__name__}")

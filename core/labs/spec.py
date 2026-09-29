@@ -56,10 +56,13 @@ REPRO_DESCRIPTIONS = {
 
 STATISTICS = (
     "count", "sum", "mean", "median", "mode", "mode_freq", "prod", "min", "max", "var", "std", "nunique", "value",
+    "skew",
 )
 """``value``: koşulu sağlayan tek gözlemin değeri (ör. A mağazasının memnuniyeti). ``mode``: tek mod
 (birden fazla değer en yüksek frekansa sahipse hata); ``mode_freq``: modun frekansı; ``prod``: çarpım;
-``var`` ve ``std``: örneklem varyansı s² ve standart sapması s (payda n − 1); ``nunique``: farklı değer sayısı."""
+``var`` ve ``std``: örneklem varyansı s² ve standart sapması s (payda n − 1); ``nunique``: farklı değer sayısı;
+``skew``: örneklem çarpıklığı, düzeltilmiş Fisher–Pearson katsayısı n/((n − 1)(n − 2))·Σ((xᵢ − x̄)/s)³ (pandas
+``skew()``, scipy ``skew(bias=False)``)."""
 PAIR_STATISTICS = ("cov", "corr")
 """İki değişkenli istatistikler: örneklem kovaryansı s_xy (payda n − 1) ve Pearson korelasyonu r."""
 DISTRIBUTIONS = ("normal", "uniform", "beta", "gamma", "exponential")
@@ -446,7 +449,8 @@ class PairStatistic:
 class Scalar:
     """Skalerlerden (``E.ref``) ve sabitlerden hesaplanan tek sayı.
 
-    ``percent``: değer yüzde biriminde; ekranda yüzde işaretiyle gösterilir.
+    ``percent``: değer yüzde biriminde; ekranda yüzde işaretiyle gösterilir. ``p_value``: değer bir p-değeri;
+    gösterim basamağında sıfıra yuvarlanıyorsa ekranda "< 0,001" gibi yazılır (yazılımdaki 0,000 gerçek sıfır değildir).
     """
 
     name: str
@@ -454,6 +458,7 @@ class Scalar:
     comment: str
     decimals: int = 4
     percent: bool = False
+    p_value: bool = False
 
 
 @dataclass(frozen=True)
@@ -706,7 +711,8 @@ class LineChart:
 
 @dataclass(frozen=True)
 class ScatterPlot:
-    """Saçılım grafiği: her gözlem bir (x, y) noktası.
+    """Saçılım grafiği: her gözlem bir (x, y) noktası. ``frame`` bir veri çerçevesi ya da sonuç tablosudur (ör. Monte
+    Carlo tekrarlarında iki katsayı tahmini).
 
     ``fit_line``: en küçük kareler doğrusu da çizilir (y'nin x üzerine basit regresyonu; notlardaki
     "tahmin edilen ortalama ilişkinin doğrusal özeti"). ``size``: nokta büyüklüğü, ``opacity``: saydamlık
@@ -1067,14 +1073,137 @@ class RegressionTable:
     r2: bool = True
     adj_r2: bool = False
     term_decimals: tuple[tuple[str, int], ...] = ()
+    extra: tuple[tuple[str, str, tuple[str, ...]], ...] = ()
+    """(satır adı, etiket, her sütun için skaler adı): terimlerden sonra, gözlem sayısından önce eklenen satırlar (ör.
+    ortak F istatistiği ve p-değeri; Konu 8). Satır adı ``_p`` ile bitiyorsa değerler p-değeri biçimiyle yazılır."""
+    extra_decimals: int = 2
+    """Ek satırların ekrandaki basamağı (p-değeri satırları hariç; ör. F için 2, artık kareleri toplamı için 3)."""
 
     def __post_init__(self) -> None:
+        if any(len(names) != len(self.models) for _, _, names in self.extra):
+            raise ValueError("Ek satırlarda her model sütunu için bir skaler adı verilir.")
         if self.stars and not self.standard_errors:
             raise ValueError("Yıldızlar standart hatalarla birlikte gösterilir (standard_errors=False ise stars=False).")
         if self.adj_r2 and not self.r2:
             raise ValueError("Düzeltilmiş R² satırı R² satırıyla birlikte gösterilir (adj_r2=True ise r2=True).")
         if not {term for term, _ in self.term_decimals} <= set(self.terms):
             raise ValueError("term_decimals yalnız tablodaki terimler için verilir.")
+
+
+ALTERNATIVES = ("iki", "sag", "sol")
+"""t testinin alternatif hipotezi: iki taraflı (H₁: β ≠ a), sağ kuyruk (H₁: β > a), sol kuyruk (H₁: β < a)."""
+
+
+@dataclass(frozen=True)
+class CoefficientTable:
+    """Tek katsayı çıkarım tablosu (Konu 7): seçilen terimlerin katsayısı, standart hatası, t istatistiği, p-değeri ve
+    yüzde ``100·level`` güven aralığı.
+
+    Satırlar ``terms`` (tablodaki sırayla); sütunlar ``katsayi``, ``sh``, ``t``, ``p``, ``alt``, ``ust``. t ve p,
+    H₀: β = 0 içindir (iki taraflı; n − k − 1 serbestlik dereceli t dağılımı). Güven aralığı
+    β̂ ± t_{α/2; n−k−1}·se(β̂), α = 1 − level (statsmodels ``conf_int(alpha)``, R ``confint(level = ...)``).
+    ``decimals``: katsayı, standart hata ve aralık sınırlarının; ``t_decimals`` ve ``p_decimals``: t ve p'nin ekrandaki
+    basamağı (notlardaki tablo gibi)."""
+
+    model: str
+    terms: tuple[str, ...]
+    result: str
+    comment: str
+    level: float = 0.95
+    decimals: int = 3
+    t_decimals: int = 2
+    p_decimals: int = 3
+
+    def __post_init__(self) -> None:
+        if not 0 < self.level < 1:
+            raise ValueError("Güven düzeyi 0 ile 1 arasında olmalıdır (ör. 0,95).")
+
+
+@dataclass(frozen=True)
+class JointTest:
+    """Birden fazla katsayının birlikte sıfır olduğu hipotezinin F testi (dışlama kısıtları; Konu 8):
+    H₀: β_j = 0, j ∈ ``terms``; H₁: kısıtlardan en az biri doğru değildir.
+
+    Kısıtlı model ``terms`` modelden çıkarılarak aynı gözlemlerle tahmin edilir. q = len(terms) kısıt için
+    F = [(SSR_R − SSR_UR)/q] / [SSR_UR/(n − k − 1)] ve p = P(F(q, n − k − 1) > F). Uygulama ve Python statsmodels
+    ``model.f_test("x1 = 0, x2 = 0")``, R ``anova(kısıtlı model, model)`` ile hesaplar; sayılar aynıdır. ``name``: F
+    istatistiğinin, ``p_value``: p-değerinin skaler adı."""
+
+    name: str
+    p_value: str
+    model: str
+    terms: tuple[str, ...]
+    comment: str
+    decimals: int = 2
+
+    def __post_init__(self) -> None:
+        if not self.terms or len(set(self.terms)) != len(self.terms) or INTERCEPT in self.terms:
+            raise ValueError("Ortak testte en az bir, tekil ve sabit terim dışında katsayı sınanır.")
+
+
+@dataclass(frozen=True)
+class HypothesisPlot:
+    """Test istatistiğinin sıfır hipotezi altındaki dağılımı: t (serbestlik derecesi ``df``) ya da F (``df``, ``df2``).
+
+    Yüzde ``100·alpha`` reddetme bölgesi boyanır ve kritik değer(ler) kesikli çizgiyle; gözlenen istatistiğin ötesindeki
+    kuyruk alanı (p-değeri) taranır ve gözlenen değer düz çizgiyle gösterilir. ``alternative`` (``ALTERNATIVES``): t
+    testinde iki taraflı ya da tek kuyruk; F testi her zaman üst kuyruktur. ``statistic``, ``df`` ve ``df2`` sayı ya da
+    önceden hesaplanmış skaler adıdır. Yatay eksen: t'de [−h, h], h = max(4, min(|t| + 1, 6)); F'de [0, üst],
+    üst = max(2,4·kritik, min(1,15·F, 6·kritik)); gözlenen değer eksenin dışındaysa açıklamada belirtilir."""
+
+    distribution: str
+    statistic: "Parameter"
+    df: "Parameter"
+    title: str
+    x_label: str
+    alpha: float = 0.05
+    alternative: str = "iki"
+    df2: "Parameter | None" = None
+    y_label: str = "Yoğunluk"
+
+    def __post_init__(self) -> None:
+        if self.distribution not in ("t", "f"):
+            raise ValueError("Test dağılımı t ya da f olmalıdır.")
+        if self.alternative not in ALTERNATIVES:
+            raise ValueError(f"Desteklenmeyen alternatif hipotez: {self.alternative}")
+        if self.distribution == "f" and (self.df2 is None or self.alternative != "sag"):
+            raise ValueError("F testi iki serbestlik dereceli ve üst kuyrukludur (alternative='sag').")
+        if not 0 < self.alpha < 1:
+            raise ValueError("Anlamlılık düzeyi 0 ile 1 arasında olmalıdır.")
+
+
+@dataclass(frozen=True)
+class CoefficientPlot:
+    """Katsayı grafiği: her terimin tahmini (nokta) ve yüzde ``100·level`` güven aralığı (yatay çizgi); sıfırda dikey
+    kesikli çizgi. Sıfırı kesen aralık, yüzde ``100·(1 − level)`` iki taraflı testte sıfırdan ayrıştırılamayan katsayıdır.
+    Terimler yukarıdan aşağıya ``terms`` sırasıyla."""
+
+    model: str
+    terms: tuple[str, ...]
+    title: str
+    x_label: str
+    level: float = 0.95
+    y_label: str = "Değişken"
+
+
+@dataclass(frozen=True)
+class IntervalPlot:
+    """Tekrarlı örneklemede ilk ``rows`` güven aralığı: her tekrar bir yatay çizgi (tahmin nokta), gerçek değer dikey
+    çizgi. Gerçek değeri kapsamayan aralıklar ikinci renkte ve kesikli çizilir. ``table`` Monte Carlo sonuç tablosu;
+    ``estimate``, ``low``, ``high`` sütun adları; ``truth`` sayı ya da skaler adı."""
+
+    table: str
+    estimate: str
+    low: str
+    high: str
+    truth: "Parameter"
+    title: str
+    x_label: str
+    rows: int = 25
+    y_label: str = "Tekrar numarası"
+    reference: tuple[float, str] | None = None
+    """(değer, etiket): noktalı dikey başvuru çizgisi, ör. sıfır: sıfırı kesen aralığın katsayısı yüzde 5 iki taraflı
+    testte sıfırdan ayrışmaz (Konu 7, istatistiksel anlamlılık ile iktisadi önem)."""
 
 
 @dataclass(frozen=True)
@@ -1196,11 +1325,17 @@ Operation = Union[
     PmfWithDensity,
     MonteCarlo,
     SummaryTable,
+    CoefficientTable,
+    JointTest,
+    HypothesisPlot,
+    CoefficientPlot,
+    IntervalPlot,
 ]
 
 CHARTS = (
     BarChart, GroupedBarChart, CompareBarChart, PieChart, LineChart, ScatterPlot, BoxPlot, Histogram, ClassHistogram,
-    DotPlot, MosaicChart, TreeDiagram, HeatMap, DensityPlot, DensityCompare, PmfWithDensity,
+    DotPlot, MosaicChart, TreeDiagram, HeatMap, DensityPlot, DensityCompare, PmfWithDensity, HypothesisPlot,
+    CoefficientPlot, IntervalPlot,
 )
 AXISLESS_CHARTS = (PieChart, TreeDiagram)
 """Ekseni olmayan grafikler: eksen adı gerekmez (pasta dilimleri, olasılık ağacı)."""
@@ -1393,8 +1528,9 @@ def _names(value) -> set[str]:
     return set()
 
 
-_READ_FIELDS = ("frame", "source", "table", "model", "models", "tables", "series", "columns")
-_WRITE_FIELDS = ("result", "name")
+_READ_FIELDS = ("frame", "source", "table", "model", "models", "tables", "series", "columns", "statistic", "df", "df2",
+                "truth", "extra")
+_WRITE_FIELDS = ("result", "name", "p_value")
 _FRAME_WRITERS = ("LoadWooldridge", "InlineData", "FromCounts", "Outcomes", "Selections", "Support", "Rectangles",
                   "NewSample", "Derive", "Event", "MapCodes", "Groups", "RowSum", "Draw", "DrawCount", "DrawCategory",
                   "DrawDiscrete", "SortRows", "Residuals", "CopyFrame")

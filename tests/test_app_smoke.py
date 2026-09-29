@@ -46,7 +46,7 @@ def test_app_opens_on_topic_00_with_three_tabs() -> None:
 def test_every_lab_step_renders_in_both_languages() -> None:
     app = _run_app()
     for topic, steps in (("konu00", 9), ("konu01", 6), ("konu02", 6), ("konu03", 8), ("konu04", 10), ("konu05", 10),
-                         ("konu06", 6)):
+                         ("konu06", 6), ("konu07", 10), ("konu08", 7)):
         _select(app, topic)
         for language in ("Python", "R"):
             app.segmented_control(key="code_language").set_value(language).run()
@@ -126,7 +126,7 @@ def test_every_experiment_runs_and_reacts_to_its_sliders() -> None:
     olcek.set_value(0.0).run()
     assert _metrics(app)["R²"] == "1,000"
     assert _metrics(app)["Tahmin β̂₁"] == _metrics(app)["Gerçek eğim β₁"] == "13,50"
-    for topic in ("konu00", "konu01", "konu02", "konu03", "konu04", "konu05", "konu06"):
+    for topic in ("konu00", "konu01", "konu02", "konu03", "konu04", "konu05", "konu06", "konu07", "konu08"):
         _select(app, topic)
         for number in (1, 2, 3):
             app.segmented_control(key=f"{topic}_sezgi_deney").set_value(number).run()
@@ -289,3 +289,26 @@ def test_konu05_and_konu06_quizzes_grade_answers() -> None:
         app.button(key=f"{topic}_quiz_check_k01").click().run()
         assert not app.exception, topic
         assert any(item.value == "Doğru." for item in app.success), topic
+
+
+def test_konu07_and_konu08_choices_notice_and_quizzes() -> None:
+    app = _run_app()
+    _select(app, "konu07")
+    assert "Tek Katsayı İçin Hipotez Testleri" in _markdown(app)
+    app.segmented_control(key="konu07_lab_step").set_value(10).run()
+    assert _metrics(app)["p-değeri"] == "< 0,001"
+    app.segmented_control(key="konu07_secim_adim10_terim").set_value("exper").run()
+    assert not app.exception
+    assert _metrics(app)["p-değeri"] == "0,064"
+    assert any("notlardan farklı" in item.value for item in app.info)
+    app.radio(key="konu07_quiz_k01").set_value(1).run()
+    app.button(key="konu07_quiz_check_k01").click().run()
+    assert any(item.value == "Doğru." for item in app.success)
+    _select(app, "konu08")
+    assert _metrics(app)["Ortak F testi, H₀: β_deneyim = 0, β_kıdem = 0"] == "53,31"
+    app.multiselect(key="konu08_secim_adim1_x").set_value(["educ", "exper", "tenure"]).run()
+    assert not app.exception
+    assert _metrics(app)["Ortak F testi, H₀: β_eğitim = 0, β_deneyim = 0, β_kıdem = 0"] == "76,87"
+    app.radio(key="konu08_quiz_k01").set_value(2).run()
+    app.button(key="konu08_quiz_check_k01").click().run()
+    assert any(item.value == "Doğru." for item in app.success)

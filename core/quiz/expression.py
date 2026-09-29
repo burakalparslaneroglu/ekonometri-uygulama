@@ -81,7 +81,8 @@ EULER = "e"
 def _normalize(text: str) -> str:
     text = text.strip().translate(_SUBSCRIPTS)
     for old, new in (("−", "-"), ("–", "-"), ("—", "-"), ("×", "*"), ("·", "*"), ("÷", "/"), (":", "/"),
-                     ("½", "(1/2)"), ("²", "^2"), ("³", "^3"), ("^", "**"), ("[", "("), ("]", ")")):
+                     ("½", "(1/2)"), ("²", "^2"), ("³", "^3"), ("^", "**"), ("[", "("), ("]", ")"),
+                     ("√", " sqrt ")):
         text = text.replace(old, new)
     text = re.sub(r"(?<=[A-Za-z_)])\.(?=[A-Za-z_(])", "*", text)  # okuldaki çarpma noktası: m.x, N.T
     return re.sub(r"(?<=\d),(?=\d)", ".", text)
@@ -214,6 +215,9 @@ def _brace_group(text: str, start: int) -> tuple[str, int] | None:
 _LATEX_COMMANDS = (("\\left", ""), ("\\right", ""), ("\\cdot", "*"), ("\\times", "*"), ("\\ln", " ln"),
                    ("\\log", " log"), ("\\exp", " exp"), ("\\,", " "), ("\\;", " "), ("\\!", ""),
                    ("\\ ", " "))
+_TEXT_COMMANDS = re.compile(r"\\(?:text|textrm|mathrm|mathit|operatorname)(?=\s*\{)")
+"""Metin biçimi komutları (``\\text{UR}``, ``\\mathrm{se}``) içerikleri korunarak silinir: ``R^2_{\\text{UR}}`` ile
+``R^2_{UR}`` aynı okunur."""
 
 
 def _latex_lite(text: str) -> str:
@@ -235,7 +239,7 @@ def _latex_lite(text: str) -> str:
         text = f"{text[:match.start()]}sqrt({group[0]}){text[group[1]:]}"
     for command, replacement in _LATEX_COMMANDS:
         text = text.replace(command, replacement)
-    return text
+    return _TEXT_COMMANDS.sub("", text)
 
 
 def parse(text: str, symbols: tuple[Symbol, ...]) -> E.Expr:

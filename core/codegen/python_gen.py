@@ -29,6 +29,8 @@ from core.labs.spec import (
     OLS,
     CellTarget,
     Check,
+    CoefficientPlot,
+    CoefficientTable,
     CoefTarget,
     Describe,
     GroupStats,
@@ -62,7 +64,10 @@ from core.labs.spec import (
     GroupSummary,
     HeatMap,
     Histogram,
+    HypothesisPlot,
     InlineData,
+    IntervalPlot,
+    JointTest,
     JoinColumns,
     LineChart,
     MapCodes,
@@ -98,11 +103,11 @@ from core.labs.tables import class_edges
 _STAT = {
     "count": "count()", "sum": "sum()", "mean": "mean()", "median": "median()", "mode": "mode().item()",
     "mode_freq": "value_counts().max()", "prod": "prod()", "min": "min()", "max": "max()", "var": "var()",
-    "std": "std()", "nunique": "nunique()", "value": "item()",
+    "std": "std()", "nunique": "nunique()", "value": "item()", "skew": "skew()",
 }
 """İstatistiğin pandas karşılığı; ``mode().item()`` birden fazla mod varsa hata verir (tek mod beklenir).
 ``var()`` ve ``std()`` pandas'ta örneklem ölçüleridir (payda n − 1)."""
-_SCIPY_FUNCTIONS = {"normcdf", "normpdf", "norminv", *E.DISTRIBUTION_FUNCTIONS}
+_SCIPY_FUNCTIONS = {"normcdf", "normpdf", "norminv", *E.DISTRIBUTION_FUNCTIONS, *E.TEST_FUNCTIONS}
 _MATH_FUNCTIONS = set(E.COUNTING_FUNCTIONS)
 _FUNCTIONS = {
     "log": "np.log", "exp": "np.exp", "sqrt": "np.sqrt", "abs": "np.abs", "maximum": "np.maximum",
@@ -113,7 +118,8 @@ _FUNCTIONS = {
     "normcdf": "stats.norm.cdf", "normpdf": "stats.norm.pdf", "norminv": "stats.norm.ppf",
     "dbinom": "stats.binom.pmf", "pbinom": "stats.binom.cdf", "dpois": "stats.poisson.pmf",
     "ppois": "stats.poisson.cdf", "dhyper": "stats.hypergeom.pmf", "phyper": "stats.hypergeom.cdf",
-    "dnorm": "stats.norm.pdf",
+    "dnorm": "stats.norm.pdf", "tcdf": "stats.t.cdf", "tsf": "stats.t.sf", "tinv": "stats.t.ppf",
+    "fsf": "stats.f.sf", "finv": "stats.f.ppf",
     **{name: f"np.where({{0}} {symbol} {{1}}, 1.0, 0.0)" for name, symbol in E.COMPARISONS.items()},
 }
 
@@ -189,7 +195,8 @@ def _needs_numpy(operations) -> bool:
     fonksiyonu varsa gerekir."""
 
     numpy_ops = (Groups, NewSample, Draw, DrawCategory, DrawDiscrete, DrawCount, Histogram, MonteCarlo, Percentile,
-                 BoxSummary, BoxPlot, TreeDiagram, Support, Rectangles, DensityPlot, DensityCompare, PmfWithDensity)
+                 BoxSummary, BoxPlot, TreeDiagram, Support, Rectangles, DensityPlot, DensityCompare, PmfWithDensity,
+                 HypothesisPlot, CoefficientPlot, IntervalPlot)
     for op in flatten(operations):
         if isinstance(op, numpy_ops) or (isinstance(op, ClassTable) and op.lower is None):
             return True
@@ -215,7 +222,7 @@ def _labelled_charts(operations) -> bool:
     """Değer etiketi yazan grafikler (Türkçe sayı yardımcısı gerekir)."""
 
     for op in flatten(operations):
-        if isinstance(op, (BarChart, CompareBarChart, MosaicChart, TreeDiagram, HeatMap)):
+        if isinstance(op, (BarChart, CompareBarChart, MosaicChart, TreeDiagram, HeatMap, HypothesisPlot, IntervalPlot)):
             return True
         if isinstance(op, GroupedBarChart) and op.labels:
             return True
@@ -227,7 +234,8 @@ def _labelled_charts(operations) -> bool:
 def _uses_density(op: Operation) -> bool:
     """Yoğunluk eğrisi çizen işlemler scipy.stats ister."""
 
-    return isinstance(op, (DensityPlot, DensityCompare, PmfWithDensity)) or (isinstance(op, Histogram) and op.curves)
+    return (isinstance(op, (DensityPlot, DensityCompare, PmfWithDensity, HypothesisPlot))
+            or (isinstance(op, Histogram) and op.curves))
 
 
 def _parameter(value) -> str:
@@ -277,7 +285,7 @@ def _read_fields_note(op: ShowModel, topic: int, stats: tuple[str, ...]) -> list
     okunduğu; ``stats`` adımda okunan model bilgisidir."""
 
     if "se" in op.columns and topic >= 7:
-        return []
+        return ["# Tam çıktıdaki F istatistiği (F-statistic) Konu 8'de yorumlanır."] if topic == 7 else []
     read = listing(("katsayılar (coef)", *(STAT_NAMES[stat] for stat in stats)))
     return [f"# Tam çıktı yazdırılır; bu adımda yalnız {read} okunur.",
             "# std err, t, P>|t| ve güven aralığı Konu 7'de, F istatistiği Konu 8'de yorumlanır."]
@@ -503,8 +511,20 @@ class PythonGenerator(Generator):
             lines = [
                 f"# {op.comment}",
                 f"{op.result} = makale_tablosu({{{models}}}, {_list(op.terms)}{flags})",
-                f"print({op.result}.round({op.decimals}))",
             ]
+            if op.extra:
+                headings = [heading for heading, _ in op.models]
+                cells = [f"    {text(key)}: [{', '.join(names)}],  # {label}" for key, label, names in op.extra]
+                tail = ["n", *(["r2"] if op.r2 else []), *(["adj_r2"] if op.adj_r2 else [])]
+                lines += [
+                    "# Ek satırlar (skalerlerden): terimlerden sonra, gözlem sayısından önce",
+                    f"{op.result}_ek = pd.DataFrame.from_dict({{",
+                    *cells,
+                    f"}}, orient=\"index\", columns={_list(headings)})",
+                    f"{op.result} = pd.concat([{op.result}.drop(index={_list(tail)}), {op.result}_ek, "
+                    f"{op.result}.loc[{_list(tail)}]])",
+                ]
+            lines.append(f"print({op.result}.round({op.decimals}))")
             for digits in sorted({digits for _, digits in op.term_decimals}):
                 terms = [term for term, value in op.term_decimals if value == digits]
                 lines.append(f"print({op.result}.loc[{_list(terms)}].round({digits}))  # notlardaki gibi {digits} basamak")
@@ -731,7 +751,169 @@ class PythonGenerator(Generator):
             return self._monte_carlo(op)
         if isinstance(op, SummaryTable):
             return self._summary_table(op)
+        if isinstance(op, CoefficientTable):
+            return self._coefficient_table(op)
+        if isinstance(op, JointTest):
+            return self._joint_test(op)
+        if isinstance(op, HypothesisPlot):
+            return self._hypothesis(op)
+        if isinstance(op, CoefficientPlot):
+            return self._coefficient_plot(op)
+        if isinstance(op, IntervalPlot):
+            return self._interval_plot(op)
         raise TypeError(f"Python üreticisi bu işlemi tanımıyor: {type(op).__name__}")
+
+    # --- Çıkarım (Konu 7–8) ------------------------------------------------
+    @staticmethod
+    def _coefficient_table(op: CoefficientTable) -> list[str]:
+        alpha = E.format_number(round(1 - op.level, 10))
+        interval = f"{op.result}_aralik"
+        digits = (f'{{"katsayi": {op.decimals}, "sh": {op.decimals}, "t": {op.t_decimals}, "p": {op.p_decimals}, '
+                  f'"alt": {op.decimals}, "ust": {op.decimals}}}')
+        return [
+            f"# {op.comment}",
+            "# t ve p: H0: katsayı = 0 (iki taraflı); güven aralığı: katsayı ± kritik t × standart hata",
+            f"{interval} = {op.model}.conf_int(alpha={alpha})  # yüzde {E.format_number(round(100 * op.level, 8))}",
+            f"{op.result} = pd.DataFrame({{",
+            f'    "katsayi": {op.model}.params, "sh": {op.model}.bse, "t": {op.model}.tvalues, "p": {op.model}.pvalues,',
+            f'    "alt": {interval}[0], "ust": {interval}[1],',
+            f"}}).loc[{_list(op.terms)}]",
+            f"print({op.result}.round({digits}))",
+        ]
+
+    @staticmethod
+    def _joint_test(op: JointTest) -> list[str]:
+        hypothesis = ", ".join(f"{term} = 0" for term in op.terms)
+        return [
+            f"# {op.comment}",
+            f"# H0: {hypothesis} (q = {len(op.terms)} kısıt); statsmodels f_test kısıtlı modeli kendisi kurar",
+            f'{op.name}_test = {op.model}.f_test("{hypothesis}")',
+            f"print({op.name}_test)",
+            f"{op.name} = float({op.name}_test.fvalue)",
+            f"{op.p_value} = float({op.name}_test.pvalue)",
+            f'print(f"{_fstring(op.comment)}: F = {_number(op.name, op.decimals)}, p-değeri = {{{op.p_value}:.3g}}")',
+        ]
+
+    def _hypothesis(self, op: HypothesisPlot) -> list[str]:
+        stat, df = _parameter(op.statistic), _parameter(op.df)
+        alpha = E.format_number(op.alpha)
+        level = E.format_number(round(100 * op.alpha, 8))
+        if op.distribution == "f":
+            df2 = _parameter(op.df2)
+            pdf = f"stats.f.pdf({{}}, {df}, {df2})"
+            lines = [
+                f"# F({df}, {df2}) dağılımı altında yüzde {level} testi (üst kuyruk): reddetme bölgesi boyalı,",
+                "# p-değeri alanı taralı",
+                f"kritik_deger = stats.f.ppf(1 - {alpha}, {df}, {df2})",
+                f"eksen_alt, eksen_ust = 0, max(2.4 * kritik_deger, min(1.15 * {stat}, 6 * kritik_deger))",
+                "reddetme_bolgesi = [(kritik_deger, eksen_ust)]",
+                f"p_alani = [({stat}, eksen_ust)] if {stat} < eksen_ust else []",
+                "kritik_cizgiler = [kritik_deger]",
+                "kritik_metni = sayi_metni(kritik_deger, 2)",
+            ]
+            symbol = "F"
+        else:
+            pdf = f"stats.t.pdf({{}}, {df})"
+            kind = {"iki": "iki taraflı", "sag": "sağ kuyruk", "sol": "sol kuyruk"}[op.alternative]
+            lines = [
+                f"# t dağılımı (serbestlik derecesi {df}) altında yüzde {level} {kind} test: reddetme bölgesi boyalı,",
+                "# p-değeri alanı taralı",
+            ]
+            if op.alternative == "iki":
+                lines += [
+                    f"kritik_deger = stats.t.ppf(1 - {alpha} / 2, {df})",
+                    f"yari = max(4, min(abs({stat}) + 1, 6))  # yatay eksen [−yarı, yarı]",
+                    "eksen_alt, eksen_ust = -yari, yari",
+                    "reddetme_bolgesi = [(eksen_alt, -kritik_deger), (kritik_deger, eksen_ust)]",
+                    f"p_alani = [(eksen_alt, -abs({stat})), (abs({stat}), eksen_ust)] if abs({stat}) < yari else []",
+                    "kritik_cizgiler = [-kritik_deger, kritik_deger]",
+                    'kritik_metni = "±" + sayi_metni(kritik_deger, 2)',
+                ]
+            elif op.alternative == "sag":
+                lines += [
+                    f"kritik_deger = stats.t.ppf(1 - {alpha}, {df})",
+                    f"yari = max(4, min(abs({stat}) + 1, 6))  # yatay eksen [−yarı, yarı]",
+                    "eksen_alt, eksen_ust = -yari, yari",
+                    "reddetme_bolgesi = [(kritik_deger, eksen_ust)]",
+                    f"p_alani = [(max({stat}, eksen_alt), eksen_ust)] if {stat} < eksen_ust else []",
+                    "kritik_cizgiler = [kritik_deger]",
+                    "kritik_metni = sayi_metni(kritik_deger, 2)",
+                ]
+            else:
+                lines += [
+                    f"kritik_deger = stats.t.ppf({alpha}, {df})",
+                    f"yari = max(4, min(abs({stat}) + 1, 6))  # yatay eksen [−yarı, yarı]",
+                    "eksen_alt, eksen_ust = -yari, yari",
+                    "reddetme_bolgesi = [(eksen_alt, kritik_deger)]",
+                    f"p_alani = [(eksen_alt, min({stat}, eksen_ust))] if {stat} > eksen_alt else []",
+                    "kritik_cizgiler = [kritik_deger]",
+                    "kritik_metni = sayi_metni(kritik_deger, 2)",
+                ]
+            symbol = "t"
+        lines += [
+            "eksen = np.linspace(eksen_alt, eksen_ust, 801)",
+            "fig, ax = plt.subplots(figsize=(8, 5))",
+            f'ax.plot(eksen, {pdf.format("eksen")}, color="{PALETTE[0]}", linewidth=2)',
+            "for sira, (alt, ust) in enumerate(reddetme_bolgesi):",
+            "    xa = np.linspace(alt, ust, 200)",
+            f'    ax.fill_between(xa, {pdf.format("xa")}, color="{PALETTE[1]}", alpha=0.3,',
+            f'                    label="Yüzde {level.replace(".", ",")} reddetme bölgesi" if sira == 0 else None)',
+            "for sira, (alt, ust) in enumerate(p_alani):",
+            "    xa = np.linspace(alt, ust, 200)",
+            f'    ax.fill_between(xa, {pdf.format("xa")}, facecolor="none", edgecolor="{REFERENCE_COLORS[0]}", '
+            'hatch="//",',
+            '                    linewidth=0, label="p-değeri alanı" if sira == 0 else None)',
+            "for sira, deger in enumerate(kritik_cizgiler):",
+            f'    ax.axvline(deger, color="{PALETTE[1]}", linestyle="--", linewidth=2,',
+            '               label="Kritik değer " + kritik_metni if sira == 0 else None)',
+            f'gozlenen_metni = "Gözlenen {symbol} = " + sayi_metni({stat}, 2)',
+            f"if eksen_alt <= {stat} <= eksen_ust:",
+            f'    ax.axvline({stat}, color="{REFERENCE_COLORS[0]}", linewidth=2, label=gozlenen_metni)',
+            "else:  # gözlenen değer eksenin dışında: açıklamada yazılır",
+            f'    ax.plot([], [], color="{REFERENCE_COLORS[0]}", linewidth=2, label=gozlenen_metni + " (eksenin dışında)")',
+            "ax.set_xlim(eksen_alt, eksen_ust)",
+            "ax.set_ylim(bottom=0)",
+        ]
+        return lines + self._axes(op.x_label, op.y_label, op.title, legend=True)
+
+    def _coefficient_plot(self, op: CoefficientPlot) -> list[str]:
+        alpha = E.format_number(round(1 - op.level, 10))
+        labels = [self.spec.label(term) for term in op.terms]
+        return [
+            f"# Katsayılar ve yüzde {E.format_number(round(100 * op.level, 8))} güven aralıkları; ilk terim en üstte",
+            f"terimler = {_list(op.terms)}",
+            f"aralik = {op.model}.conf_int(alpha={alpha}).loc[terimler]",
+            f"tahmin = {op.model}.params[terimler]",
+            "konum = np.arange(len(terimler))[::-1]",
+            "fig, ax = plt.subplots(figsize=(8, 5))",
+            "ax.errorbar(tahmin, konum, xerr=[tahmin - aralik[0], aralik[1] - tahmin], fmt=\"o\", capsize=5,",
+            f'            color="{PALETTE[0]}", markersize=8, linewidth=2)',
+            f'ax.axvline(0, color="{REFERENCE_COLORS[0]}", linestyle="--", linewidth=2)',
+            f"ax.set_yticks(konum, {_list(labels)})",
+            *self._axes(op.x_label, op.y_label, op.title),
+        ]
+
+    def _interval_plot(self, op: IntervalPlot) -> list[str]:
+        truth = _parameter(op.truth)
+        return [
+            f"# İlk {op.rows} tekrarın güven aralığı; gerçek değeri kapsamayanlar kesikli ve ikinci renkte",
+            f"ilk = {op.table}.head({op.rows})",
+            f'kapsar = (ilk["{op.low}"] <= {truth}) & ({truth} <= ilk["{op.high}"])',
+            "konum = np.arange(1, len(ilk) + 1)",
+            "fig, ax = plt.subplots(figsize=(8, 6))",
+            f'ax.hlines(konum[kapsar], ilk["{op.low}"][kapsar], ilk["{op.high}"][kapsar], color="{PALETTE[0]}", '
+            'linewidth=2,',
+            '          label="Gerçek değeri kapsıyor")',
+            f'ax.hlines(konum[~kapsar], ilk["{op.low}"][~kapsar], ilk["{op.high}"][~kapsar], color="{PALETTE[1]}",',
+            '          linestyles="--", linewidth=2, label="Gerçek değeri kapsamıyor")',
+            f'ax.plot(ilk["{op.estimate}"][kapsar], konum[kapsar], "o", color="{PALETTE[0]}")',
+            f'ax.plot(ilk["{op.estimate}"][~kapsar], konum[~kapsar], "o", color="{PALETTE[1]}")',
+            f'ax.axvline({truth}, color="{REFERENCE_COLORS[0]}", linestyle="--", linewidth=2,',
+            f'           label="Gerçek değer = " + sayi_metni({truth}, 2))',
+            *([f'ax.axvline({E.format_number(op.reference[0])}, color="{REFERENCE_COLORS[1]}", linestyle=":", '
+               f'linewidth=2, label="{_quote(op.reference[1])}")'] if op.reference is not None else []),
+            *self._axes(op.x_label, op.y_label, op.title, legend=True),
+        ]
 
     @staticmethod
     def _axes(x_label: str, y_label: str, title: str, legend: bool | str = False) -> list[str]:

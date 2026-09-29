@@ -18,7 +18,7 @@ import pandas as pd
 import streamlit as st
 
 from core import wooldridge_data as W
-from core.charts import CHART_TYPES, figure_for, show_figure, tr_number
+from core.charts import CHART_TYPES, figure_for, p_text, show_figure, tr_number
 from core.codegen.base import LANGUAGE_INFO, LANGUAGES, render_script, render_step, script_filename
 from core.labs import regression as RG
 from core.labs.registry import get_lab
@@ -27,6 +27,7 @@ from core.labs.spec import (
     REPRO_DESCRIPTIONS,
     TOTAL,
     Choice,
+    CoefficientTable,
     Control,
     Describe,
     GroupStats,
@@ -47,6 +48,7 @@ from core.labs.spec import (
     GroupSummary,
     InlineData,
     JoinColumns,
+    JointTest,
     LabSpec,
     LabStep,
     MapCodes,
@@ -94,7 +96,7 @@ _COEF_DECIMALS = {"coef": 4, "se": 3, "t": 3, "p": 3, "ci_low": 3, "ci_high": 3}
 """Katsayı tablosunun gösterim basamağı: yazılım çıktısındaki (statsmodels) gibi."""
 _MODEL_LABELS = {"nobs": "Gözlem sayısı n", "r2": "R²", "adj_r2": "Düzeltilmiş R²", "f": "F istatistiği",
                  "f_p": "F testinin p-değeri", "ssr": "Artık kareler toplamı", "df_resid": "Artık serbestlik derecesi"}
-_MODEL_DECIMALS = {"nobs": 0, "r2": 3, "adj_r2": 3, "f": 1, "f_p": 3, "ssr": 2, "df_resid": 0}
+_MODEL_DECIMALS = {"nobs": 0, "r2": 3, "adj_r2": 3, "f": 2, "f_p": 3, "ssr": 2, "df_resid": 0}
 _BOX_LABELS = {
     "en_kucuk": "En küçük değer",
     "q1": "Q₁ (birinci çeyrek)",
@@ -114,6 +116,12 @@ _BOX_LABELS = {
 
 def _count(value: float) -> str:
     return f"{int(round(value)):,}".replace(",", ".")
+
+
+def _integer(value: float) -> str:
+    """Ondalıksız özet değeri: binlik ayırıcı nokta, tipografik eksi (2.000; −1.250)."""
+
+    return _count(value).replace("-", "−")
 
 
 def _blank_if_missing(formatter: Callable[[float], str]) -> Callable[[float], str]:
@@ -213,15 +221,33 @@ def display_table(op, table: pd.DataFrame, label: Callable[[str], str] = lambda 
         return shown.rename_axis(heading).reset_index()
     if isinstance(op, SummaryTable):
         digits = dict(op.column_decimals)
-        formats = {name: _count if stat == "count" else (lambda v, d=digits.get(name, op.decimals): tr_number(v, d))
+        formats = {name: _count if stat == "count" else _integer if digits.get(name, op.decimals) == 0
+                   else (lambda v, d=digits.get(name, op.decimals): tr_number(v, d))
                    for name, _, stat in op.columns}
         return _formatted(table, formats, op.heading, label)
+    if isinstance(op, CoefficientTable):
+        level = tr_number(100 * op.level, 0 if float(round(100 * op.level, 8)).is_integer() else 1)
+        return pd.DataFrame({
+            "Değişken": [RG.term_label(term, label) for term in table.index],
+            "Katsayı": [coefficient_number(value, op.decimals) for value in table["katsayi"]],
+            "SH": [tr_number(value, op.decimals) for value in table["sh"]],
+            "t": [tr_number(value, op.t_decimals) for value in table["t"]],
+            "p": [p_text(value, op.p_decimals) for value in table["p"]],
+            f"Yüzde {level} GA": [f"[{tr_number(low, op.decimals)}; {tr_number(high, op.decimals)}]"
+                                  for low, high in zip(table["alt"], table["ust"])],
+        })
     if isinstance(op, PanelSummary):
         # Dönemler (ör. yıl 1980) binlik ayırıcısız, sayımlar (4.360 satır) binlik ayırıcıyla yazılır.
         return pd.DataFrame({"Büyüklük": [_PANEL_LABELS[name] for name in table.index],
                              "Değer": [tr_number(value, 0) if name in ("ilk_donem", "son_donem") else _count(value)
                                        for name, value in table["deger"].items()]})
     raise TypeError(f"Tablo türü tanınmıyor: {type(op).__name__}")
+
+
+def _model_stat_text(stat: str, value: float) -> str:
+    """Model bilgisinin ekran biçimi; F testinin p-değeri p-değeri biçimiyle (çok küçükse "< 0,001")."""
+
+    return p_text(value, _MODEL_DECIMALS[stat]) if stat == "f_p" else tr_number(value, _MODEL_DECIMALS[stat])
 
 
 def coefficient_number(value: float, decimals: int) -> str:
@@ -263,6 +289,9 @@ def regression_display(op: RegressionTable, state: LabState, label: Callable[[st
                 error = table.loc[f"{term}_sh", heading]
                 errors[heading] = "" if pd.isna(error) else f"({tr_number(error, op.decimals)})"
         rows += [coefficients, errors] if op.standard_errors else [coefficients]
+    for key, row_label, _ in op.extra:  # ör. ortak F ve p-değeri (Konu 8)
+        formatter = p_text if key.endswith("_p") else (lambda value: tr_number(value, op.extra_decimals))
+        rows.append({"": row_label, **{heading: formatter(table.loc[key, heading]) for heading, _ in op.models}})
     rows.append({"": "Gözlem sayısı", **{heading: _count(table.loc["n", heading]) for heading, _ in op.models}})
     if op.r2:
         rows.append({"": "R²", **{heading: tr_number(table.loc["r2", heading], op.decimals)
@@ -370,7 +399,7 @@ def _render_navigation(spec: LabSpec) -> LabStep:
 
 # --- Sonuçlar ----------------------------------------------------------------------
 
-_METRICS = (Shape, Count, Statistic, PairStatistic, Scalar, Percentile, ModelValue)
+_METRICS = (Shape, Count, Statistic, PairStatistic, Scalar, Percentile, ModelValue, JointTest)
 _SUBSCRIPTS = str.maketrans("0123456789,", "₀₁₂₃₄₅₆₇₈₉,")
 
 
@@ -387,8 +416,15 @@ def _metrics(op, state: LabState) -> list[tuple[str, str]]:
                 ("Değişken sayısı", _count(state.scalars[op.variables]))]
     if isinstance(op, Count):
         return [(op.comment, _count(state.scalars[op.name]))]
+    if isinstance(op, JointTest):
+        return [(op.comment, tr_number(state.scalars[op.name], op.decimals)),
+                ("Ortak p-değeri", p_text(state.scalars[op.p_value]))]
+    if isinstance(op, ModelValue) and op.quantity in ("p", "f_p"):
+        return [(op.comment, p_text(state.scalars[op.name], op.decimals))]
     if isinstance(op, (Statistic, PairStatistic, ModelValue)):
         return [(op.comment, tr_number(state.scalars[op.name], op.decimals))]
+    if op.p_value:
+        return [(op.comment, p_text(state.scalars[op.name], op.decimals))]
     return [(op.comment, tr_number(state.scalars[op.name], op.decimals, op.percent))]
 
 
@@ -450,15 +486,15 @@ def render_operations(operations, state: LabState, label: Callable[[str], str], 
             result = state.models[op.model]
             st.markdown(f"**{op.comment}** · bağımlı değişken: {label(result.model.endog_names)}")
             show_table(coefficient_display(op, result, label))
-            _show_metrics([(_MODEL_LABELS[stat], tr_number(RG.model_quantity(result, stat), _MODEL_DECIMALS[stat]))
+            _show_metrics([(_MODEL_LABELS[stat], _model_stat_text(stat, RG.model_quantity(result, stat)))
                            for stat in op.stats])
             continue
         if isinstance(op, RegressionTable):
             st.markdown(f"**{op.comment}**")
             show_table(regression_display(op, state, label))
             if op.stars:
-                st.caption("Parantez içinde standart hatalar. *** p < 0,01; ** p < 0,05; * p < 0,10 "
-                           "(p-değerleri Konu 7'de ayrıntılı işlenir).")
+                st.caption("Parantez içinde klasik (geleneksel) standart hatalar. *** p < 0,01; ** p < 0,05; "
+                           "* p < 0,10.")
             elif op.standard_errors:
                 st.caption("Parantez içinde standart hatalar.")
             else:
@@ -503,8 +539,9 @@ def render_operations(operations, state: LabState, label: Callable[[str], str], 
             st.markdown(crosstab_caption(op, label))
             show_table(display_table(op, state.tables[op.result], label))
         elif isinstance(op, (VariableTypes, FrequencyTable, ScalarTable, GroupSummary, ClassTable, StemLeaf,
-                             JoinColumns, BoxSummary, Describe, GroupStats, PanelSummary, SummaryTable)):
-            if isinstance(op, (Describe, GroupStats, PanelSummary, SummaryTable)):
+                             JoinColumns, BoxSummary, Describe, GroupStats, PanelSummary, SummaryTable,
+                             CoefficientTable)):
+            if isinstance(op, (Describe, GroupStats, PanelSummary, SummaryTable, CoefficientTable)):
                 st.markdown(f"**{op.comment}**")
             show_table(display_table(op, state.tables[op.result], label))
         if isinstance(op, PieChart):

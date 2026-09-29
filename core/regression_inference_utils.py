@@ -1,22 +1,17 @@
-"""Tek katsayılı EKK çıkarımı için Streamlit'ten bağımsız araçlar.
+"""EKK çıkarımının ortak çekirdeği: complete-case örneklem, geleneksel standart hatalar ve p-değeri biçimi.
 
-Bu modül yalnızca homoskedastisiteye dayanan geleneksel (``nonrobust``)
-standart hataları destekler. Dayanıklı standart hatalar Konu 12'nin kapsamıdır.
+Yalnız homoskedastisiteye dayanan geleneksel (``nonrobust``) standart hataları destekler; dayanıklı standart hatalar
+Konu 12'nin kapsamıdır. Konu 9–12'nin sayfaları ve yardımcı modülleri kullanır; Konu 7–8'in çıkarımı
+``core.labs`` tanımlarından üretilir.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
 
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
-from scipy.stats import t as student_t
-
-
-Alternative = Literal["two-sided", "greater", "less"]
-_ALTERNATIVES: tuple[str, ...] = ("two-sided", "greater", "less")
 
 
 def _finite(value: object, label: str) -> float:
@@ -28,31 +23,6 @@ def _finite(value: object, label: str) -> float:
     if not np.isfinite(number):
         raise ValueError(f"{label} sonlu bir sayı olmalıdır.")
     return number
-
-
-def _positive_int(value: object, label: str, *, minimum: int = 1) -> int:
-    """Tam sayı boyut ya da serbestlik derecesini doğrular."""
-    if isinstance(value, bool) or not isinstance(value, (int, np.integer)):
-        raise ValueError(f"{label} tam sayı olmalıdır.")
-    number = int(value)
-    if number < minimum:
-        raise ValueError(f"{label} en az {minimum} olmalıdır.")
-    return number
-
-
-def _validate_alpha(alpha: object) -> float:
-    """Anlamlılık düzeyini açık aralıkta doğrular."""
-    number = _finite(alpha, "Anlamlılık düzeyi")
-    if not 0.0 < number < 1.0:
-        raise ValueError("Anlamlılık düzeyi 0 ile 1 arasında olmalıdır.")
-    return number
-
-
-def _validate_alternative(alternative: object) -> Alternative:
-    """Desteklenen alternatif hipotez yönünü doğrular."""
-    if alternative not in _ALTERNATIVES:
-        raise ValueError("Alternatif yalnızca 'two-sided', 'greater' veya 'less' olabilir.")
-    return alternative  # type: ignore[return-value]
 
 
 @dataclass(frozen=True)
@@ -108,47 +78,6 @@ class OLSInferenceResult:
             raise ValueError("Bu konuda yalnızca nonrobust kovaryans türü desteklenir.")
         if self.df_resid <= 0 or self.nobs <= self.n_explanatory + 1:
             raise ValueError("Artık serbestlik derecesi pozitif olmalıdır.")
-
-
-@dataclass(frozen=True)
-class CoefficientInference:
-    """Tek katsayı için test ve isteğe bağlı güven aralığı sonucu."""
-
-    coefficient_name: str
-    estimate: float
-    standard_error: float
-    null_value: float
-    alternative: Alternative
-    alpha: float
-    df_resid: int
-    t_statistic: float
-    p_value: float
-    critical_value: float
-    reject_null: bool
-    confidence_level: float | None
-    confidence_lower: float | None
-    confidence_upper: float | None
-
-
-@dataclass(frozen=True)
-class ScaledInference:
-    """Anlamlı bir değişim miktarına ölçeklenmiş katsayı ve aralığı."""
-
-    scaled_estimate: float
-    scaled_lower: float
-    scaled_upper: float
-    change: float
-
-
-@dataclass(frozen=True)
-class CITestEquivalence:
-    """İki taraflı test ile karşılık gelen güven aralığının karşılaştırması."""
-
-    applicable: bool
-    ci_contains_null: bool | None
-    reject_from_ci: bool | None
-    reject_from_p_value: bool
-    consistent: bool | None
 
 
 def _prepare_data(frame: pd.DataFrame, dependent: str, explanatory: tuple[str, ...]) -> pd.DataFrame:
@@ -213,97 +142,6 @@ def fit_ols_inference(
     )
 
 
-def critical_t_value(df_resid: int, alpha: float, alternative: str) -> float:
-    """Seçilen test için pozitif Student-t kritik değerini döndürür."""
-    df = _positive_int(df_resid, "Serbestlik derecesi")
-    level = _validate_alpha(alpha)
-    direction = _validate_alternative(alternative)
-    probability = 1.0 - level / 2.0 if direction == "two-sided" else 1.0 - level
-    value = float(student_t.ppf(probability, df))
-    if not np.isfinite(value) or value <= 0:
-        raise ValueError("Kritik t değeri hesaplanamadı.")
-    return value
-
-
-def coefficient_confidence_interval(
-    result: OLSInferenceResult,
-    coefficient_name: str,
-    *,
-    confidence_level: float = 0.95,
-) -> tuple[float, float]:
-    """Bir katsayı için iki taraflı Student-t güven aralığını kurar."""
-    level = _finite(confidence_level, "Güven düzeyi")
-    if not 0.0 < level < 1.0:
-        raise ValueError("Güven düzeyi 0 ile 1 arasında olmalıdır.")
-    if coefficient_name not in result.coefficients.index:
-        raise ValueError(f"Modelde bulunmayan katsayı: {coefficient_name}")
-    estimate, standard_error = float(result.coefficients[coefficient_name]), float(result.standard_errors[coefficient_name])
-    if standard_error <= 0 or not np.isfinite(standard_error):
-        raise ValueError("Katsayının standart hatası pozitif ve sonlu olmalıdır.")
-    critical = float(student_t.ppf(1.0 - (1.0 - level) / 2.0, result.df_resid))
-    margin = critical * standard_error
-    lower, upper = estimate - margin, estimate + margin
-    if not np.isfinite((lower, upper)).all() or lower > upper:
-        raise ValueError("Güven aralığı hesaplanamadı.")
-    return float(lower), float(upper)
-
-
-def coefficient_test(
-    result: OLSInferenceResult,
-    coefficient_name: str,
-    *,
-    null_value: float = 0.0,
-    alternative: Alternative = "two-sided",
-    alpha: float = 0.05,
-) -> CoefficientInference:
-    """Tek katsayı için Student-t testi ve iki taraflı güven aralığını hesaplar."""
-    if coefficient_name not in result.coefficients.index:
-        raise ValueError(f"Modelde bulunmayan katsayı: {coefficient_name}")
-    null = _finite(null_value, "Null değeri")
-    direction = _validate_alternative(alternative)
-    level = _validate_alpha(alpha)
-    estimate = float(result.coefficients[coefficient_name])
-    standard_error = float(result.standard_errors[coefficient_name])
-    if standard_error <= 0.0 or not np.isfinite(standard_error):
-        raise ValueError("Katsayının standart hatası pozitif ve sonlu olmalıdır.")
-    statistic = (estimate - null) / standard_error
-    if direction == "two-sided":
-        p_value = 2.0 * float(student_t.sf(abs(statistic), result.df_resid))
-        confidence_level: float | None = 1.0 - level
-        lower, upper = coefficient_confidence_interval(result, coefficient_name, confidence_level=confidence_level)
-    elif direction == "greater":
-        p_value, confidence_level, lower, upper = float(student_t.sf(statistic, result.df_resid)), None, None, None
-    else:
-        p_value, confidence_level, lower, upper = float(student_t.cdf(statistic, result.df_resid)), None, None, None
-    if not 0.0 <= p_value <= 1.0 or not np.isfinite(p_value):
-        raise ValueError("p-değeri hesaplanamadı.")
-    return CoefficientInference(
-        coefficient_name=coefficient_name, estimate=estimate, standard_error=standard_error,
-        null_value=null, alternative=direction, alpha=level, df_resid=result.df_resid,
-        t_statistic=float(statistic), p_value=float(p_value),
-        critical_value=critical_t_value(result.df_resid, level, direction),
-        reject_null=bool(p_value < level), confidence_level=confidence_level,
-        confidence_lower=lower, confidence_upper=upper,
-    )
-
-
-def ci_contains_value(lower: float, upper: float, value: float, *, tolerance: float = 1e-10) -> bool:
-    """Bir değerin kapalı güven aralığında olup olmadığını toleransla belirler."""
-    low, high, tested, tol = _finite(lower, "Alt sınır"), _finite(upper, "Üst sınır"), _finite(value, "Kontrol değeri"), _finite(tolerance, "Tolerans")
-    if tol < 0 or low > high:
-        raise ValueError("Aralık sınırları ve tolerans geçerli olmalıdır.")
-    return bool(low - tol <= tested <= high + tol)
-
-
-def ci_test_equivalence(test: CoefficientInference, *, tolerance: float = 1e-10) -> CITestEquivalence:
-    """İki taraflı testte p-kararı ile güven aralığı kararının uyumunu denetler."""
-    if test.alternative != "two-sided" or test.confidence_lower is None or test.confidence_upper is None:
-        return CITestEquivalence(False, None, None, test.reject_null, None)
-    contains = ci_contains_value(test.confidence_lower, test.confidence_upper, test.null_value, tolerance=tolerance)
-    reject_from_ci = not contains
-    return CITestEquivalence(True, contains, reject_from_ci, test.reject_null, reject_from_ci == test.reject_null)
-
-
 def format_p_value(p_value: float) -> str:
     """p-değerini sıfır ya da bilimsel gösterime düşmeden biçimlendirir."""
     value = _finite(p_value, "p-değeri")
@@ -335,118 +173,3 @@ def significance_stars(
         if value < threshold:
             return label
     return ""
-
-
-def scale_coefficient_inference(estimate: float, lower: float, upper: float, change: float) -> ScaledInference:
-    """Katsayı ve aralığını verilen değişim miktarıyla çarpar."""
-    beta, low, high, delta = (_finite(estimate, "Katsayı"), _finite(lower, "Alt sınır"), _finite(upper, "Üst sınır"), _finite(change, "Değişim"))
-    if low > high:
-        raise ValueError("Güven aralığının alt sınırı üst sınırını aşamaz.")
-    bounds = (low * delta, high * delta)
-    return ScaledInference(beta * delta, float(min(bounds)), float(max(bounds)), delta)
-
-
-@dataclass(frozen=True)
-class StandardErrorSimulationResult:
-    """Tekrarlanan basit EKK benzetiminde eğim ve SH özetleri."""
-
-    true_intercept: float
-    true_slope: float
-    nobs: int
-    repetitions: int
-    df_resid: int
-    slope_estimates: np.ndarray
-    reported_standard_errors: np.ndarray
-    mean_slope: float
-    empirical_slope_std: float
-    mean_reported_standard_error: float
-    seed: int
-
-    def __post_init__(self) -> None:
-        """Dizilerin geçerli ve dışarıdan değiştirilemez olmasını sağlar."""
-        for name in ("slope_estimates", "reported_standard_errors"):
-            values = np.asarray(getattr(self, name), dtype=float).copy()
-            if values.ndim != 1 or len(values) != self.repetitions or not np.isfinite(values).all() or np.any(values <= 0 if name == "reported_standard_errors" else False):
-                raise ValueError(f"{name} sonlu ve tekrar sayısıyla uyumlu olmalıdır.")
-            values.setflags(write=False)
-            object.__setattr__(self, name, values)
-
-
-def simulate_standard_errors(
-    *, nobs: int = 50, repetitions: int = 5000, seed: int = 202507,
-    true_intercept: float = 1.0, true_slope: float = 0.5,
-) -> StandardErrorSimulationResult:
-    """``Y=1+0.5X+u`` DGP'sinde vektörize eğim ve geleneksel SH üretir."""
-    n, reps = _positive_int(nobs, "Örneklem büyüklüğü", minimum=3), _positive_int(repetitions, "Tekrar sayısı", minimum=2)
-    if isinstance(seed, bool) or not isinstance(seed, (int, np.integer)):
-        raise ValueError("Seed tam sayı olmalıdır.")
-    intercept, slope = _finite(true_intercept, "Gerçek sabit"), _finite(true_slope, "Gerçek eğim")
-    rng = np.random.default_rng(int(seed))
-    x, errors = rng.normal(size=(reps, n)), rng.normal(size=(reps, n))
-    y = intercept + slope * x + errors
-    centered_x, centered_y = x - x.mean(axis=1, keepdims=True), y - y.mean(axis=1, keepdims=True)
-    sxx = np.square(centered_x).sum(axis=1)
-    if np.any(sxx <= np.finfo(float).eps):
-        raise RuntimeError("Benzetimde yeterli X değişkenliği oluşmadı.")
-    slopes = (centered_x * centered_y).sum(axis=1) / sxx
-    fitted = y.mean(axis=1, keepdims=True) + slopes[:, None] * centered_x
-    residuals = y - fitted
-    reported = np.sqrt(np.square(residuals).sum(axis=1) / (n - 2) / sxx)
-    return StandardErrorSimulationResult(intercept, slope, n, reps, n - 2, slopes, reported, float(slopes.mean()), float(slopes.std(ddof=1)), float(reported.mean()), int(seed))
-
-
-@dataclass(frozen=True)
-class ConfidenceCoverageResult:
-    """Tekrarlı güven aralığı kapsama benzetiminin çıktısı."""
-
-    confidence_level: float
-    critical_value: float
-    lower_bounds: np.ndarray
-    upper_bounds: np.ndarray
-    contains_truth: np.ndarray
-    coverage_rate: float
-    true_slope: float
-    nobs: int
-    repetitions: int
-    seed: int
-
-    def __post_init__(self) -> None:
-        """Kapsama dizilerinin boyut ve sonluluğunu denetler."""
-        lower, upper = np.asarray(self.lower_bounds, dtype=float).copy(), np.asarray(self.upper_bounds, dtype=float).copy()
-        contains = np.asarray(self.contains_truth, dtype=bool).copy()
-        if any(values.ndim != 1 or len(values) != self.repetitions for values in (lower, upper, contains)) or not np.isfinite(lower).all() or not np.isfinite(upper).all() or np.any(lower > upper):
-            raise ValueError("Kapsama dizileri geçerli aralıklardan oluşmalıdır.")
-        for name, values in (("lower_bounds", lower), ("upper_bounds", upper), ("contains_truth", contains)):
-            values.setflags(write=False)
-            object.__setattr__(self, name, values)
-
-
-def simulate_confidence_coverage(
-    *, nobs: int = 50, repetitions: int = 5000, confidence_level: float = 0.95,
-    seed: int = 202507, true_intercept: float = 1.0, true_slope: float = 0.5,
-) -> ConfidenceCoverageResult:
-    """Aynı DGP altında Student-t aralıklarının uzun dönem kapsamasını üretir."""
-    level = _finite(confidence_level, "Güven düzeyi")
-    if not 0.0 < level < 1.0:
-        raise ValueError("Güven düzeyi 0 ile 1 arasında olmalıdır.")
-    simulation = simulate_standard_errors(nobs=nobs, repetitions=repetitions, seed=seed, true_intercept=true_intercept, true_slope=true_slope)
-    critical = float(student_t.ppf(1.0 - (1.0 - level) / 2.0, simulation.df_resid))
-    margin = critical * simulation.reported_standard_errors
-    lower, upper = simulation.slope_estimates - margin, simulation.slope_estimates + margin
-    contains = (lower <= simulation.true_slope) & (simulation.true_slope <= upper)
-    return ConfidenceCoverageResult(level, critical, lower, upper, contains, float(contains.mean()), simulation.true_slope, simulation.nobs, simulation.repetitions, simulation.seed)
-
-
-def coverage_plot_data(result: ConfidenceCoverageResult, *, limit: int = 25) -> pd.DataFrame:
-    """İlk güven aralıklarını grafik için etiketli tabloya dönüştürür."""
-    count = _positive_int(limit, "Grafik aralık sayısı")
-    count = min(count, result.repetitions)
-    return pd.DataFrame({"interval": np.arange(1, count + 1), "lower": result.lower_bounds[:count], "upper": result.upper_bounds[:count], "contains_truth": result.contains_truth[:count], "status": np.where(result.contains_truth[:count], "Kapsıyor", "Kaçırıyor")})
-
-
-def t_distribution_plot_data(df_resid: int, t_statistic: float, *, points: int = 601) -> pd.DataFrame:
-    """Adaptif eksende Student-t yoğunluk grafiği için veri üretir."""
-    df, observed, count = _positive_int(df_resid, "Serbestlik derecesi"), _finite(t_statistic, "t istatistiği"), _positive_int(points, "Grafik noktası", minimum=51)
-    extent = max(4.5, abs(observed) + 1.0)
-    x = np.linspace(-extent, extent, count)
-    return pd.DataFrame({"t": x, "density": student_t.pdf(x, df)})

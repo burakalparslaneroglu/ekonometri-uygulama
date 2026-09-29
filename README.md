@@ -4,7 +4,7 @@
 
 Uygulama çalışma zamanında bir büyük dil modeli veya dış API kullanmaz. Wooldridge veri setleri `wooldridge` Python paketi üzerinden yerel olarak yüklenir.
 
-Konu 0–6 yeni yapıdadır: her konu **Uygulama**, **Sezgi** ve **Kendini sına** sekmelerinden oluşur. Uygulama sekmesi notlardaki laboratuvarın adımlarını izler ve notlarda basılı her sayıyı gerçek veriyle yeniden üretir; öğrenci bir adımda farklı bir spesifikasyon seçebilir (ör. açıklayıcı değişken), seçim yalnız ona bağlı sonraki adımlara geçer ve notlardaki modelle yan yana gösterilir. Her adımın ve her Sezgi deneyinin Python ve R kodu aynı tanımdan üretilir. Konu 7–12 eski sayfalarıyla çalışır ve ikişerli bloklar hâlinde yeni yapıya taşınır.
+Konu 0–8 yeni yapıdadır: her konu **Uygulama**, **Sezgi** ve **Kendini sına** sekmelerinden oluşur. Uygulama sekmesi notlardaki laboratuvarın adımlarını izler ve notlarda basılı her sayıyı gerçek veriyle yeniden üretir; öğrenci bir adımda farklı bir spesifikasyon seçebilir (ör. açıklayıcı değişken), seçim yalnız ona bağlı sonraki adımlara geçer ve notlardaki modelle yan yana gösterilir. Her adımın ve her Sezgi deneyinin Python ve R kodu aynı tanımdan üretilir. Konu 9–12 eski sayfalarıyla çalışır ve ikişerli bloklar hâlinde yeni yapıya taşınır.
 
 ## Kapsam
 
@@ -31,7 +31,9 @@ Konu 0–6 yeni yapıdadır: her konu **Uygulama**, **Sezgi** ve **Kendini sına
 | 4 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | 3 deney | 24 soru |
 | 5 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | 3 deney | 24 soru |
 | 6 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | 3 deney | 24 soru |
-| 7–12 | Eski sayfa (taşınacak) | — | — | — |
+| 7 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | 3 deney | 24 soru |
+| 8 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | 3 deney | 24 soru |
+| 9–12 | Eski sayfa (taşınacak) | — | — | — |
 
 ## Teknik yapı
 

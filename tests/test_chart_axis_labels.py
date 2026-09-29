@@ -33,13 +33,3 @@ def test_all_streamlit_native_charts_define_axis_labels() -> None:
                 missing.append(f"{path.name}:{node.lineno} ({', '.join(sorted(absent))})")
 
     assert not missing, "Eksen başlığı eksik Streamlit grafikleri: " + "; ".join(missing)
-
-
-def test_selected_plotly_charts_have_explicit_axis_titles() -> None:
-    """Daha önce örtük kalan Plotly eksen başlıkları görünür kalmalıdır (yeni yapıya taşınan konuların grafikleri
-    tanımlarından çizilir ve eksen adları orada denetlenir)."""
-    topics_dir = Path(__file__).resolve().parents[1] / "topics"
-    konu07 = (topics_dir / "konu07_tekli_hipotez_testleri.py").read_text(encoding="utf-8")
-
-    assert 'xaxis_title="Katsayı değeri", yaxis_title="Aralık"' in konu07
-    assert 'xaxis_title="Eğim tahmini", yaxis_title="Frekans"' in konu07

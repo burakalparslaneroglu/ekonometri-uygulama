@@ -12,13 +12,21 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
+from scipy import stats
+
 from core import wooldridge_data as W
 from core.labs import expr as E
+from core.labs import inference as I
 from core.labs import regression as R
 from core.labs import tables as T
 from core.labs.spec import (
     INTERCEPT,
     OLS,
+    CoefficientPlot,
+    CoefficientTable,
+    HypothesisPlot,
+    IntervalPlot,
+    JointTest,
     TOTAL,
     BarChart,
     BoxPlot,
@@ -169,6 +177,8 @@ def statistic(series: pd.Series, stat: str) -> float:
         return float(series.std())
     if stat == "nunique":
         return float(series.nunique())
+    if stat == "skew":
+        return float(series.skew())  # düzeltilmiş Fisher–Pearson katsayısı (scipy skew(bias=False))
     if stat == "value":
         if len(series) != 1:
             raise ValueError(f"Tek değer beklenirken {len(series)} gözlem bulundu.")
@@ -300,7 +310,11 @@ def execute(op: Operation, state: LabState) -> None:
         state.scalars[op.name] = (R.coefficient(result, op.term, op.quantity) if op.term is not None
                                   else R.model_quantity(result, op.quantity))
     elif isinstance(op, RegressionTable):
-        state.tables[op.result] = R.regression_table(op, state.models)
+        state.tables[op.result] = R.regression_table(op, state.models, state.scalars)
+    elif isinstance(op, CoefficientTable):
+        state.tables[op.result] = R.inference_table(op, state.models[op.model])
+    elif isinstance(op, JointTest):
+        state.scalars[op.name], state.scalars[op.p_value] = R.joint_test(state.models[op.model], op.terms)
     elif isinstance(op, InlineData):
         state.frames[op.frame] = T.inline_frame(op.columns, op.rows)
     elif isinstance(op, FromCounts):
@@ -446,7 +460,8 @@ def execute(op: Operation, state: LabState) -> None:
         columns = [op.x, op.y, *(column for column, _ in op.bands), *(column for column, _ in op.series)]
         state.plots[plot_key(op)] = frame[list(dict.fromkeys(columns))].copy()
     elif isinstance(op, ScatterPlot):
-        data = state.frames[op.frame][[op.x, op.y]].dropna()
+        source = state.frames[op.frame] if op.frame in state.frames else state.tables[op.frame]
+        data = source[[op.x, op.y]].dropna()
         line = None
         if op.fit_line:  # en küçük kareler doğrusu: eğim ve sabit (np.polyfit, derece 1)
             slope, intercept = np.polyfit(data[op.x].to_numpy(dtype=float), data[op.y].to_numpy(dtype=float), 1)
@@ -500,6 +515,14 @@ def execute(op: Operation, state: LabState) -> None:
         }
     elif isinstance(op, TreeDiagram):
         state.plots[plot_key(op)] = T.tree_layout(state.frames[op.frame], op.first, op.second, op.first_p, op.second_p)
+    elif isinstance(op, HypothesisPlot):
+        second = None if op.df2 is None else parameter(op.df2, state)
+        state.plots[plot_key(op)] = I.hypothesis_layout(op, parameter(op.statistic, state), parameter(op.df, state),
+                                                        second)
+    elif isinstance(op, CoefficientPlot):
+        state.plots[plot_key(op)] = I.coefficient_intervals(op, state.models[op.model])
+    elif isinstance(op, IntervalPlot):
+        state.plots[plot_key(op)] = I.first_intervals(op, state.tables[op.table], parameter(op.truth, state))
     elif isinstance(op, MonteCarlo):
         _monte_carlo(op, state)
     elif isinstance(op, SummaryTable):
@@ -551,8 +574,8 @@ class _Fallback(Exception):
 
 
 _BATCH_DRAWS = ("normal", "uniform", "beta", "gamma", "exponential")
-_BATCH_STATS = ("count", "sum", "mean", "median", "prod", "min", "max", "var", "std")
-_BATCH_MODEL = ("r2", "adj_r2", "nobs", "ssr", "df_resid")
+_BATCH_STATS = ("count", "sum", "mean", "median", "prod", "min", "max", "var", "std", "skew")
+_BATCH_MODEL = ("r2", "adj_r2", "nobs", "ssr", "df_resid", "f", "f_p")
 _ROW_FUNCTIONS = frozenset(("cumprod", "cummean", "seq", "factorial", "comb", "perm"))
 """Gözlem sırasına ya da tek bir sayıya bağlı fonksiyonlar: toplu yolda tekrarların satırlarına uygulanamaz."""
 
@@ -582,8 +605,6 @@ def batchable(op: MonteCarlo) -> bool:
         elif isinstance(inner, ModelValue):
             if inner.term is None and inner.quantity not in _BATCH_MODEL:
                 return False
-            if inner.term is not None and inner.quantity != "coef":
-                return False
         elif isinstance(inner, Scalar):
             if E.functions_in(inner.expr) & _ROW_FUNCTIONS:
                 return False
@@ -595,18 +616,36 @@ def batchable(op: MonteCarlo) -> bool:
 
 @dataclass
 class _BatchFit:
-    """Bütün tekrarların en küçük kareler sonuçları: satırlar tekrarlar."""
+    """Bütün tekrarların en küçük kareler sonuçları: satırlar tekrarlar. Standart hata, t, p, güven aralığı ve F,
+    statsmodels'in hesap sırasıyla (``bse = sqrt(diag(pinv·pinvᵀ · SSR/(n − k)))``, ``t = β̂/bse``,
+    ``p = 2·sf(|t|)``, ``β̂ ± t_{0,975}·bse``, ``F = (ESS/df_model)/(SSR/df_resid)``)."""
 
     terms: tuple[str, ...]
     params: np.ndarray
     ssr: np.ndarray
     tss: np.ndarray
     nobs: int
+    bse: np.ndarray
 
-    def coefficient(self, term: str) -> np.ndarray:
+    @property
+    def df_resid(self) -> float:
+        return float(self.nobs - self.params.shape[1])
+
+    def coefficient(self, term: str, quantity: str = "coef") -> np.ndarray:
         if term not in self.terms:
             raise KeyError(f"Modelde böyle bir terim yok: {term}")
-        return self.params[:, self.terms.index(term)]
+        index = self.terms.index(term)
+        params = self.params[:, index]
+        if quantity == "coef":
+            return params
+        bse = self.bse[:, index]
+        if quantity == "se":
+            return bse
+        if quantity in ("t", "p"):
+            tvalues = params / bse
+            return tvalues if quantity == "t" else stats.t.sf(np.abs(tvalues), self.df_resid) * 2
+        critical = stats.t.ppf(1 - 0.05 / 2, self.df_resid)  # statsmodels conf_int(alpha=0.05)
+        return params - critical * bse if quantity == "ci_low" else params + critical * bse
 
     def quantity(self, name: str) -> np.ndarray:
         reps, width = self.params.shape
@@ -615,7 +654,11 @@ class _BatchFit:
         if name == "nobs":
             return np.full(reps, float(self.nobs))
         if name == "df_resid":
-            return np.full(reps, float(self.nobs - width))
+            return np.full(reps, self.df_resid)
+        if name in ("f", "f_p"):
+            df_model = float(width - 1)
+            fvalue = ((self.tss - self.ssr) / df_model) / (self.ssr / self.df_resid)  # mse_model / mse_resid
+            return fvalue if name == "f" else stats.f.sf(fvalue, df_model, self.df_resid)
         r2 = 1 - self.ssr / self.tss
         if name == "r2":
             return r2
@@ -634,6 +677,8 @@ def _batch_statistic(values: np.ndarray, stat: str) -> np.ndarray:
     """Her tekrarın (satırın) istatistiği; pandas'ın hesap sırasıyla (ortalama = toplam / n; varyans iki geçişte)."""
 
     n = values.shape[1]
+    if stat == "skew":
+        return np.array([statistic(pd.Series(row), "skew") for row in values])  # pandas'ın hesabıyla, satır satır
     if stat == "count":
         return np.full(values.shape[0], float(n))
     if stat == "sum":
@@ -680,14 +725,16 @@ def _batch_ols(op: OLS, frame: dict[str, np.ndarray]) -> _BatchFit:
     if nobs <= width:
         raise ValueError("Tahmin için yeterli gözlem yok (gözlem sayısı katsayı sayısından büyük olmalıdır).")
     params = np.empty((reps, width))
+    bse = np.empty((reps, width))
     ssr = np.empty(reps)
     tss = np.empty(reps)
-    weights = np.ones(nobs)
+    eps = np.finfo(float).eps
     for index in range(reps):
         y = np.ascontiguousarray(outcome[index])
         design = np.column_stack([np.ones(nobs), *(column[index] for column in columns)])
         u, s, vt = np.linalg.svd(design, False)
-        if np.linalg.matrix_rank(design) < width:  # fit_ols ile aynı denetim
+        # fit_ols ile aynı denetim (np.linalg.matrix_rank'in eşiği; tekil değerler yeniden hesaplanmaz)
+        if np.count_nonzero(s > s.max() * max(design.shape) * eps) < width:
             raise ValueError(
                 "Açıklayıcı değişkenler arasında tam doğrusal bağlantı var (biri diğerlerinin doğrusal birleşimi); "
                 "katsayılar tek biçimde tahmin edilemez."
@@ -699,9 +746,13 @@ def _batch_ols(op: OLS, frame: dict[str, np.ndarray]) -> _BatchFit:
         residuals = y - np.dot(design, beta)
         params[index] = beta
         ssr[index] = np.dot(residuals, residuals)
-        # statsmodels OLS'i ağırlıkları 1 olan WLS olarak kurar: centered_tss = Σ w (y − ȳ_w)²
-        tss[index] = np.sum(weights * (y - np.average(y, weights=weights)) ** 2)
-    return _BatchFit(terms=(INTERCEPT, *op.regressors), params=params, ssr=ssr, tss=tss, nobs=nobs)
+        # statsmodels OLS'i ağırlıkları 1 olan WLS olarak kurar: centered_tss = Σ w (y − ȳ_w)², ȳ_w = Σ w·y / Σ w.
+        # w = 1 iken w·y = y ve Σ w = n olduğu için aynı sayılar ağırlıksız yazımla elde edilir.
+        tss[index] = np.sum((y - y.sum() / nobs) ** 2)
+        # Klasik standart hata: normalized_cov_params = pinv·pinvᵀ, ölçek = SSR / (n − k)
+        normalized = np.dot(pinv, np.transpose(pinv))
+        bse[index] = np.sqrt(np.diag(normalized * (ssr[index] / float(nobs - width))))
+    return _BatchFit(terms=(INTERCEPT, *op.regressors), params=params, ssr=ssr, tss=tss, nobs=nobs, bse=bse)
 
 
 def monte_carlo_batch(op: MonteCarlo) -> tuple[pd.DataFrame, np.random.Generator]:
@@ -748,7 +799,8 @@ def monte_carlo_batch(op: MonteCarlo) -> tuple[pd.DataFrame, np.random.Generator
             if inner.model not in models:
                 raise ValueError(f"'{inner.model}' modeli henüz tahmin edilmedi.")
             fit = models[inner.model]
-            values = fit.coefficient(inner.term) if inner.term is not None else fit.quantity(inner.quantity)
+            values = (fit.coefficient(inner.term, inner.quantity) if inner.term is not None
+                      else fit.quantity(inner.quantity))
             scalars[inner.name] = column(values[:, None])
         elif isinstance(inner, Scalar):
             scalars[inner.name] = column(E.evaluate(inner.expr, scalar=lookup))

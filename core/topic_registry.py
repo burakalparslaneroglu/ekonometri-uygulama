@@ -46,10 +46,14 @@ TOPICS: tuple[TopicMetadata, ...] = (
     TopicMetadata(
         "konu07", 7, "Tek Katsayı İçin Hipotez Testleri: Standart Hata, t İstatistiği, p-Değeri ve Güven Aralığı",
         "Tek Katsayı İçin Hipotez Testleri",
+        "Tek bir örneklemde elde edilen katsayı ne kadar belirsizdir ve bu belirsizliği hesaba katarak anakütle "
+        "parametresi hakkında hangi sınanabilir sonuçlara ulaşabiliriz?",
     ),
     TopicMetadata(
         "konu08", 8, "Birden Fazla Kısıtın Sınanması: F Testi ve Büyük Örneklem Mantığı",
         "F Testi ve Büyük Örneklem",
+        "Birden fazla katsayıyı ilgilendiren bir soru, örneğin deneyim ve kıdemin birlikte ücret açıklamasına katkı "
+        "sağlayıp sağlamadığı, tek bir hipotez altında nasıl sınanır?",
     ),
     TopicMetadata(
         "konu09", 9, "Ölçekleme, Logaritmik Modeller, Karesel Terimler ve Model Seçimi",

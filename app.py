@@ -20,9 +20,9 @@ from topics import (
     konu04_ols_cikti_fonksiyonel_bicimler,
     konu05_coklu_regresyon,
     konu06_ols_varsayimlari_yanlilik,
+    konu07_tekli_hipotez_testleri,
+    konu08_coklu_testler_buyuk_orneklem,
 )
-from topics.konu07_tekli_hipotez_testleri import render as render_konu07
-from topics.konu08_coklu_testler_buyuk_orneklem import render as render_konu08
 from topics.konu09_fonksiyonel_bicimler import render as render_konu09
 from topics.konu10_kukla_degiskenler import render as render_konu10
 from topics.konu11_etkilesimler_grup_farklari import render as render_konu11
@@ -40,6 +40,8 @@ MIGRATED_PAGES = (
     konu04_ols_cikti_fonksiyonel_bicimler,
     konu05_coklu_regresyon,
     konu06_ols_varsayimlari_yanlilik,
+    konu07_tekli_hipotez_testleri,
+    konu08_coklu_testler_buyuk_orneklem,
 )
 
 TOPIC_RENDERERS = {
@@ -50,8 +52,8 @@ TOPIC_RENDERERS = {
     "konu04": konu04_ols_cikti_fonksiyonel_bicimler.render,
     "konu05": konu05_coklu_regresyon.render,
     "konu06": konu06_ols_varsayimlari_yanlilik.render,
-    "konu07": render_konu07,
-    "konu08": render_konu08,
+    "konu07": konu07_tekli_hipotez_testleri.render,
+    "konu08": konu08_coklu_testler_buyuk_orneklem.render,
     "konu09": render_konu09,
     "konu10": render_konu10,
     "konu11": render_konu11,

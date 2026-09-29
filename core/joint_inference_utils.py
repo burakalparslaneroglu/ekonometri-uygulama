@@ -1,4 +1,7 @@
-"""Konu 08 için geleneksel ortak F testleri ve büyük örneklem araçları."""
+"""Genel doğrusal kısıtlar (``R beta = r``) için geleneksel ortak F testi ve iç içe model karşılaştırması.
+
+Konu 9–12'nin sayfaları ve yardımcı modülleri kullanır; Konu 8'in F testleri ``core.labs`` tanımlarından üretilir.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +12,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import f as f_distribution
 
-from core.regression_inference_utils import CoefficientInference, OLSInferenceResult, fit_ols_inference
+from core.regression_inference_utils import OLSInferenceResult, fit_ols_inference
 
 
 def _finite(value: object, label: str) -> float:
@@ -108,16 +111,6 @@ class RestrictionValidationResult:
     messages: tuple[str, ...]
 
 
-@dataclass(frozen=True)
-class RestrictionClassification:
-    """Kısıt sisteminin öğretim amaçlı tür ve yöntem sınıflaması."""
-
-    restriction_type: str
-    nested_exclusion_applicable: bool
-    explanation: str
-    excluded_coefficients: tuple[str, ...]
-
-
 def _raw_restriction_matrix(result: OLSInferenceResult, restrictions: tuple[LinearRestriction, ...]) -> tuple[np.ndarray, np.ndarray]:
     """Sıfır ve bağımlı satırlar dahil, kullanıcı girişi için R ve r kurar."""
     if not restrictions:
@@ -162,51 +155,6 @@ def validate_restriction_system(result: OLSInferenceResult, restrictions: tuple[
         messages.append("Kısıt sistemi teknik olarak geçerli; girilen satırlar bağımsız ve tutarlıdır.")
     valid = bool(rank_r > 0 and consistent and not dependent and rank_r <= len(result.coefficients))
     return RestrictionValidationResult(valid, len(restrictions), rank_r, rank_augmented, rank_r, has_zero, consistent, dependent, tuple(messages))
-
-
-def classify_restriction_system(result: OLSInferenceResult, restrictions: tuple[LinearRestriction, ...]) -> RestrictionClassification:
-    """Kısıtları dışlama, eşitlik veya genel matrix-F türü olarak sınıflandırır."""
-    validation = validate_restriction_system(result, restrictions)
-    if not validation.is_valid:
-        return RestrictionClassification("genel/karma doğrusal kısıt", False, "Teknik olarak geçersiz sistem için test yöntemi seçilmez.", ())
-    slopes = set(result.explanatory)
-    nonzero = [
-        {name: weight for name, weight in restriction.weights.items() if not np.isclose(weight, 0.0)}
-        for restriction in restrictions
-    ]
-    exclusion = all(len(weights) == 1 and next(iter(weights)) in slopes and np.isclose(next(iter(weights.values())), 1.0) and np.isclose(restriction.rhs, 0.0) for weights, restriction in zip(nonzero, restrictions))
-    if exclusion:
-        excluded = tuple(next(iter(weights)) for weights in nonzero)
-        if set(excluded) == slopes:
-            return RestrictionClassification("genel anlamlılık", True, "Bütün eğimler sıfıra eşitlenir; kısıtlı model yalnız sabit içerir.", excluded)
-        return RestrictionClassification("değişken dışlama", True, "Her kısıt ayrı bir eğimi sıfıra eşitler; değişken silerek nested karşılaştırma kurulabilir.", excluded)
-    if len(restrictions) == 1:
-        weights, restriction = nonzero[0], restrictions[0]
-        if len(weights) == 2 and np.isclose(restriction.rhs, 0.0) and set(np.round(list(weights.values()), 12)) == {-1.0, 1.0}:
-            return RestrictionClassification("katsayı eşitliği", False, "Eşitlik kısıtında değişken silinmez; genel Rβ=r matrix F kullanılır.", ())
-        if len(weights) == 1 and not np.isclose(restriction.rhs, 0.0):
-            return RestrictionClassification("sıfır dışı tek katsayı", False, "Katsayı sıfır dışı hedefe eşitlenir; genel Rβ=r matrix F kullanılır.", ())
-        if len(weights) > 1:
-            return RestrictionClassification("doğrusal birleşim", False, "Birden çok katsayının doğrusal birleşimi sınanır; genel Rβ=r matrix F kullanılır.", ())
-    return RestrictionClassification("genel/karma doğrusal kısıt", False, "Bu sistem güvenle basit dışlama olarak sınıflandırılamaz; genel Rβ=r matrix F kullanılır.", ())
-
-
-def format_linear_restriction(restriction: LinearRestriction, *, labels: Mapping[str, str] | None = None) -> str:
-    """Bir kısıtı düzgün işaretlerle okunabilir beta gösterimine dönüştürür."""
-    pieces: list[str] = []
-    for name, weight in restriction.weights.items():
-        if np.isclose(weight, 0.0):
-            continue
-        label = (labels or {}).get(name, name)
-        symbol = f"β_{label}" if name != "const" else "β_sabit"
-        magnitude = abs(float(weight))
-        term = symbol if np.isclose(magnitude, 1.0) else f"{magnitude:g}·{symbol}"
-        if not pieces:
-            pieces.append(term if weight > 0 else f"−{term}")
-        else:
-            pieces.append((" + " if weight > 0 else " − ") + term)
-    lhs = "".join(pieces) if pieces else "0"
-    return f"{lhs} = {restriction.rhs:g}"
 
 
 def _restriction_matrix(result: OLSInferenceResult, restrictions: tuple[LinearRestriction, ...]) -> tuple[np.ndarray, np.ndarray]:
@@ -270,103 +218,3 @@ def nested_exclusion_f_test(frame: pd.DataFrame, dependent: str, unrestricted_ex
     return NestedModelFResult(restricted, unrestricted, q, ssr_r, ssr_ur, r2_r, r2_ur, f_ssr, f_r2,
                               matrix.f_statistic, matrix.p_value, q, unrestricted.df_resid,
                               bool(np.isclose(f_ssr, f_r2, rtol=1e-8, atol=1e-8) and np.isclose(f_ssr, matrix.f_statistic, rtol=1e-8, atol=1e-8)))
-
-
-def overall_f_test(result: OLSInferenceResult, *, alpha: float = 0.05) -> JointFTestResult:
-    """Sabit hariç tüm eğimlerin birlikte sıfır olduğu genel F testini yapar."""
-    restrictions = tuple(LinearRestriction({name: 1.0}, 0.0, f"{name} = 0") for name in result.explanatory)
-    return joint_f_test(result, restrictions, alpha=alpha)
-
-
-def single_restriction_equivalence(coefficient_test_result: CoefficientInference, joint_test_result: JointFTestResult, *, tolerance: float = 1e-8) -> bool:
-    """Uygun iki taraflı tek kısıtta ``F=t²`` eşitliğini doğrular."""
-    if coefficient_test_result.alternative != "two-sided" or joint_test_result.q != 1:
-        raise ValueError("F=t² eşdeğerliği yalnız iki taraflı tek kısıtta uygulanabilir.")
-    if coefficient_test_result.df_resid != joint_test_result.df_denom:
-        raise ValueError("t ve F testlerinin payda serbestlik dereceleri aynı olmalıdır.")
-    if not np.isclose(coefficient_test_result.null_value, joint_test_result.restrictions[0].rhs):
-        raise ValueError("t ve F testlerinin null değerleri aynı olmalıdır.")
-    if coefficient_test_result.coefficient_name not in joint_test_result.restrictions[0].weights:
-        raise ValueError("t testi ortak F kısıtındaki katsayıyla eşleşmelidir.")
-    return bool(np.isclose(joint_test_result.f_statistic, coefficient_test_result.t_statistic ** 2, rtol=tolerance, atol=tolerance))
-
-
-def f_distribution_plot_data(f_observed: float, df_num: int, df_denom: int, alpha: float = 0.05) -> dict[str, object]:
-    """Üst kuyruk F grafiği için adaptif, Streamlit'ten bağımsız veri üretir."""
-    observed, level = _finite(f_observed, "Gözlenen F"), _alpha(alpha)
-    if observed < 0 or df_num < 1 or df_denom < 1:
-        raise ValueError("F ve serbestlik dereceleri geçerli olmalıdır.")
-    critical = float(f_distribution.ppf(1.0 - level, df_num, df_denom))
-    baseline = float(f_distribution.ppf(0.999, df_num, df_denom))
-    limit = max(baseline * 1.12, critical * 1.20, min(observed * 1.10, baseline * 5.0))
-    x = np.linspace(0.0, limit, 600)
-    density = f_distribution.pdf(x, df_num, df_denom)
-    return {"x": x, "density": density, "critical_value": critical, "f_observed": observed,
-            "critical_tail_mask": x >= critical, "p_value_tail_mask": x >= observed,
-            "x_limit": limit, "observed_outside": bool(observed > limit)}
-
-
-@dataclass(frozen=True)
-class LargeSampleJointSimulationResult:
-    """Sağa çarpık hata altında vektörize ortak F benzetim özeti."""
-
-    sample_sizes: tuple[int, ...]
-    repetitions: int
-    rejection_rates: pd.Series
-    standardized_slope_means: pd.Series
-    standardized_slope_stds: pd.Series
-    standardized_slope_skewness: pd.Series
-    seed: int
-
-
-def simulate_large_sample_joint_test(*, sample_sizes: tuple[int, ...] = (25, 100, 500), repetitions: int = 4000, seed: int = 202508, alpha: float = 0.05) -> LargeSampleJointSimulationResult:
-    """Normal olmayan hata altında sıfır iki eğim için batch F benzetimi yapar."""
-    level = _alpha(alpha)
-    if not sample_sizes or any(not isinstance(n, (int, np.integer)) or n < 5 for n in sample_sizes):
-        raise ValueError("Örneklem büyüklükleri en az 5 olan tam sayılar olmalıdır.")
-    if not isinstance(repetitions, (int, np.integer)) or repetitions < 2:
-        raise ValueError("Tekrar sayısı en az 2 olan tam sayı olmalıdır.")
-    if not isinstance(seed, (int, np.integer)):
-        raise ValueError("Seed tam sayı olmalıdır.")
-    rng = np.random.default_rng(int(seed))
-    rates: dict[int, float] = {}; means: dict[int, float] = {}; stds: dict[int, float] = {}; skews: dict[int, float] = {}
-    for n in sample_sizes:
-        x1 = rng.normal(size=(int(repetitions), int(n)))
-        x2 = 0.55 * x1 + np.sqrt(1.0 - 0.55 ** 2) * rng.normal(size=(int(repetitions), int(n)))
-        errors = rng.exponential(scale=1.0, size=(int(repetitions), int(n))) - 1.0
-        design = np.stack((np.ones_like(x1), x1, x2), axis=-1)
-        xtx = np.einsum("rni,rnj->rij", design, design)
-        xty = np.einsum("rni,rn->ri", design, 2.0 + errors)
-        beta = np.linalg.solve(xtx, xty[..., None])[..., 0]
-        residuals = 2.0 + errors - np.einsum("rni,ri->rn", design, beta)
-        sigma2 = np.square(residuals).sum(axis=1) / (int(n) - 3)
-        inv_xtx = np.linalg.inv(xtx)
-        se = np.sqrt(np.maximum(sigma2[:, None] * np.diagonal(inv_xtx, axis1=1, axis2=2)[:, 1:], np.finfo(float).eps))
-        standardized = beta[:, 1:] / se
-        f_values = np.square(standardized).sum(axis=1) / 2.0
-        # Correlated slopes require the exact quadratic form, not the sum of t squares.
-        covariance_slopes = sigma2[:, None, None] * inv_xtx[:, 1:, 1:]
-        f_values = np.einsum("ri,rij,rj->r", beta[:, 1:], np.linalg.inv(covariance_slopes), beta[:, 1:]) / 2.0
-        rates[int(n)] = float(np.mean(f_values > f_distribution.ppf(1.0 - level, 2, int(n) - 3)))
-        flattened = standardized.reshape(-1)
-        means[int(n)], stds[int(n)] = float(flattened.mean()), float(flattened.std(ddof=1))
-        skews[int(n)] = float(np.mean(((flattened - flattened.mean()) / flattened.std(ddof=0)) ** 3))
-    index = pd.Index(tuple(int(n) for n in sample_sizes), name="n")
-    return LargeSampleJointSimulationResult(tuple(int(n) for n in sample_sizes), int(repetitions), pd.Series(rates, index=index), pd.Series(means, index=index), pd.Series(stds, index=index), pd.Series(skews, index=index), int(seed))
-
-
-def classify_large_sample_scenario(scenario_id: str) -> dict[str, str | bool]:
-    """Büyük n'nin hangi sorunu çözebileceğini güvenli dille sınıflandırır."""
-    scenarios = {
-        "omitted_ability": (False, "Örnekleme belirsizliği azalabilir.", "Gözlenmeyen yetenek kaynaklı eksik değişken yanlılığı sürer."),
-        "voluntary_online_sample": (False, "Örneklem içindeki tahmin daha hassas olabilir.", "Gönüllü katılımdan doğan seçilim ve genellenebilirlik sorunu sürer."),
-        "wrong_quadratic_form": (False, "Yanlış biçim daha görünür hale gelebilir.", "Yanlış fonksiyonel biçim kendiliğinden düzelmez."),
-        "repeated_firms_dependence": (False, "Daha çok satır bilgi artırabilir.", "Bağımlı gözlemler uygun bağımlılık/standart hata yaklaşımı gerektirir."),
-        "correct_design_more_n": (True, "Örnekleme belirsizliği ve standart hatalar genellikle azalır.", "İktisadi önem veya nedensellik otomatik olarak artmaz."),
-        "heteroskedastic_nonrobust": (False, "Nokta tahmini daha hassas olabilir.", "Heteroskedastisite altında nonrobust standart hata ve F geçerli olmayabilir."),
-    }
-    if scenario_id not in scenarios:
-        raise ValueError("Bilinmeyen büyük örneklem senaryosu.")
-    solves, improves, not_solved = scenarios[scenario_id]
-    return {"sorunu_cozer_mi": solves, "ne_iyilesebilir": improves, "ne_cozulmez": not_solved,
-            "guvenli_aciklama": "Büyük örneklem yanlış merkezi, tasarımı veya bağımlılığı otomatik olarak düzeltmez."}

@@ -28,6 +28,8 @@ from core.labs.spec import (
     OLS,
     CellTarget,
     Check,
+    CoefficientPlot,
+    CoefficientTable,
     CoefTarget,
     Describe,
     GroupStats,
@@ -61,7 +63,10 @@ from core.labs.spec import (
     GroupSummary,
     HeatMap,
     Histogram,
+    HypothesisPlot,
     InlineData,
+    IntervalPlot,
+    JointTest,
     JoinColumns,
     LineChart,
     MapCodes,
@@ -104,7 +109,8 @@ _FUNCTIONS = {
     "cumprod": "cumprod", "cummean": "cumsum({0}) / seq_along({0})", "seq": "seq_along({0})",
     "factorial": "factorial({0})", "comb": "choose({0}, {1})", "perm": "factorial({0}) / factorial({0} - {1})",
     "dbinom": "dbinom", "pbinom": "pbinom", "dpois": "dpois", "ppois": "ppois", "dnorm": "dnorm",
-    "dhyper_r": "dhyper", "phyper_r": "phyper",
+    "dhyper_r": "dhyper", "phyper_r": "phyper", "tcdf": "pt", "tsf": "pt({0}, {1}, lower.tail = FALSE)",
+    "tinv": "qt", "fsf": "pf({0}, {1}, {2}, lower.tail = FALSE)", "finv": "qf",
     **{name: f"as.numeric({{0}} {symbol} {{1}})" for name, symbol in E.COMPARISONS.items()},
 }
 _REFERENCE_STYLES = tuple(zip(REFERENCE_COLORS, ("2", "3", "4")))
@@ -238,9 +244,20 @@ def _subset(frame: str, variable: str, where) -> str:
     return f"{values}[{frame}${column} == {text(value)}]"
 
 
+_SKEW = [
+    "# Örneklem çarpıklığı: düzeltilmiş Fisher–Pearson katsayısı (pandas skew() ile aynı)",
+    "carpiklik <- function(x) {",
+    "  n <- length(x)",
+    "  n / ((n - 1) * (n - 2)) * sum(((x - mean(x)) / sd(x))^3)",
+    "}",
+]
+
+
 def _statistic(values: str, stat: str) -> str:
     if stat == "value":
         return values
+    if stat == "skew":
+        return f"carpiklik({values})"
     if stat == "count":
         return f"sum(!is.na({values}))"
     if stat == "mode":
@@ -389,7 +406,7 @@ class RGenerator(Generator):
     def helpers(self, operations: tuple[Operation, ...], *, with_checks: bool) -> list[str]:
         lines: list[str] = []
         flat = flatten(operations)
-        labelled = (BarChart, CompareBarChart, PieChart, MosaicChart, TreeDiagram, HeatMap)
+        labelled = (BarChart, CompareBarChart, PieChart, MosaicChart, TreeDiagram, HeatMap, HypothesisPlot, IntervalPlot)
         if any(isinstance(op, labelled) or (isinstance(op, (ClassHistogram, GroupedBarChart)) and op.labels)
                for op in flat):
             lines += _NUMBER_TEXT + [""]
@@ -402,6 +419,9 @@ class RGenerator(Generator):
             lines += _BOX_SUMMARY + [""]
         if any(isinstance(op, Selections) and op.ordered for op in flat):
             lines += _ORDERED_SELECTIONS + [""]
+        if any((isinstance(op, Statistic) and op.stat == "skew")
+               or (isinstance(op, SummaryTable) and any(stat == "skew" for _, _, stat in op.columns)) for op in flat):
+            lines += _SKEW + [""]
         if any(isinstance(op, TreeDiagram) for op in flat):
             lines += _TREE_BOX + [""]
         if any(isinstance(op, RegressionTable) for op in flat):
@@ -494,8 +514,9 @@ class RGenerator(Generator):
         if isinstance(op, ShowModel):
             summary = f"summary({op.model})" if op.stars else f"summary({op.model}), signif.stars = FALSE"
             # Çıkarım henüz işlenmedi: Konu 7'den önce ya da ekranda yalnız katsayılar varken.
-            limited = "se" not in op.columns or int(self.spec.topic_key[-2:]) < 7
-            note = []
+            topic = int(self.spec.topic_key[-2:])
+            limited = "se" not in op.columns or topic < 7
+            note = ["# Özetteki F istatistiği (F-statistic) Konu 8'de yorumlanır."] if topic == 7 and not limited else []
             if limited:
                 read = listing(("katsayılar (Estimate)", *(STAT_NAMES[stat] for stat in self.fields_read(op))))
                 note = [f"# Tam çıktı yazdırılır; bu adımda yalnız {read} okunur.",
@@ -525,8 +546,17 @@ class RGenerator(Generator):
                 f"{op.result} <- makale_tablosu(list({models}), {_vector(op.terms)}"
                 f"{'' if op.standard_errors else ', sh = FALSE'}{'' if op.r2 else ', r2 = FALSE'}"
                 f"{', r2_duz = TRUE' if op.adj_r2 else ''})",
-                f"print(round({op.result}, {op.decimals}))",
             ]
+            if op.extra:
+                count = len(op.terms) * (2 if op.standard_errors else 1)
+                rows = [f"  {key} = c({', '.join(names)}),  # {label}" for key, label, names in op.extra]
+                lines += [
+                    "# Ek satırlar (skalerlerden): terimlerden sonra, gözlem sayısından önce",
+                    f"{op.result} <- rbind({op.result}[seq_len({count}), , drop = FALSE],",
+                    *rows,
+                    f"  {op.result}[seq_len(nrow({op.result})) > {count}, , drop = FALSE])",
+                ]
+            lines.append(f"print(round({op.result}, {op.decimals}))")
             for digits in sorted({digits for _, digits in op.term_decimals}):
                 terms = [term for term, value in op.term_decimals if value == digits]
                 lines.append(f"print(round({op.result}[{_vector(terms)}, , drop = FALSE], {digits}))  "
@@ -797,6 +827,16 @@ class RGenerator(Generator):
             return self._monte_carlo(op)
         if isinstance(op, SummaryTable):
             return self._summary_table(op)
+        if isinstance(op, CoefficientTable):
+            return self._coefficient_table(op)
+        if isinstance(op, JointTest):
+            return self._joint_test(op)
+        if isinstance(op, HypothesisPlot):
+            return self._hypothesis(op)
+        if isinstance(op, CoefficientPlot):
+            return self._coefficient_plot(op)
+        if isinstance(op, IntervalPlot):
+            return self._interval_plot(op)
         raise TypeError(f"R üreticisi bu işlemi tanımıyor: {type(op).__name__}")
 
     def _inline(self, op: InlineData) -> list[str]:
@@ -1600,6 +1640,176 @@ class RGenerator(Generator):
         return lines + [
             f'legend("topright", legend = c({text(op.bar_label)}, {text(op.curve_label)}),',
             f'       col = c("{PALETTE[0]}", "{PALETTE[1]}"), lwd = c(8, 2), bty = "n")',
+        ]
+
+    # --- Çıkarım (Konu 7–8) ------------------------------------------------
+    @staticmethod
+    def _coefficient_table(op: CoefficientTable) -> list[str]:
+        table = op.result
+        level = E.format_number(op.level)
+        return [
+            f"# {op.comment}",
+            "# t ve p: H0: katsayı = 0 (iki taraflı); güven aralığı: katsayı ± kritik t × standart hata",
+            f"{table} <- cbind(summary({op.model})$coefficients, confint({op.model}, level = {level}))",
+            f'rownames({table})[rownames({table}) == "(Intercept)"] <- "Intercept"',
+            f'colnames({table}) <- c("katsayi", "sh", "t", "p", "alt", "ust")',
+            f"{table} <- {table}[{_vector(op.terms)}, , drop = FALSE]",
+            f'print(cbind(round({table}[, c("katsayi", "sh"), drop = FALSE], {op.decimals}),',
+            f'            t = round({table}[, "t"], {op.t_decimals}), p = round({table}[, "p"], {op.p_decimals}),',
+            f'            round({table}[, c("alt", "ust"), drop = FALSE], {op.decimals})))',
+        ]
+
+    @staticmethod
+    def _joint_test(op: JointTest) -> list[str]:
+        removed = " - ".join(op.terms)
+        return [
+            f"# {op.comment}",
+            f"# H0: {', '.join(f'{term} = 0' for term in op.terms)} (q = {len(op.terms)} kısıt). Kısıtlı model sınanan "
+            "terimler çıkarılarak",
+            "# aynı gözlemlerle tahmin edilir; anova() iki modelin artık kareleri toplamından F'yi hesaplar.",
+            f"{op.name}_kisitli <- update({op.model}, . ~ . - {removed})",
+            f"{op.name}_tablo <- anova({op.name}_kisitli, {op.model})",
+            f"print({op.name}_tablo)",
+            f"{op.name} <- {op.name}_tablo$F[2]",
+            f'{op.p_value} <- {op.name}_tablo[["Pr(>F)"]][2]',
+            f'cat(sprintf("{_sprintf(op.comment)}: F = %.{op.decimals}f, p-değeri = %.3g\\n", {op.name}, '
+            f"{op.p_value}))",
+        ]
+
+    def _hypothesis(self, op: HypothesisPlot) -> list[str]:
+        stat, df = _parameter(op.statistic), _parameter(op.df)
+        alpha = E.format_number(op.alpha)
+        level = E.format_number(round(100 * op.alpha, 8))
+        if op.distribution == "f":
+            df2 = _parameter(op.df2)
+            pdf = f"df({{}}, {df}, {df2})"
+            lines = [
+                f"# F({df}, {df2}) dağılımı altında yüzde {level} testi (üst kuyruk): reddetme bölgesi boyalı,",
+                "# p-değeri alanı taralı",
+                f"kritik_deger <- qf(1 - {alpha}, {df}, {df2})",
+                "eksen_alt <- 0",
+                f"eksen_ust <- max(2.4 * kritik_deger, min(1.15 * {stat}, 6 * kritik_deger))",
+                "reddetme_bolgesi <- list(c(kritik_deger, eksen_ust))",
+                f"p_alani <- if ({stat} < eksen_ust) list(c({stat}, eksen_ust)) else list()",
+                "kritik_cizgiler <- kritik_deger",
+                "kritik_metni <- sayi_metni(kritik_deger, 2)",
+            ]
+            symbol = "F"
+        else:
+            pdf = f"dt({{}}, {df})"
+            kind = {"iki": "iki taraflı", "sag": "sağ kuyruk", "sol": "sol kuyruk"}[op.alternative]
+            lines = [
+                f"# t dağılımı (serbestlik derecesi {df}) altında yüzde {level} {kind} test: reddetme bölgesi boyalı,",
+                "# p-değeri alanı taralı",
+                f"yari <- max(4, min(abs({stat}) + 1, 6))  # yatay eksen [-yarı, yarı]",
+                "eksen_alt <- -yari",
+                "eksen_ust <- yari",
+            ]
+            if op.alternative == "iki":
+                lines += [
+                    f"kritik_deger <- qt(1 - {alpha} / 2, {df})",
+                    "reddetme_bolgesi <- list(c(eksen_alt, -kritik_deger), c(kritik_deger, eksen_ust))",
+                    f"p_alani <- if (abs({stat}) < yari) list(c(eksen_alt, -abs({stat})), c(abs({stat}), eksen_ust)) "
+                    "else list()",
+                    "kritik_cizgiler <- c(-kritik_deger, kritik_deger)",
+                    'kritik_metni <- paste0("±", sayi_metni(kritik_deger, 2))',
+                ]
+            elif op.alternative == "sag":
+                lines += [
+                    f"kritik_deger <- qt(1 - {alpha}, {df})",
+                    "reddetme_bolgesi <- list(c(kritik_deger, eksen_ust))",
+                    f"p_alani <- if ({stat} < eksen_ust) list(c(max({stat}, eksen_alt), eksen_ust)) else list()",
+                    "kritik_cizgiler <- kritik_deger",
+                    "kritik_metni <- sayi_metni(kritik_deger, 2)",
+                ]
+            else:
+                lines += [
+                    f"kritik_deger <- qt({alpha}, {df})",
+                    "reddetme_bolgesi <- list(c(eksen_alt, kritik_deger))",
+                    f"p_alani <- if ({stat} > eksen_alt) list(c(eksen_alt, min({stat}, eksen_ust))) else list()",
+                    "kritik_cizgiler <- kritik_deger",
+                    "kritik_metni <- sayi_metni(kritik_deger, 2)",
+                ]
+            symbol = "t"
+        band = f'adjustcolor("{PALETTE[1]}", 0.3)'
+        lines += [
+            "eksen <- seq(eksen_alt, eksen_ust, length.out = 801)",
+            f'plot(eksen, {pdf.format("eksen")}, type = "l", lwd = 2, col = "{PALETTE[0]}", xaxs = "i",',
+            f'     ylim = c(0, 1.08 * max({pdf.format("eksen")})), xlab = "{_quote(op.x_label)}",',
+            f'     ylab = "{_quote(op.y_label)}", main = "{_quote(op.title)}")',
+            "for (bolge in reddetme_bolgesi) {",
+            "  xa <- seq(bolge[1], bolge[2], length.out = 200)",
+            f'  polygon(c(bolge[1], xa, bolge[2]), c(0, {pdf.format("xa")}, 0), col = {band}, border = NA)',
+            "}",
+            "for (bolge in p_alani) {",
+            "  xa <- seq(bolge[1], bolge[2], length.out = 200)",
+            f'  polygon(c(bolge[1], xa, bolge[2]), c(0, {pdf.format("xa")}, 0), density = 20, col = "{REFERENCE_COLORS[0]}",',
+            "          border = NA)",
+            "}",
+            f'abline(v = kritik_cizgiler, col = "{PALETTE[1]}", lty = 2, lwd = 2)',
+            f"disarida <- {stat} < eksen_alt || {stat} > eksen_ust",
+            f'if (!disarida) abline(v = {stat}, col = "{REFERENCE_COLORS[0]}", lwd = 2)',
+            f'legend("topright", legend = c("Yüzde {level.replace(".", ",")} reddetme bölgesi", "p-değeri alanı",',
+            '                              paste("Kritik değer", kritik_metni),',
+            f'                              paste0("Gözlenen {symbol} = ", sayi_metni({stat}, 2),',
+            '                                     if (disarida) " (eksenin dışında)" else "")),',
+            f'       col = c({band}, "{REFERENCE_COLORS[0]}", "{PALETTE[1]}", "{REFERENCE_COLORS[0]}"),',
+            "       pch = c(15, 7, NA, NA), pt.cex = 1.8, lty = c(NA, NA, 2, 1), lwd = c(NA, NA, 2, 2),",
+            '       bg = adjustcolor("white", 0.85), box.lty = 0)  # yarı saydam zemin: eğriyle çakışan yazı okunur',
+        ]
+        return lines
+
+    def _coefficient_plot(self, op: CoefficientPlot) -> list[str]:
+        labels = [self.spec.label(term) for term in op.terms]
+        return [
+            f"# Katsayılar ve yüzde {E.format_number(round(100 * op.level, 8))} güven aralıkları; ilk terim en üstte",
+            f"terimler <- {_vector(op.terms)}",
+            f"aralik <- confint({op.model}, level = {E.format_number(op.level)})[terimler, , drop = FALSE]",
+            f"tahmin <- coef({op.model})[terimler]",
+            "konum <- rev(seq_along(terimler))",
+            "eski_par <- par(mar = c(5, 9, 4, 2))  # sol kenar boşluğu: değişken adları yatay yazılır",
+            'plot(tahmin, konum, xlim = range(c(aralik, 0)), ylim = c(0.5, length(terimler) + 0.5), pch = 19,',
+            f'     col = "{PALETTE[0]}", yaxt = "n", xlab = "{_quote(op.x_label)}", ylab = "",',
+            f'     main = "{_quote(op.title)}")',
+            f'mtext("{_quote(op.y_label)}", side = 2, line = 7.5)',
+            f'arrows(aralik[, 1], konum, aralik[, 2], konum, angle = 90, code = 3, length = 0.05, col = "{PALETTE[0]}",',
+            "       lwd = 2)",
+            f"axis(2, at = konum, labels = {_vector(labels)}, las = 1)",
+            f'abline(v = 0, lty = 2, col = "{REFERENCE_COLORS[0]}", lwd = 2)',
+            "par(eski_par)",
+        ]
+
+    def _interval_plot(self, op: IntervalPlot) -> list[str]:
+        truth = _parameter(op.truth)
+        low, high, estimate = (f"ilk${op.low}", f"ilk${op.high}", f"ilk${op.estimate}")
+        colors = f'ifelse(kapsar, "{PALETTE[0]}", "{PALETTE[1]}")'
+        reference = None if op.reference is None else E.format_number(op.reference[0])
+        extent = f"{low}, {high}" + ("" if reference is None else f", {truth}, {reference}")
+        lines = [
+            f"# İlk {op.rows} tekrarın güven aralığı; gerçek değeri kapsamayanlar kesikli ve ikinci renkte",
+            f"ilk <- head({op.table}, {op.rows})",
+            f"kapsar <- {low} <= {truth} & {truth} <= {high}",
+            "konum <- seq_len(nrow(ilk))",
+            f'plot({estimate}, konum, type = "n", xlim = range(c({extent})),',
+            f'     xlab = "{_quote(op.x_label)}", ylab = "{_quote(op.y_label)}", main = "{_quote(op.title)}")',
+            f"segments({low}, konum, {high}, konum, col = {colors}, lty = ifelse(kapsar, 1, 2), lwd = 2)",
+            f"points({estimate}, konum, pch = 19, col = {colors})",
+            f'abline(v = {truth}, lty = 2, col = "{REFERENCE_COLORS[0]}", lwd = 2)',
+        ]
+        if reference is None:
+            return lines + [
+                'legend("topright", legend = c("Gerçek değeri kapsıyor", "Gerçek değeri kapsamıyor",',
+                f'                              paste("Gerçek değer =", sayi_metni({truth}, 2))),',
+                f'       col = c("{PALETTE[0]}", "{PALETTE[1]}", "{REFERENCE_COLORS[0]}"), lty = c(1, 2, 2), lwd = 2, '
+                'bty = "n")',
+            ]
+        return lines + [
+            f'abline(v = {reference}, lty = 3, col = "{REFERENCE_COLORS[1]}", lwd = 2)',
+            'legend("topright", legend = c("Gerçek değeri kapsıyor", "Gerçek değeri kapsamıyor",',
+            f'                              paste("Gerçek değer =", sayi_metni({truth}, 2)), "{_quote(op.reference[1])}"),',
+            f'       col = c("{PALETTE[0]}", "{PALETTE[1]}", "{REFERENCE_COLORS[0]}", "{REFERENCE_COLORS[1]}"), '
+            'lty = c(1, 2, 2, 3), lwd = 2,',
+            '       bg = adjustcolor("white", 0.85), box.lty = 0)',
         ]
 
     def _monte_carlo(self, op: MonteCarlo) -> list[str]:

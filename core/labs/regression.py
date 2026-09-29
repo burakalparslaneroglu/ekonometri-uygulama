@@ -10,7 +10,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from core.labs.spec import COEF_QUANTITIES, INTERCEPT, MODEL_QUANTITIES, OLS, RegressionTable
+from core.labs.spec import COEF_QUANTITIES, INTERCEPT, MODEL_QUANTITIES, OLS, CoefficientTable, RegressionTable
 
 STAR_LEVELS = ((0.01, "***"), (0.05, "**"), (0.10, "*"))
 """Makale tablosunda yıldız eşikleri: iki yönlü p-değeri 0,01, 0,05 ve 0,10'dan küçükse ***, **, *."""
@@ -64,6 +64,50 @@ def model_quantity(result, quantity: str) -> float:
     return float(getters[quantity]())
 
 
+def confidence_interval(result, term: str, level: float) -> tuple[float, float]:
+    """Yüzde ``100·level`` güven aralığı β̂ ± t_{α/2; n−k−1}·se(β̂), α = 1 − level (statsmodels ``conf_int``)."""
+
+    interval = result.conf_int(alpha=round(1 - level, 10))
+    return float(interval.loc[term, 0]), float(interval.loc[term, 1])
+
+
+def inference_table(op: CoefficientTable, result) -> pd.DataFrame:
+    """Tek katsayı çıkarım tablosu: satırlar terimler, sütunlar katsayı, standart hata, t, p ve güven aralığı."""
+
+    missing = [term for term in op.terms if term not in result.params.index]
+    if missing:
+        raise KeyError(f"Modelde böyle bir terim yok: {', '.join(missing)}")
+    interval = result.conf_int(alpha=round(1 - op.level, 10))
+    terms = list(op.terms)
+    return pd.DataFrame(
+        {
+            "katsayi": result.params[terms].to_numpy(dtype=float),
+            "sh": result.bse[terms].to_numpy(dtype=float),
+            "t": result.tvalues[terms].to_numpy(dtype=float),
+            "p": result.pvalues[terms].to_numpy(dtype=float),
+            "alt": interval.loc[terms, 0].to_numpy(dtype=float),
+            "ust": interval.loc[terms, 1].to_numpy(dtype=float),
+        },
+        index=pd.Index(terms, name="terim"),
+    )
+
+
+def restriction_text(terms: tuple[str, ...]) -> str:
+    """statsmodels ``f_test`` kısıt yazımı: "exper = 0, tenure = 0"."""
+
+    return ", ".join(f"{term} = 0" for term in terms)
+
+
+def joint_test(result, terms: tuple[str, ...]) -> tuple[float, float]:
+    """Dışlama kısıtlarının F testi (statsmodels ``f_test``): F istatistiği ve p-değeri."""
+
+    missing = [term for term in terms if term not in result.params.index]
+    if missing:
+        raise KeyError(f"Modelde böyle bir terim yok: {', '.join(missing)}")
+    test = result.f_test(restriction_text(terms))
+    return float(np.asarray(test.fvalue).squeeze()), float(np.asarray(test.pvalue).squeeze())
+
+
 def coefficient_table(result) -> pd.DataFrame:
     """Katsayı tablosu: satırlar terimler (modeldeki sırayla), sütunlar ``COEF_QUANTITIES``."""
 
@@ -81,12 +125,12 @@ def stars(p_value: float) -> str:
     return ""
 
 
-def regression_table(op: RegressionTable, models: dict) -> pd.DataFrame:
-    """Makale tipi tablonun sayıları: ``terim`` ve (``standard_errors`` ise) ``terim_sh`` satırları, ``n``, (``r2``
-    ise) ``r2`` ve (``adj_r2`` ise) ``adj_r2``; sütunlar modeller."""
+def regression_table(op: RegressionTable, models: dict, scalars: dict | None = None) -> pd.DataFrame:
+    """Makale tipi tablonun sayıları: ``terim`` ve (``standard_errors`` ise) ``terim_sh`` satırları, ek satırlar
+    (``extra``; skalerlerden), ``n``, (``r2`` ise) ``r2`` ve (``adj_r2`` ise) ``adj_r2``; sütunlar modeller."""
 
     columns = {}
-    for heading, name in op.models:
+    for position, (heading, name) in enumerate(op.models):
         result = models[name]
         cells: list[float] = []
         for term in op.terms:
@@ -94,6 +138,7 @@ def regression_table(op: RegressionTable, models: dict) -> pd.DataFrame:
             cells.append(float(result.params[term]) if present else np.nan)
             if op.standard_errors:
                 cells.append(float(result.bse[term]) if present else np.nan)
+        cells += [float((scalars or {})[names[position]]) for _, _, names in op.extra]
         cells.append(float(result.nobs))
         if op.r2:
             cells.append(float(result.rsquared))
@@ -101,8 +146,8 @@ def regression_table(op: RegressionTable, models: dict) -> pd.DataFrame:
             cells.append(float(result.rsquared_adj))
         columns[heading] = cells
     rows_per_term = (lambda term: (term, f"{term}_sh")) if op.standard_errors else (lambda term: (term,))
-    index = ([label for term in op.terms for label in rows_per_term(term)] + ["n"] + (["r2"] if op.r2 else [])
-             + (["adj_r2"] if op.adj_r2 else []))
+    index = ([label for term in op.terms for label in rows_per_term(term)] + [key for key, _, _ in op.extra] + ["n"]
+             + (["r2"] if op.r2 else []) + (["adj_r2"] if op.adj_r2 else []))
     return pd.DataFrame(columns, index=pd.Index(index, name="satir"))
 
 
