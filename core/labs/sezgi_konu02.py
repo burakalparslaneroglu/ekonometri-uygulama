@@ -80,7 +80,7 @@ def _build_assignment(parameters: Parameters) -> tuple:
     return (
         NewSample("kisiler", n, SEED),
         Draw("kisiler", "motivasyon", "normal", 0, 1, "Motivasyon (araştırmacı gözlemez)"),
-        Draw("kisiler", "e", "normal", 0, NOISE, "Diğer etkiler (bin $)"),
+        Draw("kisiler", "e", "normal", 0, NOISE, "Diğer etkiler (bin dolar)"),
         Draw("kisiler", "u", "uniform", 0, 1, "Kura için tek-düze sayı"),
         Draw("kisiler", "w", "normal", 0, 1, "Katılım kararındaki diğer etkenler"),
         Derive("kisiler", "kazanc0", E.add(E.add(BASE_EARNINGS, E.mul(MOTIVATION_EFFECT, E.var("motivasyon"))),
@@ -102,23 +102,23 @@ def _build_assignment(parameters: Parameters) -> tuple:
         ScalarTable((("Programsız grup", E.ref("ort0_r")), ("Program grubu", E.ref("ort1_r"))), "grafik_r", decimals=3),
         ScalarTable((("Programsız grup", E.ref("ort0_g")), ("Program grubu", E.ref("ort1_g"))), "grafik_g", decimals=3),
         ScalarTable((
-            ("Programsız grubun ortalama kazancı (bin $)", E.ref("ort0_r")),
-            ("Program grubunun ortalama kazancı (bin $)", E.ref("ort1_r")),
-            ("Gözlenen fark (bin $)", E.ref("fark_r")),
+            ("Programsız grubun ortalama kazancı (bin dolar)", E.ref("ort0_r")),
+            ("Program grubunun ortalama kazancı (bin dolar)", E.ref("ort1_r")),
+            ("Gözlenen fark (bin dolar)", E.ref("fark_r")),
             ("Program grubunun payı", E.ref("pay_r")),
             ("Motivasyon farkı (program − programsız)", E.ref("fark_mr")),
         ), "ozet_r", decimals=3),
         ScalarTable((
-            ("Programsız grubun ortalama kazancı (bin $)", E.ref("ort0_g")),
-            ("Program grubunun ortalama kazancı (bin $)", E.ref("ort1_g")),
-            ("Gözlenen fark (bin $)", E.ref("fark_g")),
+            ("Programsız grubun ortalama kazancı (bin dolar)", E.ref("ort0_g")),
+            ("Program grubunun ortalama kazancı (bin dolar)", E.ref("ort1_g")),
+            ("Gözlenen fark (bin dolar)", E.ref("fark_g")),
             ("Program grubunun payı", E.ref("pay_g")),
             ("Motivasyon farkı (program − programsız)", E.ref("fark_mg")),
         ), "ozet_g", decimals=3),
         JoinColumns("ozet", (("Rastgele atama", "ozet_r", "deger"), ("Gönüllü katılım", "ozet_g", "deger")),
                     decimals=3),
         CompareBarChart((("Rastgele atama", "grafik_r"), ("Gönüllü katılım", "grafik_g")), "deger",
-                        "Tasarım", "Ortalama kazanç (bin $)", "Aynı kişiler, iki tasarım: grup ortalamaları",
+                        "Tasarım", "Ortalama kazanç (bin dolar)", "Aynı kişiler, iki tasarım: grup ortalamaları",
                         decimals=2),
     )
 
@@ -139,11 +139,11 @@ def _assignment_metrics(state: LabState, parameters: Parameters) -> tuple[SimMet
     effect = _assignment_settings(parameters)[0]
     s = state.scalars
     return (
-        SimMetric("Gerçek etki τ", f"{plain(effect, 2)}", "Programın kazanca gerçek etkisi (bin $), veri üretim süreci."),
+        SimMetric("Gerçek etki τ", f"{plain(effect, 2)}", "Programın kazanca gerçek etkisi (bin dolar), veri üretim süreci."),
         SimMetric("Rastgele: fark", plain(s["fark_r"], 2),
-                  "Kura ile atanan program grubu − programsız grup: ortalama kazanç farkı (bin $)."),
+                  "Kura ile atanan program grubu − programsız grup: ortalama kazanç farkı (bin dolar)."),
         SimMetric("Gönüllü: fark", plain(s["fark_g"], 2),
-                  "Gönüllü katılanlar − katılmayanlar: ortalama kazanç farkı (bin $)."),
+                  "Gönüllü katılanlar − katılmayanlar: ortalama kazanç farkı (bin dolar)."),
         SimMetric("Motivasyon farkı", plain(s["fark_mg"], 2),
                   "Gönüllü tasarımda katılanlar − katılmayanlar: ortalama motivasyon farkı (standart sapma birimi)."),
     )
@@ -153,24 +153,24 @@ def _assignment_takeaway(state: LabState, parameters: Parameters) -> str:
     effect, strength, _ = _assignment_settings(parameters)
     s = state.scalars
     random_part = (f"Rastgele atamada kimin programa gireceğini kura belirler: gruplar motivasyonda ancak şans eseri "
-                   f"farklıdır (fark {plain(s['fark_mr'], 2)}). Gözlenen fark {plain(s['fark_r'], 2)} bin $, gerçek "
-                   f"etki {plain(effect, 2)} bin $: aradaki fark örneklemden gelir.")
+                   f"farklıdır (fark {plain(s['fark_mr'], 2)}). Gözlenen fark {plain(s['fark_r'], 2)} bin dolar, gerçek "
+                   f"etki {plain(effect, 2)} bin dolar: aradaki fark örneklemden gelir.")
     if strength == 0:
         return (
             f"s = 0: katılım kararı motivasyondan bağımsız; gönüllü katılım da kura gibi işler. {random_part} Gönüllü "
-            f"tasarımdaki fark ({plain(s['fark_g'], 2)} bin $) da gerçek etkiden yalnız örneklem nedeniyle ayrılır "
+            f"tasarımdaki fark ({plain(s['fark_g'], 2)} bin dolar) da gerçek etkiden yalnız örneklem nedeniyle ayrılır "
             "(§2.11)."
         )
     if s["fark_mg"] < 0.1:
         return (
             f"Seçilim bu ayarda zayıf (s = {_short(strength, 1)}): gönüllü tasarımda katılanlar ile katılmayanların "
             f"motivasyon farkı {plain(s['fark_mg'], 2)} standart sapma. Gönüllü tasarımdaki fark "
-            f"{plain(s['fark_g'], 2)} bin $. {random_part} s'yi artırarak seçilimin etkisini izleyin (§2.10, §2.11)."
+            f"{plain(s['fark_g'], 2)} bin dolar. {random_part} s'yi artırarak seçilimin etkisini izleyin (§2.10, §2.11)."
         )
     return (
         f"Gönüllü katılımda motivasyonu yüksek kişiler programa daha çok katılıyor: katılanların ortalama motivasyonu "
         f"katılmayanlardan {plain(s['fark_mg'], 2)} standart sapma yüksek. Bu kişiler programsız da daha çok "
-        f"kazanırdı; bu yüzden gönüllü tasarımdaki fark ({plain(s['fark_g'], 2)} bin $) programın etkisi ile "
+        f"kazanırdı; bu yüzden gönüllü tasarımdaki fark ({plain(s['fark_g'], 2)} bin dolar) programın etkisi ile "
         f"başlangıç farkını birlikte içerir. {random_part} Seçilim, karşılaştırılan grupların nasıl oluştuğuyla "
         "ilgilidir (§2.10, §2.11)."
     )
@@ -184,8 +184,8 @@ ASSIGNMENT = SimExperiment(
              "katılsaydı, iki grubun ortalama kazanç farkı programın gerçek etkisini ne kadar iyi gösterirdi?",
     note=NoteRef("2.11", objects=("§2.7", "§2.10")),
     parameters=(
-        SimParameter("tau", "Programın gerçek etkisi τ (bin $)", 0, 4, 1.8, 0.1,
-                     "JTRAIN2'de gözlenen fark 1,794 bin $.", decimals=1),
+        SimParameter("tau", "Programın gerçek etkisi τ (bin dolar)", 0, 4, 1.8, 0.1,
+                     "JTRAIN2'de gözlenen fark 1,794 bin dolar.", decimals=1),
         SimParameter("secilim", "Seçilimin gücü s", 0, 2, 1, 0.1,
                      "s = 0: gönüllü katılım motivasyondan bağımsız. s büyüdükçe motivasyonu yüksek olanlar katılır.",
                      decimals=1),
@@ -209,7 +209,7 @@ ASSIGNMENT = SimExperiment(
     metrics=_assignment_metrics,
     takeaway=_assignment_takeaway,
     tables=(("ozet", "İki tasarımın özeti"),),
-    labels=(("motivasyon", "Motivasyon"), ("kazanc0", "Programsız kazanç (bin $)")),
+    labels=(("motivasyon", "Motivasyon"), ("kazanc0", "Programsız kazanç (bin dolar)")),
 )
 
 

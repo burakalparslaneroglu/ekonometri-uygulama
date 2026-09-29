@@ -51,12 +51,26 @@ class SimExperiment:
     build: Callable[[Parameters], tuple[Operation, ...]]
     metrics: Callable[[LabState, Parameters], tuple[SimMetric, ...]]
     takeaway: Callable[[LabState, Parameters], str]
-    tables: tuple[tuple[str, str], ...] = ()
+    tables: tuple[tuple, ...] = ()
+    """Gösterilecek sonuç tabloları: ``(ad, başlık)`` ya da ``(ad, başlık, bağlı parametreler)``; başlık metin ya da
+    parametrelerden metin üreten bir işlevdir. Başlığı "Tablo " ile başlayan (notlardaki numaralı) bir tablo, bağlı
+    olduğu parametrelerden biri varsayılandan farklıysa "seçtiğiniz ayarlarla" etiketiyle gösterilir; bağlı
+    parametreler verilmezse bütün parametreler sayılır."""
     labels: tuple[tuple[str, str], ...] = field(default_factory=tuple)
 
     @property
     def key(self) -> str:
         return f"{self.topic_key}_sezgi{self.number}"
+
+    def table_title(self, entry: tuple, parameters: Parameters) -> str:
+        """Tablo başlığı; notlardaki numaralı tablo seçilen ayarlarla değiştiyse bunu söyler."""
+
+        _, title, *rest = entry
+        title = title(parameters) if callable(title) else title
+        keys = rest[0] if rest else tuple(item.key for item in self.parameters)
+        defaults = self.defaults()
+        same = all(abs(float(parameters[key]) - float(defaults[key])) < 1e-12 for key in keys)
+        return title if same or not title.startswith("Tablo ") else f"{title} (seçtiğiniz ayarlarla)"
 
     def defaults(self) -> dict[str, float]:
         return {item.key: item.default for item in self.parameters}

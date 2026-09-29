@@ -61,6 +61,7 @@ from core.labs.spec import (
     ShowFrame,
     Statistic,
     StemLeaf,
+    SummaryTable,
     VariableTypes,
 )
 
@@ -179,7 +180,7 @@ def display_table(op, table: pd.DataFrame, label: Callable[[str], str] = lambda 
     if isinstance(op, StemLeaf):
         return _formatted(table, {"yaprak_sayisi": _count}, "Gövde", label)
     if isinstance(op, ScalarTable):
-        return pd.DataFrame({"Büyüklük": table.index, "Değer": [tr_number(v, op.decimals) for v in table["deger"]]})
+        return pd.DataFrame({op.heading: table.index, op.value: [tr_number(v, op.decimals) for v in table["deger"]]})
     if isinstance(op, GroupSummary):
         formats = {name: _count if stat == "count" else (lambda v: tr_number(v, op.decimals))
                    for name, _, stat in op.columns}
@@ -187,7 +188,8 @@ def display_table(op, table: pd.DataFrame, label: Callable[[str], str] = lambda 
     if isinstance(op, JoinColumns):
         formats = {name: (lambda v: tr_number(v, op.decimals, op.percent)) for name, _, _ in op.columns}
         index = str(table.index.name or "")
-        return _formatted(table, formats, _COLUMN_LABELS.get(index, label(index)) or "Kategori", label)
+        heading = op.heading or _COLUMN_LABELS.get(index, label(index)) or "Kategori"
+        return _formatted(table, formats, heading, label)
     if isinstance(op, BoxSummary):
         shown = table.rename(index=_BOX_LABELS)
         formats = {str(column): _boundary for column in shown.columns}
@@ -209,6 +211,11 @@ def display_table(op, table: pd.DataFrame, label: Callable[[str], str] = lambda 
         shown.index = [" · ".join(_index_text(part) for part in item) if isinstance(item, tuple) else _index_text(item)
                        for item in shown.index]
         return shown.rename_axis(heading).reset_index()
+    if isinstance(op, SummaryTable):
+        digits = dict(op.column_decimals)
+        formats = {name: _count if stat == "count" else (lambda v, d=digits.get(name, op.decimals): tr_number(v, d))
+                   for name, _, stat in op.columns}
+        return _formatted(table, formats, op.heading, label)
     if isinstance(op, PanelSummary):
         # Dönemler (ör. yıl 1980) binlik ayırıcısız, sayımlar (4.360 satır) binlik ayırıcıyla yazılır.
         return pd.DataFrame({"Büyüklük": [_PANEL_LABELS[name] for name in table.index],
@@ -244,13 +251,14 @@ def regression_display(op: RegressionTable, state: LabState, label: Callable[[st
 
     table = state.tables[op.result]
     marks = RG.table_stars(op, state.models) if op.stars else {}
+    digits = dict(op.term_decimals)
     rows = []
     for term in op.terms:
         coefficients, errors = {"": RG.term_label(term, label)}, {"": ""}
         for heading, _ in op.models:
             value = table.loc[term, heading]
-            coefficients[heading] = ("" if pd.isna(value)
-                                     else coefficient_number(value, op.decimals) + marks.get((term, heading), ""))
+            coefficients[heading] = ("" if pd.isna(value) else coefficient_number(value, digits.get(term, op.decimals))
+                                     + marks.get((term, heading), ""))
             if op.standard_errors:
                 error = table.loc[f"{term}_sh", heading]
                 errors[heading] = "" if pd.isna(error) else f"({tr_number(error, op.decimals)})"
@@ -259,6 +267,9 @@ def regression_display(op: RegressionTable, state: LabState, label: Callable[[st
     if op.r2:
         rows.append({"": "R²", **{heading: tr_number(table.loc["r2", heading], op.decimals)
                                   for heading, _ in op.models}})
+    if op.adj_r2:
+        rows.append({"": "Düzeltilmiş R²", **{heading: tr_number(table.loc["adj_r2", heading], op.decimals)
+                                              for heading, _ in op.models}})
     return pd.DataFrame(rows).rename(columns={"": "Değişken"})
 
 
@@ -398,11 +409,23 @@ def _input_only(operations, index: int, state: LabState) -> bool:
                for later in operations[index + 1:])
 
 
-def render_operations(operations, state: LabState, label: Callable[[str], str], key_prefix: str) -> None:
+def coefficient_caption(topic_key: str) -> str:
+    """Standart hatasız regresyon tablosunun altyazısı; standart hatalar Konu 7'de işlenir."""
+
+    later = topic_key.startswith("konu") and int(topic_key[-2:]) < 7
+    return "Yalnız katsayılar; standart hatalar tabloya Konu 7'de eklenir." if later else "Yalnız katsayılar."
+
+
+def render_operations(operations, state: LabState, label: Callable[[str], str], key_prefix: str,
+                      topic_key: str = "") -> None:
     """İşlemlerin sonuçlarını sırayla gösterir; art arda gelen tek sayılar tek satırda toplanır."""
 
     pending: list[tuple[str, str]] = []
+    # Yan yana birleştirilen (JoinColumns) ara skaler tabloları ayrıca gösterilmez; birleşik tablo gösterilir.
+    joined = {table for op in operations if isinstance(op, JoinColumns) for _, table, _ in op.columns}
     for index, op in enumerate(operations):
+        if isinstance(op, ScalarTable) and op.result in joined:
+            continue
         if isinstance(op, _METRICS):
             pending.extend(_metrics(op, state))
             continue
@@ -439,7 +462,7 @@ def render_operations(operations, state: LabState, label: Callable[[str], str], 
             elif op.standard_errors:
                 st.caption("Parantez içinde standart hatalar.")
             else:
-                st.caption("Yalnız katsayılar; standart hatalar tabloya Konu 7'de eklenir.")
+                st.caption(coefficient_caption(topic_key))
             continue
         if isinstance(op, InlineData):
             frame = state.frames[op.frame]
@@ -480,8 +503,8 @@ def render_operations(operations, state: LabState, label: Callable[[str], str], 
             st.markdown(crosstab_caption(op, label))
             show_table(display_table(op, state.tables[op.result], label))
         elif isinstance(op, (VariableTypes, FrequencyTable, ScalarTable, GroupSummary, ClassTable, StemLeaf,
-                             JoinColumns, BoxSummary, Describe, GroupStats, PanelSummary)):
-            if isinstance(op, (Describe, GroupStats, PanelSummary)):
+                             JoinColumns, BoxSummary, Describe, GroupStats, PanelSummary, SummaryTable)):
+            if isinstance(op, (Describe, GroupStats, PanelSummary, SummaryTable)):
                 st.markdown(f"**{op.comment}**")
             show_table(display_table(op, state.tables[op.result], label))
         if isinstance(op, PieChart):
@@ -731,7 +754,8 @@ def render_lab(spec: LabSpec) -> None:
     state = None
     if current.operations:
         state = _state_through(spec.topic_key, token, step.number)
-        render_operations(current.operations, state, spec.label, f"{spec.topic_key}_adim{step.number}")
+        render_operations(current.operations, state, spec.label, f"{spec.topic_key}_adim{step.number}",
+                          spec.topic_key)
         _render_checks(current, run, variant)
     note = step.note_for(state, choices) if (step.note_for is not None and state is not None) else step.takeaway
     if note:

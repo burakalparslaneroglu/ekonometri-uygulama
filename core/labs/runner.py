@@ -17,6 +17,7 @@ from core.labs import expr as E
 from core.labs import regression as R
 from core.labs import tables as T
 from core.labs.spec import (
+    INTERCEPT,
     OLS,
     TOTAL,
     BarChart,
@@ -32,11 +33,13 @@ from core.labs.spec import (
     ModelValue,
     PanelSummary,
     RegressionTable,
+    Residuals,
     ShowModel,
     SortRows,
     ClassHistogram,
     ClassTable,
     CompareBarChart,
+    CopyFrame,
     Count,
     CrossTab,
     Derive,
@@ -81,6 +84,7 @@ from core.labs.spec import (
     Statistic,
     StatTarget,
     StemLeaf,
+    SummaryTable,
     Support,
     TableTarget,
     TreeDiagram,
@@ -237,6 +241,24 @@ def group_stats(frame: pd.DataFrame, op: GroupStats) -> pd.DataFrame:
     return table.astype(float)
 
 
+def draw_values(rng: np.random.Generator, op: Draw, size: int) -> np.ndarray:
+    """``size`` gözlemlik sürekli çekiliş; döngü ve toplu Monte Carlo yolu aynı çağrıyı aynı sırayla yapar."""
+
+    if op.distribution == "normal":
+        return rng.normal(op.first, op.second, size=size)
+    if op.distribution == "uniform":
+        return rng.uniform(op.first, op.second, size=size)
+    if op.distribution == "beta":
+        return rng.beta(op.first, op.second, size=size)
+    if op.distribution == "gamma":
+        return rng.gamma(op.first, op.second, size=size)
+    if op.distribution == "exponential":
+        if op.second != op.first:
+            raise ValueError("Üstel dağılımda σ = μ'dür.")
+        return rng.exponential(op.first, size=size)
+    raise ValueError(f"Desteklenmeyen dağılım: {op.distribution}")
+
+
 def panel_summary(frame: pd.DataFrame, unit: str, time: str) -> pd.DataFrame:
     periods = frame.groupby(unit)[time].nunique()
     values = {
@@ -264,6 +286,12 @@ def execute(op: Operation, state: LabState) -> None:
         state.tables[op.result] = panel_summary(state.frames[op.frame], op.unit, op.time)
     elif isinstance(op, OLS):
         state.models[op.name] = R.fit_ols(op, state.frames[op.frame])
+    elif isinstance(op, Residuals):
+        result, frame = state.models[op.model], state.frames[op.frame]
+        if int(result.nobs) != len(frame) or not result.resid.index.equals(frame.index):
+            raise ValueError("Artıklar yalnız modelin bütün gözlemleriyle tahmin edildiği veri çerçevesine yeni sütun "
+                             "olarak eklenir.")
+        frame[op.name] = result.resid.to_numpy(dtype=float)  # satırlar aynı: üretilen koddaki sıra eşlemesiyle aynı
     elif isinstance(op, ShowModel):
         if op.model not in state.models:
             raise ValueError(f"'{op.model}' modeli henüz tahmin edilmedi.")
@@ -314,6 +342,8 @@ def execute(op: Operation, state: LabState) -> None:
     elif isinstance(op, Derive):
         frame = state.frames[op.frame]
         frame[op.name] = E.evaluate(op.expr, frame, scalar=_scalar(state))
+    elif isinstance(op, CopyFrame):
+        state.frames[op.frame] = state.frames[op.source].copy()
     elif isinstance(op, NewSample):
         state.frames[op.frame] = pd.DataFrame({"id": np.arange(1, op.nobs + 1)})
         if op.seed is not None:
@@ -321,21 +351,8 @@ def execute(op: Operation, state: LabState) -> None:
         elif state.rng is None:
             raise ValueError("Tohumsuz örneklem yalnız Monte Carlo döngüsü içinde kullanılabilir.")
     elif isinstance(op, Draw):
-        frame, rng = state.frames[op.frame], state.rng
-        if op.distribution == "normal":
-            frame[op.name] = rng.normal(op.first, op.second, size=len(frame))
-        elif op.distribution == "uniform":
-            frame[op.name] = rng.uniform(op.first, op.second, size=len(frame))
-        elif op.distribution == "beta":
-            frame[op.name] = rng.beta(op.first, op.second, size=len(frame))
-        elif op.distribution == "gamma":
-            frame[op.name] = rng.gamma(op.first, op.second, size=len(frame))
-        elif op.distribution == "exponential":
-            if op.second != op.first:
-                raise ValueError("Üstel dağılımda σ = μ'dür.")
-            frame[op.name] = rng.exponential(op.first, size=len(frame))
-        else:
-            raise ValueError(f"Desteklenmeyen dağılım: {op.distribution}")
+        frame = state.frames[op.frame]
+        frame[op.name] = draw_values(state.rng, op, len(frame))
     elif isinstance(op, DrawCount):
         frame = state.frames[op.frame]
         frame[op.name] = T.draw_count(state.rng, op.distribution, op.parameters, len(frame))
@@ -355,7 +372,9 @@ def execute(op: Operation, state: LabState) -> None:
         frame = state.frames[op.frame]
         state.scalars[op.name] = float((frame[op.column] == op.value).sum())
     elif isinstance(op, Statistic):
-        series = _subset(state.frames[op.frame], op.where)[op.variable]
+        # Kaynak bir veri çerçevesi ya da sonuç tablosudur (ör. Monte Carlo tekrarlarının sütunu).
+        source = state.frames[op.frame] if op.frame in state.frames else state.tables[op.frame]
+        series = _subset(source, op.where)[op.variable]
         state.scalars[op.name] = statistic(series, op.stat)
     elif isinstance(op, PairStatistic):
         frame = state.frames[op.frame]
@@ -483,12 +502,37 @@ def execute(op: Operation, state: LabState) -> None:
         state.plots[plot_key(op)] = T.tree_layout(state.frames[op.frame], op.first, op.second, op.first_p, op.second_p)
     elif isinstance(op, MonteCarlo):
         _monte_carlo(op, state)
+    elif isinstance(op, SummaryTable):
+        state.tables[op.result] = pd.DataFrame(
+            [[statistic(state.tables[table][source], stat) for _, source, stat in op.columns] for _, table in op.rows],
+            index=pd.Index([label for label, _ in op.rows], name="satir"),
+            columns=[name for name, _, _ in op.columns],
+        )
     else:
         raise TypeError(f"Tanınmayan işlem: {type(op).__name__}")
 
 
 def _monte_carlo(op: MonteCarlo, state: LabState) -> None:
-    """Tekrar döngüsü: üreteç bir kez tohumlanır; her tekrar aynı üreteçten yeni çekiliş yapar."""
+    """Tekrar döngüsü: üreteç bir kez tohumlanır; her tekrar aynı üreteçten yeni çekiliş yapar.
+
+    Gövde toplu hesaba uygunsa (``batchable``) tekrarlar vektörel hesaplanır: çekilişler tekrar tekrar ve işlem
+    sırasıyla aynı üreteçten yapılır, hesaplar bütün tekrarlarda birlikte yürür. Sonuç döngüyle aynıdır (kayan nokta
+    yuvarlaması düzeyinde; testle denetlenir) ve üreteç aynı durumda kalır. Uygun olmayan gövde döngüyle hesaplanır.
+    """
+
+    if batchable(op):
+        try:
+            table, rng = monte_carlo_batch(op)
+        except _Fallback:
+            table, rng = monte_carlo_loop(op)
+    else:
+        table, rng = monte_carlo_loop(op)
+    state.rng = rng
+    state.tables[op.result] = table
+
+
+def monte_carlo_loop(op: MonteCarlo) -> tuple[pd.DataFrame, np.random.Generator]:
+    """Tekrarların döngüyle hesabı; üretilen kod da tekrarları bu sırayla hesaplar."""
 
     rng = np.random.default_rng(op.seed)
     rows: list[list[float]] = []
@@ -497,8 +541,222 @@ def _monte_carlo(op: MonteCarlo, state: LabState) -> None:
         for inner in op.body:
             execute(inner, local)
         rows.append([evaluate_scalar(expression, local) for _, expression in op.collect])
-    state.rng = rng
-    state.tables[op.result] = pd.DataFrame(rows, columns=[name for name, _ in op.collect])
+    return pd.DataFrame(rows, columns=[name for name, _ in op.collect]), rng
+
+
+# --- Toplu (vektörel) Monte Carlo ------------------------------------------------------
+
+class _Fallback(Exception):
+    """Toplu yol bu gövdeyi döngüyle aynı anlamda hesaplayamaz (ör. eksik değer); döngü yolu kullanılır."""
+
+
+_BATCH_DRAWS = ("normal", "uniform", "beta", "gamma", "exponential")
+_BATCH_STATS = ("count", "sum", "mean", "median", "prod", "min", "max", "var", "std")
+_BATCH_MODEL = ("r2", "adj_r2", "nobs", "ssr", "df_resid")
+_ROW_FUNCTIONS = frozenset(("cumprod", "cummean", "seq", "factorial", "comb", "perm"))
+"""Gözlem sırasına ya da tek bir sayıya bağlı fonksiyonlar: toplu yolda tekrarların satırlarına uygulanamaz."""
+
+
+def batchable(op: MonteCarlo) -> bool:
+    """Gövde toplu hesaba uygun mu: tohumsuz örneklemler, sürekli çekilişler, türetmeler, alt grupsuz istatistikler,
+    iki değişkenli istatistikler, en küçük kareler, katsayı ve uyum nicelikleri ile skalerler."""
+
+    frames: set[str] = set()
+    written: set[tuple[str, str]] = set()
+    for inner in op.body:
+        if isinstance(inner, NewSample):
+            if inner.seed is not None or inner.frame in frames:
+                return False
+            frames.add(inner.frame)
+        elif isinstance(inner, (Draw, Derive)):
+            if inner.frame not in frames or (inner.frame, inner.name) in written:
+                return False
+            written.add((inner.frame, inner.name))
+            if isinstance(inner, Draw) and inner.distribution not in _BATCH_DRAWS:
+                return False
+            if isinstance(inner, Derive) and E.functions_in(inner.expr) & _ROW_FUNCTIONS:
+                return False
+        elif isinstance(inner, Statistic):
+            if inner.where is not None or inner.stat not in _BATCH_STATS:
+                return False
+        elif isinstance(inner, ModelValue):
+            if inner.term is None and inner.quantity not in _BATCH_MODEL:
+                return False
+            if inner.term is not None and inner.quantity != "coef":
+                return False
+        elif isinstance(inner, Scalar):
+            if E.functions_in(inner.expr) & _ROW_FUNCTIONS:
+                return False
+        elif not isinstance(inner, (PairStatistic, OLS)):
+            return False
+    return not any(E.variables(expression) or E.functions_in(expression) & _ROW_FUNCTIONS
+                   for _, expression in op.collect)
+
+
+@dataclass
+class _BatchFit:
+    """Bütün tekrarların en küçük kareler sonuçları: satırlar tekrarlar."""
+
+    terms: tuple[str, ...]
+    params: np.ndarray
+    ssr: np.ndarray
+    tss: np.ndarray
+    nobs: int
+
+    def coefficient(self, term: str) -> np.ndarray:
+        if term not in self.terms:
+            raise KeyError(f"Modelde böyle bir terim yok: {term}")
+        return self.params[:, self.terms.index(term)]
+
+    def quantity(self, name: str) -> np.ndarray:
+        reps, width = self.params.shape
+        if name == "ssr":
+            return self.ssr
+        if name == "nobs":
+            return np.full(reps, float(self.nobs))
+        if name == "df_resid":
+            return np.full(reps, float(self.nobs - width))
+        r2 = 1 - self.ssr / self.tss
+        if name == "r2":
+            return r2
+        return 1 - np.divide(self.nobs - 1, self.nobs - width) * (1 - r2)  # statsmodels rsquared_adj
+
+
+def _finite(values: np.ndarray) -> np.ndarray:
+    """Eksik değer içeren tekrar döngü yolunda hesaplanır (pandas ve statsmodels eksik değeri atlar)."""
+
+    if np.isnan(values).any():
+        raise _Fallback
+    return values
+
+
+def _batch_statistic(values: np.ndarray, stat: str) -> np.ndarray:
+    """Her tekrarın (satırın) istatistiği; pandas'ın hesap sırasıyla (ortalama = toplam / n; varyans iki geçişte)."""
+
+    n = values.shape[1]
+    if stat == "count":
+        return np.full(values.shape[0], float(n))
+    if stat == "sum":
+        return values.sum(axis=1)
+    if stat == "mean":
+        return values.sum(axis=1) / n
+    if stat == "median":
+        return np.median(values, axis=1)
+    if stat == "prod":
+        return values.prod(axis=1)
+    if stat == "min":
+        return values.min(axis=1)
+    if stat == "max":
+        return values.max(axis=1)
+    mean = values.sum(axis=1) / n
+    variance = ((mean[:, None] - values) ** 2).sum(axis=1) / (n - 1)
+    return variance if stat == "var" else np.sqrt(variance)
+
+
+def _batch_pair(x: np.ndarray, y: np.ndarray, stat: str) -> np.ndarray:
+    """Her tekrarın kovaryansı ya da Pearson korelasyonu; pandas'ın çağırdığı numpy fonksiyonlarıyla (``np.cov``,
+    ``np.corrcoef``), tekrar tekrar. Yüksek korelasyonda 1 / (1 − r²) gibi dönüşümler son basamaktaki farkı
+    büyüttüğü için hesap birebir aynı yoldan yapılır."""
+
+    if stat == "cov":
+        return np.array([np.cov(x[index], y[index], ddof=1)[0, 1] for index in range(len(x))])
+    if stat == "corr":
+        return np.array([np.corrcoef(x[index], y[index])[0, 1] for index in range(len(x))])
+    raise ValueError(f"Desteklenmeyen iki değişkenli istatistik: {stat}")
+
+
+def _batch_ols(op: OLS, frame: dict[str, np.ndarray]) -> _BatchFit:
+    """Bütün tekrarlarda EKK, tekrar tekrar: statsmodels'in ``pinv`` yönteminin numpy adımlarıyla (tekil değer
+    ayrışımı, sözde ters, ``np.dot``; artık kareleri ``np.dot``, toplam kareler statsmodels'teki gibi ağırlıklı
+    toplam). Formül ayrıştırma ve veri çerçevesi kurma yükü olmadan aynı sayıları verir."""
+
+    missing = sorted({op.outcome, *op.regressors} - set(frame))
+    if missing:
+        raise ValueError(f"Veride olmayan değişken: {', '.join(missing)}")
+    outcome = _finite(np.asarray(frame[op.outcome], dtype=float))
+    columns = [_finite(np.asarray(frame[name], dtype=float)) for name in op.regressors]
+    reps, nobs = outcome.shape
+    width = len(columns) + 1
+    if nobs <= width:
+        raise ValueError("Tahmin için yeterli gözlem yok (gözlem sayısı katsayı sayısından büyük olmalıdır).")
+    params = np.empty((reps, width))
+    ssr = np.empty(reps)
+    tss = np.empty(reps)
+    weights = np.ones(nobs)
+    for index in range(reps):
+        y = np.ascontiguousarray(outcome[index])
+        design = np.column_stack([np.ones(nobs), *(column[index] for column in columns)])
+        u, s, vt = np.linalg.svd(design, False)
+        if np.linalg.matrix_rank(design) < width:  # fit_ols ile aynı denetim
+            raise ValueError(
+                "Açıklayıcı değişkenler arasında tam doğrusal bağlantı var (biri diğerlerinin doğrusal birleşimi); "
+                "katsayılar tek biçimde tahmin edilemez."
+            )
+        cutoff = 1e-15 * np.maximum.reduce(s)
+        inverse = np.where(s > cutoff, 1.0 / s, 0.0)
+        pinv = np.dot(np.transpose(vt), np.multiply(inverse[:, np.newaxis], np.transpose(u)))
+        beta = np.dot(pinv, y)
+        residuals = y - np.dot(design, beta)
+        params[index] = beta
+        ssr[index] = np.dot(residuals, residuals)
+        # statsmodels OLS'i ağırlıkları 1 olan WLS olarak kurar: centered_tss = Σ w (y − ȳ_w)²
+        tss[index] = np.sum(weights * (y - np.average(y, weights=weights)) ** 2)
+    return _BatchFit(terms=(INTERCEPT, *op.regressors), params=params, ssr=ssr, tss=tss, nobs=nobs)
+
+
+def monte_carlo_batch(op: MonteCarlo) -> tuple[pd.DataFrame, np.random.Generator]:
+    """Tekrarların toplu hesabı: her veri sütunu (tekrar × gözlem), her skaler (tekrar × 1) boyutlu dizidir."""
+
+    reps = op.reps
+    rng = np.random.default_rng(op.seed)
+    sizes = {inner.frame: inner.nobs for inner in op.body if isinstance(inner, NewSample)}
+    draws = [inner for inner in op.body if isinstance(inner, Draw)]
+    drawn = {(item.frame, item.name): np.empty((reps, sizes[item.frame])) for item in draws}
+    for index in range(reps):  # çekilişler döngüdeki sırayla: tekrar tekrar, işlem sırasıyla
+        for item in draws:
+            drawn[(item.frame, item.name)][index] = draw_values(rng, item, sizes[item.frame])
+
+    frames: dict[str, dict[str, np.ndarray]] = {}
+    scalars: dict[str, np.ndarray] = {}
+    models: dict[str, _BatchFit] = {}
+
+    def lookup(name: str) -> np.ndarray:
+        return scalars[name]
+
+    def column(values) -> np.ndarray:
+        return np.broadcast_to(np.asarray(values, dtype=float), (reps, 1))
+
+    for inner in op.body:
+        if isinstance(inner, NewSample):
+            frames[inner.frame] = {"id": np.broadcast_to(np.arange(1.0, inner.nobs + 1), (reps, inner.nobs))}
+        elif isinstance(inner, Draw):
+            frames[inner.frame][inner.name] = drawn[(inner.frame, inner.name)]
+        elif isinstance(inner, Derive):
+            values = np.asarray(E.evaluate(inner.expr, frames[inner.frame], scalar=lookup), dtype=float)
+            frames[inner.frame][inner.name] = np.broadcast_to(values, (reps, sizes[inner.frame]))
+        elif isinstance(inner, Statistic):
+            values = _finite(np.asarray(frames[inner.frame][inner.variable], dtype=float))
+            scalars[inner.name] = column(_batch_statistic(values, inner.stat)[:, None])
+        elif isinstance(inner, PairStatistic):
+            frame = frames[inner.frame]
+            x = _finite(np.asarray(frame[inner.x], dtype=float))
+            y = _finite(np.asarray(frame[inner.y], dtype=float))
+            scalars[inner.name] = column(_batch_pair(x, y, inner.stat)[:, None])
+        elif isinstance(inner, OLS):
+            models[inner.name] = _batch_ols(inner, frames[inner.frame])
+        elif isinstance(inner, ModelValue):
+            if inner.model not in models:
+                raise ValueError(f"'{inner.model}' modeli henüz tahmin edilmedi.")
+            fit = models[inner.model]
+            values = fit.coefficient(inner.term) if inner.term is not None else fit.quantity(inner.quantity)
+            scalars[inner.name] = column(values[:, None])
+        elif isinstance(inner, Scalar):
+            scalars[inner.name] = column(E.evaluate(inner.expr, scalar=lookup))
+    table = pd.DataFrame({
+        name: np.array(column(E.evaluate(expression, scalar=lookup)).reshape(reps), dtype=float)
+        for name, expression in op.collect
+    })
+    return table, rng
 
 
 # --- Notlarla karşılaştırma ---------------------------------------------------------

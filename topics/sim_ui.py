@@ -12,8 +12,16 @@ from core.charts import CHART_TYPES, figure_for, show_figure
 from core.codegen.base import LANGUAGE_INFO, LANGUAGES, generator
 from core.labs.runner import LabState, execute, shown_frame
 from core.labs.sezgi import SimExperiment
-from core.labs.spec import REPRO_DESCRIPTIONS, ReproClass, ShowFrame
-from topics.lab_ui import CODE_LANGUAGE_KEY, decimal_slider, display_table, frame_display, show_table
+from core.labs.spec import REPRO_DESCRIPTIONS, RegressionTable, ReproClass, ShowFrame
+from topics.lab_ui import (
+    CODE_LANGUAGE_KEY,
+    coefficient_caption,
+    decimal_slider,
+    display_table,
+    frame_display,
+    regression_display,
+    show_table,
+)
 
 
 @st.cache_resource(show_spinner=False, max_entries=48)
@@ -123,9 +131,18 @@ def render_experiments(experiments: tuple[SimExperiment, ...]) -> None:
         column.metric(metric.label, metric.value, help=metric.help)
 
     producers = {op.result: op for op in operations if hasattr(op, "result")}
-    for name, title in experiment.tables:
-        st.markdown(f"**{title}**")
-        show_table(display_table(producers[name], state.tables[name], experiment.label))
+    for entry in experiment.tables:
+        name = entry[0]
+        st.markdown(f"**{experiment.table_title(entry, parameters)}**")
+        producer = producers[name]
+        if isinstance(producer, RegressionTable):
+            show_table(regression_display(producer, state, experiment.label))
+            if producer.standard_errors:
+                st.caption("Parantez içinde standart hatalar.")
+            else:
+                st.caption(coefficient_caption(experiment.topic_key))
+        else:
+            show_table(display_table(producer, state.tables[name], experiment.label))
 
     st.info(experiment.takeaway(state, parameters), icon=":material/lightbulb:")
     _render_code(experiment, parameters)

@@ -710,7 +710,7 @@ KONU04_LAB = LabSpec(
         ("model_kare", "(Ŷᵢ − Ȳ)²"),
         ("artik_kare", "ûᵢ²"),
         ("fiyat_dolar", "Konut fiyatı (ABD doları)"),
-        ("buyukluk_yuz", "Konut alanı (yüz fit²)"),
+        ("buyukluk_yuz", "Konut büyüklüğü (yüz fit²)"),
     ),
     consistency_notes=(
         "Veri notlardaki gibi WAGE1 ve HPRICE1'dir; notlardaki kod, betikler, uygulama ve üretilen kod onları "

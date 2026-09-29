@@ -18,9 +18,9 @@ from topics import (
     konu02_veri_turleri_nedensellik,
     konu03_basit_regresyon,
     konu04_ols_cikti_fonksiyonel_bicimler,
+    konu05_coklu_regresyon,
+    konu06_ols_varsayimlari_yanlilik,
 )
-from topics.konu05_coklu_regresyon import render as render_konu05
-from topics.konu06_ols_varsayimlari_yanlilik import render as render_konu06
 from topics.konu07_tekli_hipotez_testleri import render as render_konu07
 from topics.konu08_coklu_testler_buyuk_orneklem import render as render_konu08
 from topics.konu09_fonksiyonel_bicimler import render as render_konu09
@@ -38,6 +38,8 @@ MIGRATED_PAGES = (
     konu02_veri_turleri_nedensellik,
     konu03_basit_regresyon,
     konu04_ols_cikti_fonksiyonel_bicimler,
+    konu05_coklu_regresyon,
+    konu06_ols_varsayimlari_yanlilik,
 )
 
 TOPIC_RENDERERS = {
@@ -46,8 +48,8 @@ TOPIC_RENDERERS = {
     "konu02": konu02_veri_turleri_nedensellik.render,
     "konu03": konu03_basit_regresyon.render,
     "konu04": konu04_ols_cikti_fonksiyonel_bicimler.render,
-    "konu05": render_konu05,
-    "konu06": render_konu06,
+    "konu05": konu05_coklu_regresyon.render,
+    "konu06": konu06_ols_varsayimlari_yanlilik.render,
     "konu07": render_konu07,
     "konu08": render_konu08,
     "konu09": render_konu09,

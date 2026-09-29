@@ -36,11 +36,13 @@ from core.labs.spec import (
     ModelValue,
     PanelSummary,
     RegressionTable,
+    Residuals,
     ShowModel,
     SortRows,
     ClassHistogram,
     ClassTable,
     CompareBarChart,
+    CopyFrame,
     Count,
     CrossTab,
     DensityCompare,
@@ -84,6 +86,7 @@ from core.labs.spec import (
     Statistic,
     StatTarget,
     StemLeaf,
+    SummaryTable,
     Support,
     TableTarget,
     TreeDiagram,
@@ -289,6 +292,25 @@ _REGRESSION_TABLE_OPTIONS = [
     "  tablo",
     "}",
 ]
+_REGRESSION_TABLE_ADJUSTED = [
+    "# Makale tipi tablo: her terim için katsayı ve (sh = TRUE ise) standart hata (terim_sh), sonra n,",
+    "# (r2 = TRUE ise) R² ve (r2_duz = TRUE ise) düzeltilmiş R² (adj_r2)",
+    "makale_tablosu <- function(modeller, terimler, sh = TRUE, r2 = TRUE, r2_duz = FALSE) {",
+    "  sutunlar <- lapply(modeller, function(m) {",
+    "    kt <- summary(m)$coefficients",
+    '    rownames(kt)[rownames(kt) == "(Intercept)"] <- "Intercept"',
+    '    sutun <- if (sh) c("Estimate", "Std. Error") else "Estimate"',
+    "    hucreler <- unlist(lapply(terimler, function(terim) {",
+    "      if (terim %in% rownames(kt)) kt[terim, sutun] else rep(NA, length(sutun))",
+    "    }))",
+    "    c(hucreler, nobs(m), if (r2) summary(m)$r.squared, if (r2_duz) summary(m)$adj.r.squared)",
+    "  })",
+    "  tablo <- do.call(cbind, sutunlar)",
+    '  satirlar <- if (sh) as.vector(rbind(terimler, paste0(terimler, "_sh"))) else terimler',
+    '  rownames(tablo) <- c(satirlar, "n", if (r2) "r2", if (r2_duz) "adj_r2")',
+    "  tablo",
+    "}",
+]
 _STARS = [
     "# Katsayının yanındaki yıldız: *** p < 0,01; ** p < 0,05; * p < 0,10",
     'yildiz <- function(p) if (p < 0.01) "***" else if (p < 0.05) "**" else if (p < 0.10) "*" else ""',
@@ -327,6 +349,13 @@ def _stat_function(stats) -> list[str]:
     items = [f"{stat} = {_R_STAT[stat]}" for stat in stats]
     return ["function(x) {", *wrapped("  c(", items, ")", width=100), "}"]
 
+
+
+def _number(name: str, decimals: int) -> str:
+    """``sprintf`` argümanı. Çok basamaklı gösterimde (≥ 10) yuvarlanınca sıfır olan küçük negatif sayı "-0.000…"
+    yazılmasın diye önce yuvarlanır ve 0 eklenir (−0 + 0 = 0)."""
+
+    return f"round({name}, {decimals}) + 0" if decimals >= 10 else name
 
 class RGenerator(Generator):
     language = "R"
@@ -376,8 +405,14 @@ class RGenerator(Generator):
         if any(isinstance(op, TreeDiagram) for op in flat):
             lines += _TREE_BOX + [""]
         if any(isinstance(op, RegressionTable) for op in flat):
-            options = any(isinstance(op, RegressionTable) and not (op.standard_errors and op.r2) for op in flat)
-            lines += (_REGRESSION_TABLE_OPTIONS if options else _REGRESSION_TABLE) + [""]
+            tables = [op for op in flat if isinstance(op, RegressionTable)]
+            if any(op.adj_r2 for op in tables):
+                helper = _REGRESSION_TABLE_ADJUSTED
+            elif any(not (op.standard_errors and op.r2) for op in tables):
+                helper = _REGRESSION_TABLE_OPTIONS
+            else:
+                helper = _REGRESSION_TABLE
+            lines += helper + [""]
             if any(isinstance(op, RegressionTable) and op.stars for op in flat):
                 lines += _STARS + [""]
         if with_checks:
@@ -454,14 +489,18 @@ class RGenerator(Generator):
             ]
         if isinstance(op, OLS):
             return [f"# {op.comment}", f"{op.name} <- lm({op.formula}, data = {op.frame})"]
+        if isinstance(op, Residuals):
+            return [f"# {op.comment}", f"{op.frame}${op.name} <- resid({op.model})"]
         if isinstance(op, ShowModel):
             summary = f"summary({op.model})" if op.stars else f"summary({op.model}), signif.stars = FALSE"
-            limited = "se" not in op.columns  # konu standart hatayı henüz işlemedi
+            # Çıkarım henüz işlenmedi: Konu 7'den önce ya da ekranda yalnız katsayılar varken.
+            limited = "se" not in op.columns or int(self.spec.topic_key[-2:]) < 7
             note = []
             if limited:
-                read = listing(("katsayılar (Estimate)", *(STAT_NAMES[stat] for stat in op.stats)))
+                read = listing(("katsayılar (Estimate)", *(STAT_NAMES[stat] for stat in self.fields_read(op))))
                 note = [f"# Tam çıktı yazdırılır; bu adımda yalnız {read} okunur.",
-                        "# Std. Error, t value, Pr(>|t|) ve güven aralıkları Konu 7'de yorumlanır."]
+                        "# Std. Error, t value, Pr(>|t|) ve güven aralıkları Konu 7'de, F istatistiği Konu 8'de "
+                        "yorumlanır."]
             return [
                 f"# {op.comment}",
                 "# R özetindeki karşılıklar: Estimate = coef, Std. Error = std err, t value = t, Pr(>|t|) = P>|t|,",
@@ -477,16 +516,21 @@ class RGenerator(Generator):
             return [
                 f"# {op.comment}",
                 f"{op.name} <- {value}",
-                f'cat(sprintf("{_sprintf(op.comment)}: %.{op.decimals}f\\n", {op.name}))',
+                f'cat(sprintf("{_sprintf(op.comment)}: %.{op.decimals}f\\n", {_number(op.name, op.decimals)}))',
             ]
         if isinstance(op, RegressionTable):
             models = ", ".join(f"{text(heading)} = {name}" for heading, name in op.models)
             lines = [
                 f"# {op.comment}",
                 f"{op.result} <- makale_tablosu(list({models}), {_vector(op.terms)}"
-                f"{'' if op.standard_errors else ', sh = FALSE'}{'' if op.r2 else ', r2 = FALSE'})",
+                f"{'' if op.standard_errors else ', sh = FALSE'}{'' if op.r2 else ', r2 = FALSE'}"
+                f"{', r2_duz = TRUE' if op.adj_r2 else ''})",
                 f"print(round({op.result}, {op.decimals}))",
             ]
+            for digits in sorted({digits for _, digits in op.term_decimals}):
+                terms = [term for term, value in op.term_decimals if value == digits]
+                lines.append(f"print(round({op.result}[{_vector(terms)}, , drop = FALSE], {digits}))  "
+                             f"# notlardaki gibi {digits} basamak")
             if op.stars:
                 for heading, name in op.models:
                     terms = ", ".join(text(r_term(term)) for term in op.terms)
@@ -551,6 +595,9 @@ class RGenerator(Generator):
                 f"# {op.count} dikdörtgen; {op.name}: dikdörtgenlerin orta noktaları, alt sınır + genişlik × (i - 0,5)",
                 f"{op.frame} <- data.frame({op.name} = {lower} + {width} * (seq_len({op.count}) - 0.5))",
             ]
+        if isinstance(op, CopyFrame):
+            return [f"# {op.comment}",
+                    f"{op.frame} <- {op.source}  # R'de atama bağımsız bir kopya verir: {op.source} değişmez"]
         if isinstance(op, NewSample):
             frame = f"{op.frame} <- data.frame(id = seq_len({op.nobs}))"
             if op.seed is None:
@@ -604,7 +651,7 @@ class RGenerator(Generator):
             return [
                 f"# {op.comment}",
                 f"{op.name} <- {_statistic(values, op.stat)}",
-                f'cat(sprintf("{_sprintf(op.comment)}: %.{op.decimals}f\\n", {op.name}))',
+                f'cat(sprintf("{_sprintf(op.comment)}: %.{op.decimals}f\\n", {_number(op.name, op.decimals)}))',
             ]
         if isinstance(op, PairStatistic):
             function = {"cov": "cov", "corr": "cor"}[op.stat]
@@ -620,7 +667,7 @@ class RGenerator(Generator):
             return [
                 f"# {op.comment}",
                 f"{op.name} <- {rhs}",
-                f'cat(sprintf("{_sprintf(op.comment)}: {shown}\\n", {op.name}))',
+                f'cat(sprintf("{_sprintf(op.comment)}: {shown}\\n", {_number(op.name, op.decimals)}))',
             ]
         if isinstance(op, ScalarTable):
             dialect = self.dialect("")
@@ -748,6 +795,8 @@ class RGenerator(Generator):
             return self._pmf_density(op)
         if isinstance(op, MonteCarlo):
             return self._monte_carlo(op)
+        if isinstance(op, SummaryTable):
+            return self._summary_table(op)
         raise TypeError(f"R üreticisi bu işlemi tanımıyor: {type(op).__name__}")
 
     def _inline(self, op: InlineData) -> list[str]:
@@ -1557,6 +1606,8 @@ class RGenerator(Generator):
         lines = [
             f"# {op.comment}",
             f"# {op.reps} tekrar; tohum döngüden önce bir kez ayarlanır",
+            *(["# Her tekrarda bir EKK tahmini yapılır; döngü bilgisayara göre birkaç saniye sürebilir."]
+              if any(isinstance(inner, OLS) for inner in op.body) else []),
             f"set.seed({op.seed})",
             f'sonuclar <- vector("list", {op.reps})',
             f"for (tekrar in seq_len({op.reps})) {{",
@@ -1578,6 +1629,26 @@ class RGenerator(Generator):
             f"{op.result} <- as.data.frame(do.call(rbind, sonuclar))",
             f"print(summary({op.result}))",
         ]
+
+    def _summary_table(self, op: SummaryTable) -> list[str]:
+        sources = f"{op.result}_kaynak"
+        items = [f"  {text(label)} = {table}" for label, table in op.rows]
+        items = [item + ("," if index < len(items) - 1 else "") for index, item in enumerate(items)]
+        lines = [f"# {op.comment}", f"{sources} <- list(  # satır etiketi = kaynak tablo", *items, ")",
+                 f"{op.result} <- do.call(rbind, lapply({sources}, function(tablo) data.frame("]
+        for index, (name, source, stat) in enumerate(op.columns):
+            ending = "," if index < len(op.columns) - 1 else ""
+            note = "  # payda n - 1" if stat in ("std", "var") else ""
+            lines.append(f"  {name} = {_statistic(f'tablo${source}', stat)}{ending}{note}")
+        lines.append("))) # her kaynak tablo bir satır")
+        digits = dict(op.column_decimals)
+        if not digits:
+            return lines + [f"print(round({op.result}, {op.decimals}))"]
+        shown = f"{op.result}_goster"
+        lines.append(f"{shown} <- round({op.result}, {op.decimals})")
+        lines += [f"{shown}${name} <- round({op.result}${name}, {value})  # notlardaki gibi {value} basamak"
+                  for name, value in digits.items()]
+        return lines + [f"print({shown})"]
 
     # --- Notlarla karşılaştırma -----------------------------------------
     def target(self, target) -> str:

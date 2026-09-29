@@ -306,6 +306,16 @@ class Derive:
     comment: str
 
 
+@dataclass(frozen=True)
+class CopyFrame:
+    """Var olan veri çerçevesinin bağımsız kopyası: ``frame`` yeni çerçeve, ``source`` kopyalanan çerçevedir.
+    Kopyadaki değişiklikler kaynağı etkilemez (ör. tek bir gözlemi değiştirip iki veri setini karşılaştırmak)."""
+
+    frame: str
+    source: str
+    comment: str
+
+
 # --- Simülasyon ------------------------------------------------------------
 
 @dataclass(frozen=True)
@@ -407,7 +417,8 @@ class Count:
 
 @dataclass(frozen=True)
 class Statistic:
-    """Bir değişkenin tek istatistiği, skaler olarak (isteğe bağlı olarak bir alt grupta)."""
+    """Bir değişkenin tek istatistiği, skaler olarak (isteğe bağlı olarak bir alt grupta). Kaynak bir veri çerçevesi ya
+    da sütunlu bir sonuç tablosudur (ör. Monte Carlo tekrarlarının ortalaması)."""
 
     frame: str
     variable: str
@@ -447,11 +458,14 @@ class Scalar:
 
 @dataclass(frozen=True)
 class ScalarTable:
-    """Birkaç skaleri tek tabloda toplar (satırlar etiketler, tek sütun ``deger``)."""
+    """Birkaç skaleri tek tabloda toplar (satırlar etiketler, tek sütun ``deger``). ``heading`` ve ``value``: ekrandaki
+    sütun başlıkları (ör. "Model" ve "Düzeltilmiş R²"); hesabı ve üretilen kodu etkilemez."""
 
     rows: tuple[tuple[str, Expr], ...]
     result: str
     decimals: int = 2
+    heading: str = "Büyüklük"
+    value: str = "Değer"
 
 
 @dataclass(frozen=True)
@@ -519,6 +533,8 @@ class JoinColumns:
     columns: tuple[tuple[str, str, str], ...]
     decimals: int = 3
     percent: bool = False
+    heading: str = ""
+    """Ekranda satır etiketlerinin sütun başlığı (boşsa satır adının adı ya da "Kategori")."""
 
 
 @dataclass(frozen=True)
@@ -982,6 +998,17 @@ class OLS:
 
 
 @dataclass(frozen=True)
+class Residuals:
+    """Tahmin edilmiş bir modelin artıkları ûᵢ = Yᵢ − Ŷᵢ, veri çerçevesinde yeni bir sütun (statsmodels ``resid``,
+    R ``resid()``). Modelin tahmin örneklemi çerçevenin bütün satırlarıdır (modeldeki değişkenlerde eksik değer yok)."""
+
+    frame: str
+    name: str
+    model: str
+    comment: str
+
+
+@dataclass(frozen=True)
 class ShowModel:
     """Tahmin edilmiş modelin yazılım çıktısı: katsayı tablosu ve model bilgisi.
 
@@ -1026,7 +1053,9 @@ class RegressionTable:
     ** p < 0,05; * p < 0,10); eşikler tablonun altında yazılır.
 
     ``standard_errors=False``: standart hata satırları yoktur (konu standart hatayı henüz işlemediyse, ör. Konu 3–4);
-    yıldızlar da gösterilmez. ``r2=False``: R² satırı yoktur (ör. Konu 3; R² Konu 4'te tanımlanır)."""
+    yıldızlar da gösterilmez. ``r2=False``: R² satırı yoktur (ör. Konu 3; R² Konu 4'te tanımlanır). ``adj_r2``: R²'nin
+    altında düzeltilmiş R² satırı (``adj_r2``; Konu 5'ten itibaren). ``term_decimals``: (terim, basamak) ile bir terimin
+    katsayısının ekrandaki basamağı (ör. notlarda 0,002068 yazılan arsa katsayısı); diğer terimler ``decimals``."""
 
     models: tuple[tuple[str, str], ...]
     terms: tuple[str, ...]
@@ -1036,10 +1065,16 @@ class RegressionTable:
     decimals: int = 3
     standard_errors: bool = True
     r2: bool = True
+    adj_r2: bool = False
+    term_decimals: tuple[tuple[str, int], ...] = ()
 
     def __post_init__(self) -> None:
         if self.stars and not self.standard_errors:
             raise ValueError("Yıldızlar standart hatalarla birlikte gösterilir (standard_errors=False ise stars=False).")
+        if self.adj_r2 and not self.r2:
+            raise ValueError("Düzeltilmiş R² satırı R² satırıyla birlikte gösterilir (adj_r2=True ise r2=True).")
+        if not {term for term, _ in self.term_decimals} <= set(self.terms):
+            raise ValueError("term_decimals yalnız tablodaki terimler için verilir.")
 
 
 @dataclass(frozen=True)
@@ -1047,7 +1082,8 @@ class MonteCarlo:
     """``body`` işlemlerini ``reps`` kez tekrarlar; her tekrarda ``collect`` ifadelerini toplar.
 
     Rastgele sayı üreteci döngüden önce ``seed`` ile bir kez tohumlanır. Sonuç tablosunun her satırı
-    bir tekrardır; sütunlar ``collect`` adlarıdır.
+    bir tekrardır; sütunlar ``collect`` adlarıdır. Aynı tohumlu iki döngü aynı çekilişlerle başlar (ör. yalnız bir
+    parametresi farklı düzeylerde ortak rastgele sayılar).
     """
 
     result: str
@@ -1056,6 +1092,46 @@ class MonteCarlo:
     body: tuple["Operation", ...]
     collect: tuple[tuple[str, Expr], ...]
     comment: str
+
+    def __post_init__(self) -> None:
+        # Üretilen kodda döngü değişkeni ``tekrar``, sonuç listesi ``sonuclar`` ve üreteç ``rng`` adlarını kullanır;
+        # gövdedeki bir veri çerçevesi ya da skaler bu adları alırsa döngü bozulur (R'de döngü sayacı değişir).
+        written = {self.result} | set().union(set(), *(operation_writes(op) for op in self.body))
+        clash = sorted(written & MONTE_CARLO_RESERVED)
+        if clash:
+            raise ValueError(f"Monte Carlo gövdesinde ayrılmış ad kullanılamaz: {', '.join(clash)}")
+
+
+MONTE_CARLO_RESERVED = frozenset(("tekrar", "sonuclar", "rng"))
+"""Üretilen koddaki döngü değişkeni, sonuç listesi ve rastgele sayı üreteci."""
+
+
+@dataclass(frozen=True)
+class SummaryTable:
+    """Birkaç sonuç tablosunun (ör. Monte Carlo tekrarları) sütun özetleri tek tabloda: her kaynak tablo bir satır.
+
+    ``rows``: (satır etiketi, tablo adı). ``columns``: (sütun adı, kaynak sütun, istatistik); istatistikler
+    ``STATISTICS``'ten (``std``: örneklem standart sapması, payda n − 1). Satırlar ``rows`` sırasıyladır.
+    """
+
+    rows: tuple[tuple[str, str], ...]
+    columns: tuple[tuple[str, str, str], ...]
+    result: str
+    comment: str
+    decimals: int = 3
+    heading: str = "Satır"
+    """Ekranda satır etiketlerinin sütun başlığı (ör. "Gürültü σ")."""
+    column_decimals: tuple[tuple[str, int], ...] = ()
+    """(sütun adı, basamak): bir sütunun ekrandaki basamağı (ör. notlarda tek ondalıkla yazılan VIF)."""
+
+    def __post_init__(self) -> None:
+        if not self.rows or not self.columns:
+            raise ValueError("Özet tablosunda en az bir satır ve bir sütun olmalıdır.")
+        unknown = sorted({stat for _, _, stat in self.columns} - set(STATISTICS))
+        if unknown:
+            raise ValueError(f"Desteklenmeyen istatistik: {unknown}")
+        if not {name for name, _ in self.column_decimals} <= {name for name, _, _ in self.columns}:
+            raise ValueError("column_decimals yalnız tablodaki sütunlar için verilir.")
 
 
 Operation = Union[
@@ -1067,6 +1143,7 @@ Operation = Union[
     GroupStats,
     PanelSummary,
     OLS,
+    Residuals,
     ShowModel,
     ModelValue,
     RegressionTable,
@@ -1081,6 +1158,7 @@ Operation = Union[
     Rectangles,
     RowSum,
     Derive,
+    CopyFrame,
     NewSample,
     Draw,
     DrawCount,
@@ -1117,6 +1195,7 @@ Operation = Union[
     DensityCompare,
     PmfWithDensity,
     MonteCarlo,
+    SummaryTable,
 ]
 
 CHARTS = (
@@ -1318,9 +1397,9 @@ _READ_FIELDS = ("frame", "source", "table", "model", "models", "tables", "series
 _WRITE_FIELDS = ("result", "name")
 _FRAME_WRITERS = ("LoadWooldridge", "InlineData", "FromCounts", "Outcomes", "Selections", "Support", "Rectangles",
                   "NewSample", "Derive", "Event", "MapCodes", "Groups", "RowSum", "Draw", "DrawCount", "DrawCategory",
-                  "DrawDiscrete", "SortRows")
+                  "DrawDiscrete", "SortRows", "Residuals", "CopyFrame")
 _FRAME_CREATORS = ("LoadWooldridge", "InlineData", "FromCounts", "Outcomes", "Selections", "Support", "Rectangles",
-                   "NewSample")
+                   "NewSample", "CopyFrame")
 """Çerçeveyi baştan kuran işlemler: eski çerçeveyi okumaz, yerine yenisini yazar (ör. veriyi yeniden yükleme)."""
 
 
@@ -1331,6 +1410,8 @@ def operation_reads(op) -> set[str]:
 
     creator = type(op).__name__ in _FRAME_CREATORS
     found: set[str] = set()
+    if isinstance(op, SummaryTable):  # satır etiketleri ad değildir; yalnız kaynak tablolar okunur
+        return {table for _, table in op.rows}
     for item in fields(op):
         value = getattr(op, item.name)
         if item.name in _READ_FIELDS and not (creator and item.name in ("frame", "columns")):

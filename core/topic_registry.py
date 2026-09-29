@@ -33,10 +33,15 @@ TOPICS: tuple[TopicMetadata, ...] = (
         "Tahmin edilen doğru örneklemdeki gözlemlere ne ölçüde uyuyor; değişkenleri farklı ölçülerde yazdığımızda "
         "katsayıyı nasıl yorumlamalıyız?",
     ),
-    TopicMetadata("konu05", 5, "Çoklu Regresyon Modeli ve Ceteris Paribus Yorumu", "Çoklu Regresyon"),
+    TopicMetadata(
+        "konu05", 5, "Çoklu Regresyon Modeli ve Ceteris Paribus Yorumu", "Çoklu Regresyon",
+        "Bir değişkenin sonuçla ilişkisi, modeldeki diğer gözlenen faktörler hesaba katıldıktan sonra nasıl "
+        "incelenir?",
+    ),
     TopicMetadata(
         "konu06", 6, "EKK Varsayımları, Yansızlık, Eksik Değişken Yanlılığı ve Çoklu Doğrusal Bağlantı",
         "EKK Varsayımları ve Yansızlık",
+        "Bir yazılımın ürettiği katsayı, hangi varsayımlar altında anakütledeki ilişkiyi güvenilir biçimde ölçer?",
     ),
     TopicMetadata(
         "konu07", 7, "Tek Katsayı İçin Hipotez Testleri: Standart Hata, t İstatistiği, p-Değeri ve Güven Aralığı",

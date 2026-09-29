@@ -232,7 +232,8 @@ QUESTIONS = (
             "Notlara göre $u_i$ modelde yer almayan faktörleri, bireysel farklılıkları, tam ölçülemeyen özellikleri, "
             "beklenmeyen şokları ve kullanılan doğrusal biçimin yaklaşık olmasını temsil edebilir. Model (3.3)'e göre "
             "$u_i = Y_i - \\beta_0 - \\beta_1 X_i$ olduğundan, doğrusal biçim gerçek ilişkiye ancak yaklaşık uyuyorsa "
-            "aradaki fark da $u_i$'ye girer (§3.5)."
+            "aradaki fark da $u_i$'ye girer (§3.5). Bu durumda $u_i$ koşullu ortalamadan sapma olmaz ve "
+            "$\\mathbb{E}(u \\mid X) = 0$ koşulu sağlanmayabilir (§3.6)."
         ),
     ),
     Question(

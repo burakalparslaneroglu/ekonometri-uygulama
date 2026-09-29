@@ -1,8 +1,8 @@
 # Mimari
 
-## Yeni yapı: tek tanım, iki dil (Konu 0–4)
+## Yeni yapı: tek tanım, iki dil (Konu 0–6)
 
-Konu 0–4 üç sekmelidir: **Uygulama**, **Sezgi**, **Kendini sına**. Bir konunun bütün hesabı ve metni Streamlit'ten
+Konu 0–6 üç sekmelidir: **Uygulama**, **Sezgi**, **Kendini sına**. Bir konunun bütün hesabı ve metni Streamlit'ten
 bağımsız tanımlardan gelir; arayüz yalnız bu tanımları gösterir.
 
 - `core/wooldridge_data.py`: Wooldridge veri setlerini `wooldridge` Python paketinden yükler (önbellekli, bağımsız
@@ -30,19 +30,34 @@ bağımsız tanımlardan gelir; arayüz yalnız bu tanımları gösterir.
   `ShowModel(columns=("coef",))` ekranda yalnız katsayıları gösterir, üretilen kod tam çıktıyı yazdırır ve yorumda
   okunan alanları ve standart hata, t, p, güven aralığının Konu 7'de yorumlanacağını belirtir.
   `RegressionTable(standard_errors=False, r2=False)` standart hata ya da R² satırı olmayan makale tablosudur (Konu 3–4);
-  `ScatterPlot(means=...)` aynı x değerindeki gözlemlerin ortalamasını (koşullu ortalamanın örneklem karşılığı) çizer.
-- `core/labs/konu00.py`, `konu01.py`, `konu02.py`, `konu03.py`, `konu04.py`: Uygulama laboratuvarları (notlardaki
-  Bölüm 0 araç kutusu, §1.6, Bölüm 2 uygulamaları ve Bölüm 3–4'ün çözümlü örnekleri: WAGE1, Tablo 3.2, JTRAIN2,
-  HPRICE1); notlarda basılı her sayı bir `Check`. `consistency_notes` notlarla eski sürüm arasındaki
+  `adj_r2=True` düzeltilmiş R² satırını ekler, `term_decimals` tek bir terimin basamağını değiştirir (ör. arsa
+  katsayısı 0,002068; üretilen kod bu satırları ayrıca aynı basamakla yazdırır). `ScatterPlot(means=...)` aynı x
+  değerindeki gözlemlerin ortalamasını (koşullu ortalamanın örneklem karşılığı) çizer. Konu 5–6 ile eklenen işlemler:
+  `Residuals` (modelin artıkları, yalnız modelin bütün gözlemleriyle tahmin edildiği çerçeveye), `SummaryTable`
+  (Monte Carlo sonuç tablolarını satır satır özetler; `column_decimals`), `CopyFrame` (bağımsız kopya; Python
+  `.copy()`, R atama), `ScalarTable(heading, value)` ve `JoinColumns(heading)` sütun başlıkları. Kod yorumundaki
+  "bu adımda yalnız … okunur" listesi `Generator.fields_read` ile aynı adımda okunan model bilgisini (R², düzeltilmiş
+  R²) de sayar; Konu 7'den önce standart hata, t, p ve güven aralığının Konu 7'de, F istatistiğinin Konu 8'de
+  yorumlanacağını belirtir. Gövdesinde EKK olan Monte Carlo betiklerine süre yorumu eklenir.
+- `core/labs/runner.py` Monte Carlo döngüsünü, gövde uygunsa (`batchable`) toplu yoldan hesaplar: çekilişler aynı
+  üreteç sırasıyla bir kerede yapılır, EKK tekrarlar üzerinde vektörel çözülür; sonuç ve üreteç durumu döngüyle bit
+  düzeyinde aynıdır (R² için toplam kareler statsmodels'daki gibi hesaplanır), eksik değerde döngüye dönülür. Döngü
+  adları (`tekrar`, `sonuclar`, `rng`) Monte Carlo içinde ad olarak kullanılamaz (`MONTE_CARLO_RESERVED`).
+- `core/labs/konu00.py` … `konu06.py`: Uygulama laboratuvarları (notlardaki Bölüm 0 araç kutusu, §1.6, Bölüm 2
+  uygulamaları, Bölüm 3–4'ün çözümlü örnekleri ve Bölüm 5–6'nın WAGE1/HPRICE1 uygulamaları: çoklu model, artıkların
+  artıklara regresyonu, makale tablosu, eksik değişken ayrıştırması, tam bağlantı ve VIF); notlarda basılı her sayı
+  bir `Check`. Konu 5–6'da kontrol değişkenleri kukla olmayan sayısal değişkenlerdir (kuklalar Konu 10). `consistency_notes` notlarla eski sürüm arasındaki
   kalıcı açıklamaları tutar.
-- `core/labs/sezgi.py`, `sezgi_konu00.py` … `sezgi_konu04.py`: Sezgi deneyleri (`SimExperiment`):
+- `core/labs/sezgi.py`, `sezgi_konu00.py` … `sezgi_konu06.py`: Sezgi deneyleri (`SimExperiment`):
   DGP LaTeX satırları, kaydırıcılar, bilinen gerçek ile tahminin karşılaştırması, kaydırıcı değerine göre değişen
-  metin; tohum 305.
+  metin; tohum 305. `tables` girdisi `(ad, başlık[, bağlı parametreler])` biçimindedir; notlardaki numaralı bir tablo
+  seçilen ayarlarla değiştiyse başlığı "seçtiğiniz ayarlarla" etiketini alır (`table_title`).
 - `core/quiz/`: `model.py` (soru türleri ve notlandırma: Türkçe harf, tire ve binlik ayırıcı farklarını yok sayar),
   `expression.py` (formül güvenli biçimde okunur; `eval` yok; LaTeX alışkanlıkları (`\frac`, `\sqrt`, `\cdot`,
   `\ln`) ve yazılan sol taraf (`r = …`) okunur; eşdeğerlik rastgele noktalarda sayısal olarak denetlenir;
-  `bar_aliases`, `beta_aliases`, `beta_hat_aliases` X̄, β₀, β̂₁ gibi yazımları sembollere bağlar),
-  `konu00.py` … `konu04.py` (24'er soru), `registry.py`.
+  `bar_aliases`, `beta_aliases`, `beta_hat_aliases` X̄, β₀, β̂₁ gibi yazımları sembollere bağlar; tanımsız bir ad,
+  harf ya da alt çizgi farkıyla yalnız tek bir sembole uyuyorsa o sembol okunur: `B_1` → `b1`),
+  `konu00.py` … `konu06.py` (24'er soru), `registry.py`.
 - `topics/lab_ui.py`, `sim_ui.py`, `quiz_ui.py`: üç sekmenin gösterimi; `topics/shared.py` konu başlığı ve widget
   durumunun konu geçişlerinde korunması (`keep_widget_state`). `core/charts.py` Plotly grafikleri Türkçe sayı biçimiyle
   çizer. `lab_ui.upstream_steps`, bir adımın uyarısında yalnız o adımı gerçekten değiştiren önceki seçimleri anar
@@ -51,52 +66,42 @@ bağımsız tanımlardan gelir; arayüz yalnız bu tanımları gösterir.
   kaydırıcılar `lab_ui.decimal_slider` ile çizilir (`st.select_slider`; değer ondalık virgülle yazılır, çünkü
   `st.slider` biçimi yalnız noktayı bilir). `assets/styles.css` metrik etiketini üç noktayla kesmez, dar sütunda alt
   satıra geçirir ve aynı satırdaki metrik kutularını eşit yükseklikte tutar.
-- Testler: `tests/test_konu00_content.py`, `tests/test_konu01_02_content.py`, `tests/test_konu03_04_content.py` (veri,
+- Testler: `tests/test_konu00_content.py`, `tests/test_konu01_02_content.py`, `tests/test_konu03_04_content.py`,
+  `tests/test_konu05_06_content.py` (veri,
   EKK formülleri, seçimlerin geçişi, uygulama ile üretilen Python'un 1e-12 düzeyinde eşitliği, R'nin çalışması, Sezgi
   kuramsal değerleri ve metinlerin kaydırıcı uçlarında doğruluğu, soru yazım çeşitleri), `tests/test_all_quizzes.py`,
   `tests/test_topic_contracts.py` (`MIGRATED_TOPICS`), `tests/test_app_smoke.py`.
 
-Konu 5–12 aşağıda anlatılan eski sayfalarıyla çalışır; ikişerli bloklar hâlinde bu yapıya taşınır. Taşınan konunun eski
+Konu 7–12 aşağıda anlatılan eski sayfalarıyla çalışır; ikişerli bloklar hâlinde bu yapıya taşınır. Taşınan konunun eski
 modülleri ve testleri aynı blokta kaldırılır (Konu 1–2 için `core/research_question_utils.py`,
 `core/scenario_registry.py`, `core/data_structure_utils.py`, `core/group_comparison_utils.py` ve testleri; Konu 3–4
 için `core/konu04_questions.py`, `tests/test_konu03_ui.py`, `tests/test_konu04_ui.py`, `tests/test_konu04_utils.py`,
 `core/question_engine.py`'nin Konu 3 soru üreticisi ve `core/model_utils.py`'nin yalnız Konu 4 sayfasının kullandığı
-kareler toplamı, birim dönüşümü ve fonksiyonel biçim yardımcıları kaldırıldı).
+kareler toplamı, birim dönüşümü ve fonksiyonel biçim yardımcıları; Konu 5–6 için `core/konu05_questions.py`,
+`core/konu06_questions.py`, `core/multiple_regression_utils.py`, `core/assumption_diagnostics_utils.py` ve testleri,
+`core/data_registry.py`'nin `konu05_model_specs` ve `konu06_model_specs` tanımları ve `core/model_utils.py`'nin artık
+kullanılmayan basit EKK, tahmin ve artık yardımcıları kaldırıldı).
 
-## Eski yapı (Konu 5–12)
+## Eski yapı (Konu 7–12)
 
 Konu 07 uygulamanın ilk aktif çıkarım modülüdür. `core/regression_inference_utils.py` Streamlit'ten bağımsız ortak katmanda yalnızca geleneksel `nonrobust` EKK standart hatalarını, Student-t kritik değerlerini ve p-değerlerini, tek katsayı testlerini, güven aralıklarını, test–GA eşdeğerliğini, p/yıldız biçimlendirmesini, ölçeklemeyi ve vektörize benzetimleri sağlar. Heteroskedastisiteye dayanıklı standart hatalar Konu 12'ye, birlikte katsayı sınaması ve F testi Konu 08'e bırakılmıştır.
 
 Uygulama, Streamlit arayüzü ile hesaplama mantığını ayıran küçük modüllerden oluşur.
 
 - `app.py`: Ortak sayfa yapılandırması, ortak görsel iskelet ve konu yönlendirmesi.
-- `topics/`: Her ders konusunun Streamlit görünümü. `konu05_coklu_regresyon.py`, sabit WAGE1/HPRICE1 model spesifikasyonlarıyla çoklu doğrusal regresyon, ceteris paribus yorumunu, profil katkılarını, kısmi ilişkiyi ve makale tablosu okumayı öğretir. `konu06_ols_varsayimlari_yanlilik.py`, A1–A4 varsayımlarını, yansızlık laboratuvarını, OVB ayrıştırmasını ve çoklu doğrusal bağlantı tanılarını gösterir.
+- `topics/`: Her ders konusunun Streamlit görünümü.
 - `core/data_registry.py`: Eski sayfaların Wooldridge kataloğu, değişken açıklamaları, veri yapısı metadata'sı ve izin verilen pedagojik eşleşmeler.
-- `core/model_utils.py`: Veri hazırlama, basit EKK, belirli bir X değeri için tahmin ve öğrenci sayı biçimleri. Streamlit bağımlılığı yoktur.
-- `core/multiple_regression_utils.py`: Ortak complete-case örneklem, çoklu EKK, HPRICE1'in açık ölçek dönüşümleri, profil tahmin/katkıları, gözlem artıkları ve Streamlit'ten bağımsız FWL kısmi regresyon hesabını sağlar.
-- `core/assumption_diagnostics_utils.py`: Konu 06 için seed'li ve vektörize tekrarlı EKK benzetimi, OVB yön/formül hesabı, sentetik ve WAGE1 kısa–uzun–yardımcı regresyon ayrıştırması, rank/tam bağlantı denetimi, VIF, yüksek bağlantı benzetimi ve küçük veri değişikliği duyarlılığını sağlar.
-- `core/konu05_questions.py`: Konu 05'in model sonucuna bağlı, kararlı sırada dönen ve çözümü gizli tutulan soru türlerini üretir.
-- `core/konu06_questions.py`: Konu 06'nın varsayım, yansızlık, OVB, WAGE1 ve bağlantı sonuçlarına bağlı, kararlı sırada dönen soru türlerini üretir.
+- `core/model_utils.py`: Eski sayfaların (Konu 10–11) öğrenci sayı biçimleri. Streamlit bağımlılığı yoktur.
 - `core/question_engine.py`: Eski sayfaların ortak soru veri yapısı ve kararlı soru sırası.
 - `core/session_utils.py`: Soru sırası ve cevap görünürlüğünün `st.session_state` içindeki anahtarlarını yönetir.
 - `assets/styles.css`: Kurumdan bağımsız marka değişkenleri ve duyarlı görsel düzen.
 
-## Veri akışı
+## Veri akışı (eski sayfalar)
 
 1. Konu modülü, `data_registry` üzerinden Wooldridge paketindeki veri setini önbellekli olarak yükler.
-2. Öğrencinin seçtiği izinli Y–X çifti `model_utils.fit_simple_ols` fonksiyonuna verilir.
-3. Model çıktısı grafik, tablo, belirli bir X değeri için tahmin paneli ve soru motoru tarafından kullanılır.
-4. Veri seti veya değişkenler değiştiğinde model kimliği değişir; `session_utils` önceki soru durumunu sıfırlar.
-
-Model sonuçları betimseldir. Bu pilotta istatistiksel çıkarım sütunları ve yorumları bilinçli olarak sunulmaz.
-
-Konu 05 yalnız önceden tanımlanmış WAGE1 ve HPRICE1 modellerini kullanır. HPRICE1'de `lotsize1000=lotsize/1000` ve `sqrft100=sqrft/100` dönüşümleri açıkça gösterilir. Veri, model, seçili gözlem veya profil değiştiğinde model kimliği değişir ve soru/cevap durumu sıfırlanır; öğrenci sonuç tablolarına standart hata, test veya güven aralığı alanları taşınmaz.
-
-Konu 06, WAGE1 üzerinde `wage ~ educ`, `wage ~ educ + exper`, `wage ~ educ + exper + tenure` ve `exper ~ educ` modellerini aynı complete-case örneklemde kurar; eğitim katsayısı ayrıştırması bu ortak örnekleme dayanır. Tekrarlı örnekleme ve yüksek bağlantı benzetimleri sabit seed kullanır, UI katmanında `st.cache_data` ile senaryo/boyut/tekrar/seed anahtarlarına göre önbelleklenir. Tam bağlantıda rank eksikliği benzersiz katsayı tahmininden önce görünür bir hata olarak verilir; yüksek fakat tam olmayan bağlantıda korelasyon, yardımcı R-kare, VIF, tekrarlı tahmin değişkenliği ve duyarlılık birlikte gösterilir. Konu 06 soru bağlamı değiştiğinde cevap görünürlüğü ve soru sırası sıfırlanır.
-
-Standart hata, t istatistiği, p-değeri, güven aralığı ve F testi Konu 06 öğrenci tablolarında bilinçli olarak yer almaz. Bu ortak çıkarım altyapısı ve aktif öğretim alanı sonraki `shared-regression-inference` / Konu 07 çalışmasına bırakılmıştır.
-
-Konu 06'nın öğrenci tabloları yalnız sunum için biçimlendirilmiş değerler kullanır: modelde bulunmayan katsayılar `—`, salt-okunur doğrulamalar `Evet/Hayır`, kayan nokta yuvarlama farkları ise “sayısal tolerans içinde 0” olarak gösterilir. Saf hesaplama sonuçları bu biçimlendirmeden etkilenmez.
+2. Konunun sabit model tanımları (`konu07_model_specs` …) ortak hesaplama modüllerine verilir.
+3. Model çıktısı grafik, tablo ve soru motoru tarafından kullanılır.
+4. Veri seti veya model değiştiğinde model kimliği değişir; `session_utils` önceki soru durumunu sıfırlar.
 # Konu 08–09 ortak altyapısı
 
 Konu 08 ve Konu 09 aynı geliştirme dalında yer alsa da ayrı `topics/`, soru ve test modülleridir. `core/joint_inference_utils.py`, yalnız geleneksel `nonrobust` kovaryans altında genel `Rβ=r` ortak F testi, iç içe modeller için SSR/R² F karşılaştırması, genel anlamlılık, tek kısıtta `F=t²`, F dağılım grafiği verisi ve NumPy batch büyük-örneklem benzetimini taşır.
@@ -115,6 +120,6 @@ Konu 10, 11 ve 12 ayrı sayfa, saf hesaplama, soru ve test modülleridir. `core/
 
 `core/robust_inference_utils.py` mevcut `OLSInferenceResult` ve Konu 08'in nonrobust anlamını değiştirmez. Bunun yerine aynı EKK katsayıları için ayrı HC0–HC3 sonuç katmanı, BP/White tanıları, robust Wald/F ortak testi, saf grafik verisi ve sabit-seed vektörize kapsama benzetimi sunar. Kovaryans türü öğrenci ekranında açıkça etiketlenir; robust standart hata katsayıyı, yanlılığı veya nedensel tasarımı düzeltmez.
 
-Video incelemesi sonrasındaki öğretim katmanı genişletmesinde `core/ui_components.py`, eski sayfaların (Konu 05–12) soru eylemlerini tek kompakt primary/secondary bileşeninde toplar. CSS yalnız `question_actions_<topic>` anahtarlı kapsayıcıyı hedefler ve dar ekranda sarmalanır. Konu 10'a sayısal–kukla kodlama, kategori karşıtlığı ve rank önizlemesi; Konu 11'e grup doğrusu ve koşullu fark ızgaraları; Konu 12'ye BP/White manuel yardımcı-regresyon ayrıntıları, tüm HC türlerinin karşılaştırması ve tanı/benzetim grafik verileri eklenmiştir.
+Video incelemesi sonrasındaki öğretim katmanı genişletmesinde `core/ui_components.py`, eski sayfaların (Konu 07–12) soru eylemlerini tek kompakt primary/secondary bileşeninde toplar. CSS yalnız `question_actions_<topic>` anahtarlı kapsayıcıyı hedefler ve dar ekranda sarmalanır. Konu 10'a sayısal–kukla kodlama, kategori karşıtlığı ve rank önizlemesi; Konu 11'e grup doğrusu ve koşullu fark ızgaraları; Konu 12'ye BP/White manuel yardımcı-regresyon ayrıntıları, tüm HC türlerinin karşılaştırması ve tanı/benzetim grafik verileri eklenmiştir.
 
 Konu 08'deki custom laboratuvarı serbest metin ayrıştırmaz. Kullanıcı kontrollü R satırları ve r sağ taraflarını girer; `validate_restriction_system` rank(R), rank([R|r]), sıfır bilgi satırı, bağımlı satır ve tutarsız sistemi görünür kılar. Geçersiz sistemlerde test çalışmaz. `classify_restriction_system`, yalnız basit sıfır-dışlama kısıtlarında nested SSR/R² karşılaştırmasını açar; eşitlik, sıfır dışı ve doğrusal birleşim kısıtları genel `Rβ=r` matrix F ile sınanır.

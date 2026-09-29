@@ -11,11 +11,13 @@ from core.labs.spec import (
     BoxSummary,
     Check,
     ClassTable,
+    CopyFrame,
     CrossTab,
     Derive,
     OLS,
     LoadWooldridge,
     RegressionTable,
+    Residuals,
     Draw,
     DrawCount,
     DrawDiscrete,
@@ -30,6 +32,7 @@ from core.labs.spec import (
     LabStep,
     MapCodes,
     MonteCarlo,
+    ModelValue,
     NewSample,
     Operation,
     Outcomes,
@@ -39,6 +42,8 @@ from core.labs.spec import (
     ScalarTable,
     ScalarTarget,
     Selections,
+    ShowModel,
+    SummaryTable,
     Support,
 )
 
@@ -138,8 +143,11 @@ def numeric_columns(spec: LabSpec) -> set[tuple[str, str]]:
                         found.add((op.frame, column))
             elif isinstance(op, Outcomes):
                 found |= {(op.frame, column) for column, values in op.stages if _numbers(values)}
-            elif isinstance(op, (Derive, Event, Draw, DrawDiscrete, DrawCount, MapCodes, Support, Rectangles, RowSum)):
+            elif isinstance(op, (Derive, Event, Draw, DrawDiscrete, DrawCount, MapCodes, Support, Rectangles, RowSum,
+                                 Residuals)):
                 found.add((op.frame, op.name))
+            elif isinstance(op, CopyFrame):  # kopya, kaynağın o ana kadarki sayısal sütunlarını taşır
+                found |= {(op.frame, column) for frame, column in found if frame == op.source}
     return found
 
 
@@ -236,6 +244,8 @@ class Generator:
         self.signed_columns = signed_columns(spec)
         self.quiet = False
         """Monte Carlo döngüsü içinde ekrana yazdırma satırları üretilmez."""
+        self.context: tuple[Operation, ...] = ()
+        """Üretilmekte olan adımın işlemleri (ör. tam çıktının hangi alanlarının okunduğunu yazmak için)."""
         self.scalar_refs = {
             check.target.name for step in spec.steps for check in step.checks if isinstance(check.target, ScalarTarget)
         }
@@ -313,7 +323,19 @@ class Generator:
         word = "Deney" if self.spec.kind == "sezgi" else "Adım"
         return f"{word} {step.number}: {step.title}   ({step.note.label()})"
 
+    def fields_read(self, op: ShowModel) -> tuple[str, ...]:
+        """Tam çıktıda bu adımda okunan model bilgisi: ``op.stats`` ve aynı adımda aynı modelden okunan R² gibi
+        büyüklükler (``ModelValue``), ilk geçtikleri sırayla."""
+
+        found = list(op.stats)
+        for other in self.context:
+            if (isinstance(other, ModelValue) and other.model == op.model and other.term is None
+                    and other.quantity in STAT_NAMES and other.quantity not in found):
+                found.append(other.quantity)
+        return tuple(found)
+
     def render_operations(self, operations: tuple[Operation, ...]) -> list[str]:
+        self.context = operations
         lines: list[str] = []
         for op in operations:
             block = self.operation(op)
@@ -340,7 +362,8 @@ class Generator:
     def depends_on_earlier(self, step: LabStep) -> bool:
         """Adım kendi verisini kurmuyorsa önceki adımların çıktısına dayanır."""
 
-        sources = (InlineData, FromCounts, NewSample, Outcomes, Selections, Support, Rectangles, LoadWooldridge)
+        sources = (InlineData, FromCounts, NewSample, Outcomes, Selections, Support, Rectangles, LoadWooldridge,
+                   CopyFrame)
         created = {op.frame for op in step.operations if isinstance(op, sources)}
         used: set[str] = set()
         for op in flatten(step.operations):
@@ -354,6 +377,8 @@ class Generator:
                 used |= {frame for frame, _, _ in op.series}  # kutu grafiği serileri
             if isinstance(op, JoinColumns):
                 used |= {table for _, table, _ in op.columns}  # yan yana toplanan tablolar
+            if isinstance(op, SummaryTable):
+                used |= {table for _, table in op.rows}  # özetlenen tablolar
         produced = {getattr(op, "result", None) for op in step.operations}
         produced |= {op.name for op in step.operations if isinstance(op, OLS)}
         return bool(used - created - produced)

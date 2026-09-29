@@ -82,8 +82,8 @@ def stars(p_value: float) -> str:
 
 
 def regression_table(op: RegressionTable, models: dict) -> pd.DataFrame:
-    """Makale tipi tablonun sayıları: ``terim`` ve (``standard_errors`` ise) ``terim_sh`` satırları, ``n`` ve
-    (``r2`` ise) ``r2``; sütunlar modeller."""
+    """Makale tipi tablonun sayıları: ``terim`` ve (``standard_errors`` ise) ``terim_sh`` satırları, ``n``, (``r2``
+    ise) ``r2`` ve (``adj_r2`` ise) ``adj_r2``; sütunlar modeller."""
 
     columns = {}
     for heading, name in op.models:
@@ -97,9 +97,12 @@ def regression_table(op: RegressionTable, models: dict) -> pd.DataFrame:
         cells.append(float(result.nobs))
         if op.r2:
             cells.append(float(result.rsquared))
+        if op.adj_r2:
+            cells.append(float(result.rsquared_adj))
         columns[heading] = cells
     rows_per_term = (lambda term: (term, f"{term}_sh")) if op.standard_errors else (lambda term: (term,))
-    index = [label for term in op.terms for label in rows_per_term(term)] + ["n"] + (["r2"] if op.r2 else [])
+    index = ([label for term in op.terms for label in rows_per_term(term)] + ["n"] + (["r2"] if op.r2 else [])
+             + (["adj_r2"] if op.adj_r2 else []))
     return pd.DataFrame(columns, index=pd.Index(index, name="satir"))
 
 

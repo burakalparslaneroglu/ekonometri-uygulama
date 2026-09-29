@@ -88,12 +88,16 @@ def _normalize(text: str) -> str:
 
 
 def _resolve(name: str, known: set[str]) -> str:
-    """Tanımlı bir sembolün büyük/küçük harf farkıyla yazımı (``N1`` → ``n1``), yalnız tek bir sembole uyuyorsa."""
+    """Tanımlı bir sembolün büyük/küçük harf ya da alt çizgi farkıyla yazımı (``N1`` → ``n1``, ``B_1`` → ``b1``),
+    yalnız tek bir sembole uyuyorsa. Önce yalnız harf farkı denenir; birden çok sembole uyan yazım olduğu gibi kalır."""
 
     if name in known:
         return name
-    matches = [symbol for symbol in known if symbol.lower() == name.lower()]
-    return matches[0] if len(matches) == 1 else name
+    for fold in (str.lower, lambda text: text.replace("_", "").lower()):
+        matches = [symbol for symbol in known if fold(symbol) == fold(name)]
+        if matches:
+            return matches[0] if len(matches) == 1 else name
+    return name
 
 
 def _split_products(name: str, known: set[str]) -> list[str] | None:

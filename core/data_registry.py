@@ -229,27 +229,6 @@ def allowed_explanatory_variables(dataset_key: str, dependent: str) -> tuple[str
         ) from error
 
 
-def konu05_model_specs() -> tuple[RegressionModelSpec, ...]:
-    """Konu 05'e izin verilen sabit model sırasını döndürür."""
-    return (
-        RegressionModelSpec("W1-S", "wage1", "WAGE1 — Basit ücret modeli", "wage", "educ", ()),
-        RegressionModelSpec("W1-M", "wage1", "WAGE1 — Eğitim, deneyim ve kıdem modeli", "wage", "educ", ("exper", "tenure")),
-        RegressionModelSpec("W1-L", "wage1", "WAGE1 — Log ücret modeli", "lwage", "educ", ("exper", "tenure")),
-        RegressionModelSpec("H1-S", "hprice1", "HPRICE1 — Basit konut büyüklüğü modeli", "price", "sqrft100", (), ("sqrft100",)),
-        RegressionModelSpec("H1-M", "hprice1", "HPRICE1 — Arsa, konut büyüklüğü ve yatak odası modeli", "price", "sqrft100", ("lotsize1000", "bdrms"), ("lotsize1000", "sqrft100")),
-    )
-
-
-def konu06_model_specs() -> tuple[RegressionModelSpec, ...]:
-    """Konu 06 WAGE1 ayrıştırması için sabit model sırasını döndürür."""
-    return (
-        RegressionModelSpec("W6-S", "wage1", "WAGE1 — Kısa ücret modeli", "wage", "educ", ()),
-        RegressionModelSpec("W6-M", "wage1", "WAGE1 — Deneyim kontrollü ücret modeli", "wage", "educ", ("exper",)),
-        RegressionModelSpec("W6-F", "wage1", "WAGE1 — Deneyim ve kıdem kontrollü ücret modeli", "wage", "educ", ("exper", "tenure")),
-        RegressionModelSpec("W6-A", "wage1", "WAGE1 — Yardımcı regresyon: deneyim ve eğitim", "exper", "educ", ()),
-    )
-
-
 def konu07_model_specs() -> tuple[RegressionModelSpec, ...]:
     """Konu 07 için ham ölçekli, sabit çıkarım modellerini döndürür."""
     return (

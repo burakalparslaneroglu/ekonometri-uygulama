@@ -37,11 +37,13 @@ from core.labs.spec import (
     ModelValue,
     PanelSummary,
     RegressionTable,
+    Residuals,
     ShowModel,
     SortRows,
     ClassHistogram,
     ClassTable,
     CompareBarChart,
+    CopyFrame,
     Count,
     CrossTab,
     DensityCompare,
@@ -85,6 +87,7 @@ from core.labs.spec import (
     Statistic,
     StatTarget,
     StemLeaf,
+    SummaryTable,
     Support,
     TableTarget,
     TreeDiagram,
@@ -269,14 +272,24 @@ _REGRESSION_TABLE = [
     '    satirlar = [ad for terim in terimler for ad in (terim, terim + "_sh")] + ["n", "r2"]',
     "    return pd.DataFrame(sutunlar, index=satirlar, dtype=float)",
 ]
-def _read_fields_note(op: ShowModel) -> list[str]:
-    """Konu standart hatayı henüz işlemediyse (``columns == ("coef",)``) tam çıktının hangi alanlarının okunduğu."""
+def _read_fields_note(op: ShowModel, topic: int, stats: tuple[str, ...]) -> list[str]:
+    """Çıkarım henüz işlenmediyse (Konu 7'den önce ya da ``columns == ("coef",)``) tam çıktının hangi alanlarının
+    okunduğu; ``stats`` adımda okunan model bilgisidir."""
 
-    if "se" in op.columns:
+    if "se" in op.columns and topic >= 7:
         return []
-    read = listing(("katsayılar (coef)", *(STAT_NAMES[stat] for stat in op.stats)))
+    read = listing(("katsayılar (coef)", *(STAT_NAMES[stat] for stat in stats)))
     return [f"# Tam çıktı yazdırılır; bu adımda yalnız {read} okunur.",
-            "# std err, t, P>|t| ve güven aralığı Konu 7'de yorumlanır."]
+            "# std err, t, P>|t| ve güven aralığı Konu 7'de, F istatistiği Konu 8'de yorumlanır."]
+
+
+def _number(name: str, decimals: int) -> str:
+    """f-string içinde sayının biçimi. Çok basamaklı gösterimde (≥ 10) yuvarlanınca sıfır olan küçük negatif sayı
+    "-0.000…" yazılmasın diye önce yuvarlanır ve 0.0 eklenir (−0 + 0 = 0)."""
+
+    if decimals >= 10:
+        return f"{{round({name}, {decimals}) + 0.0:.{decimals}f}}"
+    return f"{{{name}:.{decimals}f}}"
 
 
 _REGRESSION_TABLE_OPTIONS = [
@@ -296,6 +309,28 @@ _REGRESSION_TABLE_OPTIONS = [
     "        sutunlar[baslik] = hucreler",
     '    satirlar = [ad for terim in terimler for ad in ((terim, terim + "_sh") if sh else (terim,))]',
     '    satirlar += ["n", "r2"] if r2 else ["n"]',
+    "    return pd.DataFrame(sutunlar, index=satirlar, dtype=float)",
+]
+_REGRESSION_TABLE_ADJUSTED = [
+    "def makale_tablosu(modeller, terimler, sh=True, r2=True, r2_duz=False):",
+    '    """Makale tipi tablo: her terim için katsayı ve (sh=True ise) standart hata (terim_sh), sonra n,',
+    '    (r2=True ise) R² ve (r2_duz=True ise) düzeltilmiş R² (adj_r2)."""',
+    "    sutunlar = {}",
+    "    for baslik, m in modeller.items():",
+    "        hucreler = []",
+    "        for terim in terimler:",
+    "            hucreler.append(m.params.get(terim, np.nan))",
+    "            if sh:",
+    "                hucreler.append(m.bse.get(terim, np.nan))",
+    "        hucreler.append(m.nobs)",
+    "        if r2:",
+    "            hucreler.append(m.rsquared)",
+    "        if r2_duz:",
+    "            hucreler.append(m.rsquared_adj)",
+    "        sutunlar[baslik] = hucreler",
+    '    satirlar = [ad for terim in terimler for ad in ((terim, terim + "_sh") if sh else (terim,))]',
+    '    satirlar += ["n", "r2"] if r2 else ["n"]',
+    '    satirlar += ["adj_r2"] if r2_duz else []',
     "    return pd.DataFrame(sutunlar, index=satirlar, dtype=float)",
 ]
 _STARS = [
@@ -374,8 +409,14 @@ class PythonGenerator(Generator):
         if any(isinstance(op, (BoxSummary, BoxPlot)) for op in flat):
             lines += _BOX_SUMMARY + ["", ""]
         if any(isinstance(op, RegressionTable) for op in flat):
-            options = any(isinstance(op, RegressionTable) and not (op.standard_errors and op.r2) for op in flat)
-            lines += (_REGRESSION_TABLE_OPTIONS if options else _REGRESSION_TABLE) + ["", ""]
+            tables = [op for op in flat if isinstance(op, RegressionTable)]
+            if any(op.adj_r2 for op in tables):
+                helper = _REGRESSION_TABLE_ADJUSTED
+            elif any(not (op.standard_errors and op.r2) for op in tables):
+                helper = _REGRESSION_TABLE_OPTIONS
+            else:
+                helper = _REGRESSION_TABLE
+            lines += helper + ["", ""]
             if any(isinstance(op, RegressionTable) and op.stars for op in flat):
                 lines += _STARS + ["", ""]
         if with_checks:
@@ -441,24 +482,32 @@ class PythonGenerator(Generator):
             ]
         if isinstance(op, OLS):
             return [f"# {op.comment}", f'{op.name} = smf.ols("{op.formula}", data={op.frame}).fit()']
+        if isinstance(op, Residuals):
+            return [f"# {op.comment}", f'{op.frame}["{op.name}"] = {op.model}.resid']
         if isinstance(op, ShowModel):
-            return [f"# {op.comment}", *_read_fields_note(op), f"print({op.model}.summary())"]
+            topic = int(self.spec.topic_key[-2:])
+            return [f"# {op.comment}", *_read_fields_note(op, topic, self.fields_read(op)),
+                    f"print({op.model}.summary())"]
         if isinstance(op, ModelValue):
             value = (coef_expression(op.model, op.term, op.quantity) if op.term is not None
                      else model_expression(op.model, op.quantity))
             return [
                 f"# {op.comment}",
                 f"{op.name} = {value}",
-                f'print(f"{_fstring(op.comment)}: {{{op.name}:.{op.decimals}f}}")',
+                f'print(f"{_fstring(op.comment)}: {_number(op.name, op.decimals)}")',
             ]
         if isinstance(op, RegressionTable):
             models = ", ".join(f"{text(heading)}: {name}" for heading, name in op.models)
-            flags = ("" if op.standard_errors else ", sh=False") + ("" if op.r2 else ", r2=False")
+            flags = (("" if op.standard_errors else ", sh=False") + ("" if op.r2 else ", r2=False")
+                     + (", r2_duz=True" if op.adj_r2 else ""))
             lines = [
                 f"# {op.comment}",
                 f"{op.result} = makale_tablosu({{{models}}}, {_list(op.terms)}{flags})",
                 f"print({op.result}.round({op.decimals}))",
             ]
+            for digits in sorted({digits for _, digits in op.term_decimals}):
+                terms = [term for term, value in op.term_decimals if value == digits]
+                lines.append(f"print({op.result}.loc[{_list(terms)}].round({digits}))  # notlardaki gibi {digits} basamak")
             if op.stars:
                 for heading, name in op.models:
                     lines.append(
@@ -538,6 +587,8 @@ class PythonGenerator(Generator):
         if isinstance(op, Derive):
             rhs = _render(op.expr, self.dialect(op.frame))
             return [f"# {op.comment}", f'{op.frame}["{op.name}"] = {rhs}']
+        if isinstance(op, CopyFrame):
+            return [f"# {op.comment}", f"{op.frame} = {op.source}.copy()  # bağımsız kopya: {op.source} değişmez"]
         if isinstance(op, NewSample):
             frame = f'{op.frame} = pd.DataFrame({{"id": np.arange(1, {op.nobs} + 1)}})'
             if op.seed is None:
@@ -590,7 +641,7 @@ class PythonGenerator(Generator):
             return [
                 f"# {op.comment}",
                 f"{op.name} = {_stat_call(source, op.stat)}",
-                f'print(f"{_fstring(op.comment)}: {{{op.name}:.{op.decimals}f}}")',
+                f'print(f"{_fstring(op.comment)}: {_number(op.name, op.decimals)}")',
             ]
         if isinstance(op, PairStatistic):
             method = {"cov": "cov", "corr": "corr"}[op.stat]
@@ -602,7 +653,7 @@ class PythonGenerator(Generator):
             ]
         if isinstance(op, Scalar):
             rhs = _render(op.expr, self.dialect(""))
-            shown = f"%{{{op.name}:.{op.decimals}f}}" if op.percent else f"{{{op.name}:.{op.decimals}f}}"
+            shown = f"%{_number(op.name, op.decimals)}" if op.percent else _number(op.name, op.decimals)
             return [f"# {op.comment}", f"{op.name} = {rhs}", f'print(f"{_fstring(op.comment)}: {shown}")']
         if isinstance(op, ScalarTable):
             dialect = self.dialect("")
@@ -678,6 +729,8 @@ class PythonGenerator(Generator):
             return self._pmf_density(op)
         if isinstance(op, MonteCarlo):
             return self._monte_carlo(op)
+        if isinstance(op, SummaryTable):
+            return self._summary_table(op)
         raise TypeError(f"Python üreticisi bu işlemi tanımıyor: {type(op).__name__}")
 
     @staticmethod
@@ -1384,6 +1437,8 @@ class PythonGenerator(Generator):
         lines = [
             f"# {op.comment}",
             f"# {op.reps} tekrar; rastgele sayı üreteci döngüden önce bir kez tohumlanır",
+            *(["# Her tekrarda bir EKK tahmini yapılır; döngü bilgisayara göre birkaç saniye ile bir dakika sürebilir."]
+              if any(isinstance(inner, OLS) for inner in op.body) else []),
             f"rng = np.random.default_rng({op.seed})",
             "sonuclar = []",
             f"for tekrar in range({op.reps}):",
@@ -1400,6 +1455,24 @@ class PythonGenerator(Generator):
             # float(): np.where gibi işlemler tek bir sayı için 0 boyutlu dizi döndürür; describe() onu atlar.
             lines.append(f'        "{name}": float({_render(expression, dialect)}),')
         return lines + ["    })", f"{op.result} = pd.DataFrame(sonuclar)", f"print({op.result}.describe().round(3))"]
+
+    def _summary_table(self, op: SummaryTable) -> list[str]:
+        sources = f"{op.result}_kaynak"
+        lines = [f"# {op.comment}", f"{sources} = {{  # satır etiketi: kaynak tablo"]
+        lines += [f"    {text(label)}: {table}," for label, table in op.rows]
+        lines += ["}", f"{op.result} = pd.DataFrame({{", "    etiket: {"]
+        for name, source, stat in op.columns:
+            note = "  # payda n − 1" if stat in ("std", "var") else ""
+            lines.append(f'        "{name}": {_stat_call(f"tablo[{text(source)}]", stat)},{note}')
+        digits = dict(op.column_decimals)
+        rounding = (f"{{{', '.join(f'{text(name)}: {digits.get(name, op.decimals)}' for name, _, _ in op.columns)}}}"
+                    if digits else str(op.decimals))
+        return lines + [
+            "    }",
+            f"    for etiket, tablo in {sources}.items()",
+            "}).T  # her kaynak tablo bir satır",
+            f"print({op.result}.round({rounding}))",
+        ]
 
     # --- Notlarla karşılaştırma -----------------------------------------
     def target(self, target) -> str:

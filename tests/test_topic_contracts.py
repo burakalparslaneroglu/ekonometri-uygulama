@@ -28,7 +28,7 @@ TOPIC_MODULES = {
 }
 
 # Uygulama + Sezgi + Kendini sına yapısına geçmiş konular: kod iki dilde, tek tanımdan üretilir.
-MIGRATED_TOPICS = {"konu00", "konu01", "konu02", "konu03", "konu04"}
+MIGRATED_TOPICS = {"konu00", "konu01", "konu02", "konu03", "konu04", "konu05", "konu06"}
 
 
 def test_registry_has_exact_course_order() -> None:
@@ -66,5 +66,9 @@ def test_legacy_modules_of_migrated_topics_are_gone() -> None:
     for name in ("core/research_question_utils.py", "core/scenario_registry.py", "core/data_structure_utils.py",
                  "core/group_comparison_utils.py", "tests/test_konu01_ui.py", "tests/test_konu02_ui.py",
                  "tests/test_konu01_questions.py", "tests/test_konu02_questions.py", "core/konu04_questions.py",
-                 "tests/test_konu03_ui.py", "tests/test_konu04_ui.py", "tests/test_konu04_utils.py"):
+                 "tests/test_konu03_ui.py", "tests/test_konu04_ui.py", "tests/test_konu04_utils.py",
+                 "core/konu05_questions.py", "core/konu06_questions.py", "core/multiple_regression_utils.py",
+                 "core/assumption_diagnostics_utils.py", "tests/test_konu05_questions.py", "tests/test_konu05_ui.py",
+                 "tests/test_konu06_questions.py", "tests/test_konu06_ui.py", "tests/test_multiple_regression_utils.py",
+                 "tests/test_assumption_diagnostics_utils.py"):
         assert not Path(name).exists(), name

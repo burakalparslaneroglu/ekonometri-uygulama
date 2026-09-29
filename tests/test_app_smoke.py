@@ -45,7 +45,8 @@ def test_app_opens_on_topic_00_with_three_tabs() -> None:
 
 def test_every_lab_step_renders_in_both_languages() -> None:
     app = _run_app()
-    for topic, steps in (("konu00", 9), ("konu01", 6), ("konu02", 6), ("konu03", 8), ("konu04", 10)):
+    for topic, steps in (("konu00", 9), ("konu01", 6), ("konu02", 6), ("konu03", 8), ("konu04", 10), ("konu05", 10),
+                         ("konu06", 6)):
         _select(app, topic)
         for language in ("Python", "R"):
             app.segmented_control(key="code_language").set_value(language).run()
@@ -125,7 +126,7 @@ def test_every_experiment_runs_and_reacts_to_its_sliders() -> None:
     olcek.set_value(0.0).run()
     assert _metrics(app)["R²"] == "1,000"
     assert _metrics(app)["Tahmin β̂₁"] == _metrics(app)["Gerçek eğim β₁"] == "13,50"
-    for topic in ("konu00", "konu01", "konu02", "konu03", "konu04"):
+    for topic in ("konu00", "konu01", "konu02", "konu03", "konu04", "konu05", "konu06"):
         _select(app, topic)
         for number in (1, 2, 3):
             app.segmented_control(key=f"{topic}_sezgi_deney").set_value(number).run()
@@ -249,3 +250,42 @@ def test_konu03_and_konu04_quizzes_grade_answers() -> None:
     app.radio(key="konu03_quiz_k01").set_value(0).run()
     app.button(key="konu03_quiz_check_k01").click().run()
     assert any("Tekrar edilecek bölümler" in item.value and "§3.1" in item.value for item in app.markdown)
+
+
+def test_konu05_regressor_choice_carries_to_later_steps_and_resets() -> None:
+    app = _run_app()
+    _select(app, "konu05")
+    assert "Çoklu Regresyon Modeli ve Ceteris Paribus Yorumu" in _markdown(app)
+    assert _metrics(app)["Çoklu model: eğitim katsayısı"] == "0,5990"
+    app.multiselect(key="konu05_secim_adim1_x").set_value(["educ", "exper"]).run()
+    assert not app.exception
+    assert any("notlardan farklı" in item.value for item in app.info)
+    app.segmented_control(key="konu05_lab_step").set_value(2).run()
+    assert _metrics(app)["Tahmin farkı B − A (dolar)"] == "2,577"
+    assert any("(Adım 1)" in item.value for item in app.info)
+    app.button(key="konu05_notlara_don_2").click().run()
+    assert not app.exception
+    assert _metrics(app)["Tahmin farkı B − A (dolar)"] == "2,396"
+
+
+def test_konu06_omitted_variable_and_vif_choices() -> None:
+    app = _run_app()
+    _select(app, "konu06")
+    assert _metrics(app)["Uzun model: eğitim katsayısı"] == "0,6443"
+    app.segmented_control(key="konu06_secim_adim1_z").set_value("tenure").run()
+    assert not app.exception
+    assert _metrics(app)["Uzun model: eğitim katsayısı"] == "0,5691"
+    app.segmented_control(key="konu06_lab_step").set_value(5).run()
+    app.multiselect(key="konu06_secim_adim5_x").set_value(["sqrft", "bdrms"]).run()
+    assert not app.exception
+    assert any("notlardan farklı" in item.value for item in app.info)
+
+
+def test_konu05_and_konu06_quizzes_grade_answers() -> None:
+    app = _run_app()
+    for topic, correct in (("konu05", 1), ("konu06", 2)):
+        _select(app, topic)
+        app.radio(key=f"{topic}_quiz_k01").set_value(correct).run()
+        app.button(key=f"{topic}_quiz_check_k01").click().run()
+        assert not app.exception, topic
+        assert any(item.value == "Doğru." for item in app.success), topic
