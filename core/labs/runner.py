@@ -408,7 +408,10 @@ def execute(op: Operation, state: LabState) -> None:
     elif isinstance(op, GroupSummary):
         grouped = state.frames[op.frame].groupby(op.by)
         table = pd.DataFrame({name: grouped[variable].agg(stat) for name, variable, stat in op.columns})
-        state.tables[op.result] = table.reindex(list(op.order))
+        table = table.reindex(list(op.order))
+        if op.labels:  # grup değerleri yerine etiketler (ör. 0 → "Erkek")
+            table = table.rename(index=dict(op.labels))
+        state.tables[op.result] = table
     elif isinstance(op, FrequencyTable):
         values = state.frames[op.frame][op.variable]
         state.tables[op.result] = T.frequency_table(values, op.order, relative=op.relative, totals=op.totals)
@@ -471,7 +474,9 @@ def execute(op: Operation, state: LabState) -> None:
         if op.means:  # aynı x değerindeki gözlemlerin y ortalaması (koşullu ortalamanın örneklem karşılığı)
             grouped = data.groupby(op.x)[op.y].mean()
             means = pd.DataFrame({op.x: grouped.index.to_numpy(dtype=float), op.y: grouped.to_numpy(dtype=float)})
-        state.plots[plot_key(op)] = {"veri": data.copy(), "dogru": line, "cizgiler": known, "ortalamalar": means}
+        curves = [(label, state.frames[frame][[x, y]].copy()) for frame, x, y, label in op.curves]
+        state.plots[plot_key(op)] = {"veri": data.copy(), "dogru": line, "cizgiler": known, "ortalamalar": means,
+                                     "egriler": curves}
     elif isinstance(op, BoxPlot):
         boxes = []
         for frame, variable, label in op.series:

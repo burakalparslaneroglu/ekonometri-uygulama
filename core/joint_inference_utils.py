@@ -1,6 +1,6 @@
-"""Genel doğrusal kısıtlar (``R beta = r``) için geleneksel ortak F testi ve iç içe model karşılaştırması.
+"""Genel doğrusal kısıtlar (``R beta = r``) için geleneksel ortak F testi.
 
-Konu 9–12'nin sayfaları ve yardımcı modülleri kullanır; Konu 8'in F testleri ``core.labs`` tanımlarından üretilir.
+Konu 11–12'nin sayfaları ve yardımcı modülleri kullanır; Konu 8–10'un F testleri ``core.labs`` tanımlarından üretilir.
 """
 
 from __future__ import annotations
@@ -9,10 +9,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 import numpy as np
-import pandas as pd
 from scipy.stats import f as f_distribution
 
-from core.regression_inference_utils import OLSInferenceResult, fit_ols_inference
+from core.regression_inference_utils import OLSInferenceResult
 
 
 def _finite(value: object, label: str) -> float:
@@ -74,26 +73,6 @@ class JointFTestResult:
     alpha: float
     reject_null: bool
     covariance_type: str
-
-
-@dataclass(frozen=True)
-class NestedModelFResult:
-    """Sıfıra eşit dışlama kısıtları için iki eşdeğer F hesabı."""
-
-    restricted_result: OLSInferenceResult
-    unrestricted_result: OLSInferenceResult
-    q: int
-    ssr_restricted: float
-    ssr_unrestricted: float
-    r_squared_restricted: float
-    r_squared_unrestricted: float
-    f_from_ssr: float
-    f_from_r_squared: float
-    f_matrix: float | None
-    p_value: float
-    df_num: int
-    df_denom: int
-    formulas_match: bool
 
 
 @dataclass(frozen=True)
@@ -184,37 +163,3 @@ def joint_f_test(result: OLSInferenceResult, restrictions: tuple[LinearRestricti
     critical = float(f_distribution.ppf(1.0 - level, len(restrictions), result.df_resid))
     return JointFTestResult(restrictions, tuple(item.label for item in restrictions), len(restrictions), statistic, p_value,
                             len(restrictions), result.df_resid, critical, level, bool(p_value < level), result.covariance_type)
-
-
-def nested_exclusion_f_test(frame: pd.DataFrame, dependent: str, unrestricted_explanatory: tuple[str, ...], restricted_explanatory: tuple[str, ...], *, alpha: float = 0.05) -> NestedModelFResult:
-    """Aynı complete-case örnekleminde dışlama kısıtlarının SSR/R² F testini yapar."""
-    level = _alpha(alpha)
-    if not isinstance(frame, pd.DataFrame):
-        raise ValueError("Girdi bir pandas DataFrame olmalıdır.")
-    if len(set(unrestricted_explanatory)) != len(unrestricted_explanatory) or len(set(restricted_explanatory)) != len(restricted_explanatory):
-        raise ValueError("Açıklayıcı değişken adları benzersiz olmalıdır.")
-    if not set(restricted_explanatory) < set(unrestricted_explanatory):
-        raise ValueError("Kısıtlı açıklayıcılar kısıtsız modelin gerçek alt kümesi olmalıdır.")
-    columns = (dependent, *unrestricted_explanatory)
-    if any(name not in frame.columns for name in columns):
-        raise ValueError("Bağımlı değişken ve tüm açıklayıcılar veri setinde bulunmalıdır.")
-    prepared = frame.loc[:, list(columns)].apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna().copy()
-    restricted = fit_ols_inference(prepared, dependent, restricted_explanatory)
-    unrestricted = fit_ols_inference(prepared, dependent, unrestricted_explanatory)
-    if restricted.nobs != unrestricted.nobs:
-        raise ValueError("Kısıtlı ve kısıtsız model aynı complete-case örneklemi kullanmalıdır.")
-    q = len(unrestricted_explanatory) - len(restricted_explanatory)
-    ssr_r, ssr_ur = float(restricted.ssr), float(unrestricted.ssr)
-    if ssr_ur > ssr_r + 1e-8 * max(1.0, ssr_r):
-        raise ValueError("Kısıtsız modelin SSR değeri kısıtlı modelden büyük olamaz.")
-    f_ssr = max(0.0, ((ssr_r - ssr_ur) / q) / (ssr_ur / unrestricted.df_resid))
-    r2_r, r2_ur = restricted.r_squared, unrestricted.r_squared
-    denominator = (1.0 - r2_ur) / unrestricted.df_resid
-    if denominator <= 0:
-        raise ValueError("R-kare F hesabının paydası pozitif olmalıdır.")
-    f_r2 = max(0.0, ((r2_ur - r2_r) / q) / denominator)
-    excluded = tuple(name for name in unrestricted_explanatory if name not in restricted_explanatory)
-    matrix = joint_f_test(unrestricted, tuple(LinearRestriction({name: 1.0}, 0.0, f"{name} = 0") for name in excluded), alpha=level)
-    return NestedModelFResult(restricted, unrestricted, q, ssr_r, ssr_ur, r2_r, r2_ur, f_ssr, f_r2,
-                              matrix.f_statistic, matrix.p_value, q, unrestricted.df_resid,
-                              bool(np.isclose(f_ssr, f_r2, rtol=1e-8, atol=1e-8) and np.isclose(f_ssr, matrix.f_statistic, rtol=1e-8, atol=1e-8)))

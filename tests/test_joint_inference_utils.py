@@ -1,25 +1,16 @@
-"""Genel doğrusal kısıt F testi çekirdeğinin (Konu 9–12 sayfaları) sayısal denetimleri."""
+"""Genel doğrusal kısıt F testi çekirdeğinin (Konu 11–12 sayfaları) sayısal denetimleri."""
 
 import pytest
 import statsmodels.formula.api as smf
 
 from core.data_registry import load_dataset
-from core.joint_inference_utils import LinearRestriction, joint_f_test, nested_exclusion_f_test, validate_restriction_system
+from core.joint_inference_utils import LinearRestriction, joint_f_test, validate_restriction_system
 from core.regression_inference_utils import fit_ols_inference
 
 
 @pytest.fixture(scope="module")
 def wage_result():
     return fit_ols_inference(load_dataset("wage1"), "wage", ("educ", "exper", "tenure"))
-
-
-def test_wage1_and_hprice1_nested_tests_match_documented_values() -> None:
-    """SSR, R² ve matris F hesapları notlardaki değerleri verir (§8.6: 53,31; §8.9: 6,61)."""
-    wage = nested_exclusion_f_test(load_dataset("wage1"), "wage", ("educ", "exper", "tenure"), ("educ",))
-    home = nested_exclusion_f_test(load_dataset("hprice1"), "price", ("lotsize", "sqrft", "bdrms"), ("sqrft",))
-    assert (wage.q, wage.df_denom, wage.f_from_ssr, wage.p_value) == pytest.approx((2, 522, 53.3099, 8.56e-22), rel=2e-3, abs=1e-12)
-    assert wage.formulas_match and wage.ssr_unrestricted <= wage.ssr_restricted
-    assert (home.q, home.df_denom, home.f_from_ssr, home.p_value) == pytest.approx((2, 84, 6.6102, 0.002157), rel=2e-3)
 
 
 def test_general_restrictions_match_statsmodels_and_single_t(wage_result) -> None:

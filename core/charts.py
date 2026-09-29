@@ -11,7 +11,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from core.codegen.base import HEAT_LOW, PALETTE, REFERENCE_COLORS
+from core.codegen.base import CURVE_DASHES, HEAT_LOW, PALETTE, REFERENCE_COLORS, curve_style
 from core.labs import inference as I
 from core.labs.runner import LabState, parameter, plot_key
 from core.labs.spec import (
@@ -195,7 +195,18 @@ def _line(op: LineChart, data: pd.DataFrame, state: LabState) -> go.Figure:
                 line={"color": PALETTE[2], "width": 1.8, "dash": "dash"},
             )
         )
-    if op.references or op.bands:
+    for index, (name, label) in enumerate(op.vlines, start=len(op.references)):
+        # Dikey başvuru çizgisi (ör. dönüm noktası): yardımcı eksende (0–1) tam boy; açıklamada değeriyle.
+        value = float(state.scalars[name])
+        shown = tr_number(value, 0 if value.is_integer() else 2)  # tam sayı (ör. seçilen yıl) basamaksız
+        figure.add_trace(go.Scatter(
+            x=[value, value], y=[0, 1], mode="lines", name=f"{label}: {shown}", yaxis="y2",
+            hoverinfo="skip", line={"color": REFERENCE_COLORS[index % len(REFERENCE_COLORS)], "width": 2.5,
+                                    "dash": ("dash", "dot", "dashdot")[index % 3]},
+        ))
+    if op.vlines:
+        figure.update_layout(yaxis2={"overlaying": "y", "range": [0, 1], "visible": False})
+    if op.references or op.bands or op.vlines:
         figure.update_layout(legend={"orientation": "h", "y": -0.25})
     unique = np.unique(x)
     steps = np.diff(unique)
@@ -232,7 +243,14 @@ def _scatter(op: ScatterPlot, plot: dict) -> go.Figure:
             marker={"color": PALETTE[3], "size": 11, "line": {"color": "white", "width": 1}},
             hovertemplate=f"{op.x_label}: %{{x}}<br>Ortalama: %{{y:.2f}}<extra></extra>",
         ))
-    if plot["dogru"] is not None or plot.get("cizgiler") or means is not None:
+    curves = plot.get("egriler") or []
+    for index, ((label, curve), (_, x_column, y_column, _)) in enumerate(zip(curves, op.curves)):
+        color, dash = curve_style(index)
+        figure.add_trace(go.Scatter(
+            x=curve[x_column], y=curve[y_column], mode="lines", name=label, hoverinfo="skip",
+            line={"color": color, "width": 3, "dash": CURVE_DASHES[dash]},
+        ))
+    if plot["dogru"] is not None or plot.get("cizgiler") or means is not None or curves:
         figure.update_layout(legend={"orientation": "h", "y": -0.2})
     else:
         figure.update_layout(showlegend=False)
@@ -634,15 +652,17 @@ def _hypothesis(op: HypothesisPlot, data: dict) -> go.Figure:
 def _coefficients(op: CoefficientPlot, data: pd.DataFrame, label) -> go.Figure:
     """Katsayılar ve güven aralıkları; ilk terim en üstte, sıfırda kesikli dikey çizgi."""
 
-    names = [label(term) for term in data["terim"]]
+    names = [op.term_label(term, label) for term in data["terim"]]
     level = tr_number(100 * op.level, 0)
+    unit = "%" if op.percent else ""
     figure = go.Figure(go.Scatter(
         x=data["tahmin"], y=names, mode="markers", name=f"Tahmin ve yüzde {level} güven aralığı",
         marker={"color": PALETTE[0], "size": 10},
         error_x={"type": "data", "symmetric": False, "array": data["ust"] - data["tahmin"],
                  "arrayminus": data["tahmin"] - data["alt"], "color": PALETTE[0], "thickness": 2.5, "width": 8},
         customdata=np.column_stack([data["alt"], data["ust"]]),
-        hovertemplate="%{y}: %{x:.3f}<br>aralık [%{customdata[0]:.3f}; %{customdata[1]:.3f}]<extra></extra>",
+        hovertemplate=(f"%{{y}}: {unit}%{{x:.3f}}<br>aralık [{unit}%{{customdata[0]:.3f}}; "
+                       f"{unit}%{{customdata[1]:.3f}}]<extra></extra>"),
     ))
     figure.add_vline(x=0, line={"color": REFERENCE_COLORS[0], "width": 2, "dash": "dash"})
     figure.update_yaxes(categoryorder="array", categoryarray=names[::-1])

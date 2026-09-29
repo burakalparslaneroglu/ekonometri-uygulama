@@ -229,25 +229,6 @@ def allowed_explanatory_variables(dataset_key: str, dependent: str) -> tuple[str
         ) from error
 
 
-def konu09_model_specs() -> tuple[RegressionModelSpec, ...]:
-    """Konu 09 WAGE1 log-ücret fonksiyonel biçim modellerini döndürür."""
-    return (
-        RegressionModelSpec("W9-M1", "wage1", "WAGE1 M1 — Doğrusal log ücret", "lwage", "educ", ("exper", "tenure")),
-        RegressionModelSpec("W9-M4", "wage1", "WAGE1 M4 — Karesel log ücret", "lwage", "educ", ("exper", "expersq", "tenure", "tenursq")),
-    )
-
-
-def konu10_model_specs() -> tuple[RegressionModelSpec, ...]:
-    """Konu 10'un sabit WAGE1 model belirtimlerini döndürür."""
-    return (
-        RegressionModelSpec("W10-B", "wage1", "WAGE1 — Ham kadın-erkek ücret farkı", "wage", "female", ()),
-        RegressionModelSpec("W10-C", "wage1", "WAGE1 — Kontrollü düzey ücret farkı", "wage", "female", ("educ", "exper", "tenure")),
-        RegressionModelSpec("W10-L", "wage1", "WAGE1 — Kontrollü log ücret farkı", "lwage", "female", ("educ", "exper", "tenure")),
-        RegressionModelSpec("W10-R", "wage1", "WAGE1 — Bölge kuklaları", "lwage", "educ", ("exper", "expersq", "tenure", "tenursq", "northcen", "south", "west")),
-        RegressionModelSpec("W10-I", "wage1", "WAGE1 — Endüstri kuklaları", "lwage", "educ", ("exper", "expersq", "tenure", "tenursq", "construc", "ndurman", "trcommpu", "trade", "services", "profserv")),
-    )
-
-
 def konu11_model_specs() -> tuple[RegressionModelSpec, ...]:
     """Konu 11 etkileşim modellerini döndürür."""
     return (

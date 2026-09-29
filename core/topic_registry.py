@@ -58,8 +58,14 @@ TOPICS: tuple[TopicMetadata, ...] = (
     TopicMetadata(
         "konu09", 9, "Ölçekleme, Logaritmik Modeller, Karesel Terimler ve Model Seçimi",
         "Ölçekleme, Log ve Karesel Terimler",
+        "İlişki hangi biçimdedir: bir değişkenin etkisi kendi düzeyine göre değişiyor mu ve daha esnek bir model "
+        "eklediği karmaşıklığa değer mi?",
     ),
-    TopicMetadata("konu10", 10, "Kukla Değişkenler ve Kategorik Açıklayıcı Değişkenler", "Kukla Değişkenler"),
+    TopicMetadata(
+        "konu10", 10, "Kukla Değişkenler ve Kategorik Açıklayıcı Değişkenler", "Kukla Değişkenler",
+        "Bölge, sektör ya da medeni durum gibi sayıyla ölçülmeyen bilgiler regresyon modeline nasıl eklenir ve "
+        "katsayıları hangi karşılaştırmayı anlatır?",
+    ),
     TopicMetadata(
         "konu11", 11, "Etkileşim Terimleri ve Gruplar Arasında Sabit ile Eğim Farklılıkları",
         "Etkileşimler ve Grup Farkları",

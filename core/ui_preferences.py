@@ -68,16 +68,3 @@ def text_scale_css(scale: object) -> str:
     .stApp h3 {{ font-size: {sizes['h3']:.3f}rem; }}
     </style>
     """
-
-
-def plot_font_sizes(scale: object) -> dict[str, int]:
-    """Plotly için ölçeklenmiş ve güvenli yazı boyutlarını döndürür."""
-    value = normalize_text_scale(scale)
-    return {
-        "base": max(10, round(14 * value)),
-        "title": max(12, round(18 * value)),
-        "annotation": max(10, round(13 * value)),
-        "tick": max(9, round(12 * value)),
-        "legend": max(9, round(12 * value)),
-        "hover": max(10, round(13 * value)),
-    }

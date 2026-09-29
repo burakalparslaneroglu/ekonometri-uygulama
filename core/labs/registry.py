@@ -11,11 +11,14 @@ from core.labs.konu05 import KONU05_LAB
 from core.labs.konu06 import KONU06_LAB
 from core.labs.konu07 import KONU07_LAB
 from core.labs.konu08 import KONU08_LAB
+from core.labs.konu09 import KONU09_LAB
+from core.labs.konu10 import KONU10_LAB
 from core.labs.spec import LabSpec
 
 LABS: dict[str, LabSpec] = {
     lab.topic_key: lab for lab in (KONU00_LAB, KONU01_LAB, KONU02_LAB, KONU03_LAB, KONU04_LAB, KONU05_LAB,
-                                   KONU06_LAB, KONU07_LAB, KONU08_LAB)
+                                   KONU06_LAB, KONU07_LAB, KONU08_LAB, KONU09_LAB,
+                                   KONU10_LAB)
 }
 
 

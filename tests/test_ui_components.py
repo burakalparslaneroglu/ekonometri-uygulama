@@ -10,8 +10,8 @@ ROOT=Path(__file__).resolve().parents[1]
 
 
 def test_all_topics_use_shared_question_actions_and_badges() -> None:
-    # Konu 0–8 Uygulama, Sezgi ve Kendini sına sekmelerine taşındı; ortak başlıkları topics/shared.py'dedir.
-    for number in range(9,13):
+    # Konu 0–10 Uygulama, Sezgi ve Kendini sına sekmelerine taşındı; ortak başlıkları topics/shared.py'dedir.
+    for number in range(11,13):
         topic=next((ROOT/"topics").glob(f"konu{number:02d}_*.py"))
         source=topic.read_text(encoding="utf-8")
         assert "render_question_actions" in source
@@ -26,10 +26,10 @@ def test_all_topics_use_shared_question_actions_and_badges() -> None:
 
 
 def test_toggle_and_new_question_visibility() -> None:
-    state={}; index,_,answer=question_state_keys("konu10")
-    assert toggle_answer(state,"konu10") and state[answer]
-    assert not toggle_answer(state,"konu10") and not state[answer]
-    state[answer]=True; next_question(state,"konu10")
+    state={}; index,_,answer=question_state_keys("konu11")
+    assert toggle_answer(state,"konu11") and state[answer]
+    assert not toggle_answer(state,"konu11") and not state[answer]
+    state[answer]=True; next_question(state,"konu11")
     assert state[index]==1 and not state[answer]
 
 

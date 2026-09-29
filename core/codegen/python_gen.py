@@ -13,10 +13,12 @@ from core.codegen.base import (
     REFERENCE_COLORS,
     STAT_NAMES,
     Generator,
+    curve_style,
     flatten,
     functions_used,
     listing,
     text,
+    title_lines,
     uses_charts,
     wrapped,
 )
@@ -223,6 +225,8 @@ def _labelled_charts(operations) -> bool:
 
     for op in flatten(operations):
         if isinstance(op, (BarChart, CompareBarChart, MosaicChart, TreeDiagram, HeatMap, HypothesisPlot, IntervalPlot)):
+            return True
+        if isinstance(op, LineChart) and op.vlines:
             return True
         if isinstance(op, GroupedBarChart) and op.labels:
             return True
@@ -514,7 +518,8 @@ class PythonGenerator(Generator):
             ]
             if op.extra:
                 headings = [heading for heading, _ in op.models]
-                cells = [f"    {text(key)}: [{', '.join(names)}],  # {label}" for key, label, names in op.extra]
+                cells = [f"    {text(key)}: [{', '.join(name or 'np.nan' for name in names)}],  # {label}"
+                         for key, label, names in op.extra]
                 tail = ["n", *(["r2"] if op.r2 else []), *(["adj_r2"] if op.adj_r2 else [])]
                 lines += [
                     "# Ek satırlar (skalerlerden): terimlerden sonra, gözlem sayısından önce",
@@ -527,7 +532,12 @@ class PythonGenerator(Generator):
             lines.append(f"print({op.result}.round({op.decimals}))")
             for digits in sorted({digits for _, digits in op.term_decimals}):
                 terms = [term for term, value in op.term_decimals if value == digits]
+                if op.standard_errors:
+                    terms = [row for term in terms for row in (term, f"{term}_sh")]
                 lines.append(f"print({op.result}.loc[{_list(terms)}].round({digits}))  # notlardaki gibi {digits} basamak")
+            if op.r2 and op.r2_decimals is not None and op.r2_decimals != op.decimals:
+                fits = ["r2", *(["adj_r2"] if op.adj_r2 else [])]
+                lines.append(f"print({op.result}.loc[{_list(fits)}].round({op.r2_decimals}))  # R² {op.r2_decimals} basamak")
             if op.stars:
                 for heading, name in op.models:
                     lines.append(
@@ -679,14 +689,19 @@ class PythonGenerator(Generator):
             dialect = self.dialect("")
             rows = [f"    {text(label)}: {_render(expression, dialect)}," for label, expression in op.rows]
             return [
+                *([f"# {op.title}"] if op.title else []),
                 f"{op.result} = pd.DataFrame({{\"deger\": {{", *rows, "}})",
                 f"print({op.result}.round({op.decimals}))",
             ]
         if isinstance(op, GroupSummary):
-            lines = [f'{op.result} = {op.frame}.groupby("{op.by}").agg(']
+            lines = [*([f"# {op.title}"] if op.title else []), f'{op.result} = {op.frame}.groupby("{op.by}").agg(']
             for name, variable, stat in op.columns:
                 lines.append(f'    {name}=("{variable}", "{stat}"),')
-            lines += [f").reindex({_list(op.order)})", f"print({op.result}.round(4))"]
+            lines.append(f").reindex({_list(op.order)})")
+            if op.labels:
+                names = ", ".join(f"{text(value)}: {text(label)}" for value, label in op.labels)
+                lines.append(f"{op.result} = {op.result}.rename(index={{{names}}})  # grup değerlerinin adları")
+            lines.append(f"print({op.result}.round(4))")
             return lines
         if isinstance(op, FrequencyTable):
             return self._frequency(op)
@@ -694,11 +709,19 @@ class PythonGenerator(Generator):
             return self._crosstab(op)
         if isinstance(op, JoinColumns):
             items = [f'    {text(name)}: {table}["{column}"].to_numpy(),' for name, table, column in op.columns]
+            rounding = str(op.decimals)
+            if op.column_decimals or op.p_columns or op.row_decimals:
+                # Sütun başına basamak (p-değeri 4 basamak); satır basamağı varsa en büyüğü kaybolmasın diye kullanılır.
+                digits, widest = dict(op.column_decimals), max((d for _, d in op.row_decimals), default=0)
+                rounding = "{" + ", ".join(
+                    f"{text(name)}: {4 if name in op.p_columns else max(digits.get(name, op.decimals), widest)}"
+                    for name, _, _ in op.columns) + "}"
             return [
+                *([f"# {op.title}"] if op.title else []),
                 f"{op.result} = pd.DataFrame({{",
                 *items,
                 f"}}, index={op.columns[0][1]}.index)",
-                f"print({op.result}.round({op.decimals}))",
+                f"print({op.result}.round({rounding}))",
             ]
         if isinstance(op, BoxSummary):
             items = [f'    {text(label)}: kutu_ozeti({frame}["{variable}"]),' for frame, variable, label in op.series]
@@ -878,19 +901,22 @@ class PythonGenerator(Generator):
 
     def _coefficient_plot(self, op: CoefficientPlot) -> list[str]:
         alpha = E.format_number(round(1 - op.level, 10))
-        labels = [self.spec.label(term) for term in op.terms]
+        labels = [op.term_label(term, self.spec.label) for term in op.terms]
         return [
             f"# Katsayılar ve yüzde {E.format_number(round(100 * op.level, 8))} güven aralıkları; ilk terim en üstte",
             f"terimler = {_list(op.terms)}",
             f"aralik = {op.model}.conf_int(alpha={alpha}).loc[terimler]",
             f"tahmin = {op.model}.params[terimler]",
+            *(["# Log bağımlı değişken: katsayı ve aralık sınırları tam yüzdeye çevrilir, 100·(exp(değer) − 1)",
+               "aralik = 100 * (np.exp(aralik) - 1)",
+               "tahmin = 100 * (np.exp(tahmin) - 1)"] if op.percent else []),
             "konum = np.arange(len(terimler))[::-1]",
             "fig, ax = plt.subplots(figsize=(8, 5))",
             "ax.errorbar(tahmin, konum, xerr=[tahmin - aralik[0], aralik[1] - tahmin], fmt=\"o\", capsize=5,",
             f'            color="{PALETTE[0]}", markersize=8, linewidth=2)',
             f'ax.axvline(0, color="{REFERENCE_COLORS[0]}", linestyle="--", linewidth=2)',
             f"ax.set_yticks(konum, {_list(labels)})",
-            *self._axes(op.x_label, op.y_label, op.title),
+            *self._axes(op.x_label, op.y_label, title_lines(op.title)),
         ]
 
     def _interval_plot(self, op: IntervalPlot) -> list[str]:
@@ -920,7 +946,7 @@ class PythonGenerator(Generator):
         lines = [
             f'ax.set_xlabel("{_quote(x_label)}")',
             f'ax.set_ylabel("{_quote(y_label)}")',
-            f'ax.set_title("{_quote(title)}")',
+            f'ax.set_title("{_quote(title).replace(chr(10), chr(92) + "n")}")',  # iki satırlı başlık: \n
         ]
         if legend == "disarida":
             lines.append('ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1))  # açıklama sütunların dışında')
@@ -1247,7 +1273,7 @@ class PythonGenerator(Generator):
             return lines + ["ax.grid(alpha=0.3)", *self._axes(op.x_label, op.y_label, op.title, legend=True)]
         plot = f'ax.plot({op.frame}["{op.x}"], {op.frame}["{op.y}"]{marker}, color="{PALETTE[0]}"'
         lines = ["fig, ax = plt.subplots(figsize=(8, 5))"]
-        legend = bool(op.references or op.bands)
+        legend = bool(op.references or op.bands or op.vlines)
         # Başvuru çizgisi ya da bant varsa açıklama (legend) gerekir; seri de adıyla açıklamada yer alır.
         lines += [plot + ",", f"        label={text(op.y_label)})"] if legend else [plot + ")"]
         for index, (name, label) in enumerate(op.references):
@@ -1258,13 +1284,18 @@ class PythonGenerator(Generator):
             shown = text(label) if label else '"_nolegend_"'
             lines.append(f'ax.plot({op.frame}["{op.x}"], {op.frame}["{column}"], color="{PALETTE[2]}", '
                          f'linestyle="--", linewidth=1.5, label={shown})')
+        for index, (name, label) in enumerate(op.vlines, start=len(op.references)):
+            color = REFERENCE_COLORS[index % len(REFERENCE_COLORS)]
+            style = ("--", ":", "-.")[index % 3]
+            lines.append(f'ax.axvline({name}, color="{color}", linestyle="{style}", linewidth=2, '
+                         f'label={text(label)} + ": " + sayi_metni({name}, 0 if float({name}).is_integer() else 2))')
         return lines + self._axes(op.x_label, op.y_label, op.title, legend=legend)
 
     def _scatter(self, op: ScatterPlot) -> list[str]:
         size = E.format_number(4 * op.size)  # matplotlib noktanın alanını (pt²) alır; Plotly çapını
         alpha = "" if op.opacity >= 1 else f", alpha={E.format_number(op.opacity)}"
         lines = ["fig, ax = plt.subplots(figsize=(7, 5))"]
-        if not (op.fit_line or op.lines or op.means):
+        if not (op.fit_line or op.lines or op.means or op.curves):
             return lines + [
                 f'ax.scatter({op.frame}["{op.x}"], {op.frame}["{op.y}"], color="{PALETTE[0]}", s={size}{alpha}, '
                 f"zorder=3)",
@@ -1301,6 +1332,13 @@ class PythonGenerator(Generator):
                 f"# {label}: y = sabit + eğim · x (kesikli çizgi)",
                 f"ax.plot(x_dogru, {line}, color=\"{color}\", "
                 f'linestyle="--", linewidth=2.5, label={text(label)})',
+            ]
+        for index, (frame, x, y, label) in enumerate(op.curves):
+            color, dash = curve_style(index)
+            lines += [
+                f"# {label}: ızgaradaki x değerlerinde hesaplanan eğri",
+                f'ax.plot({frame}["{x}"], {frame}["{y}"], color="{color}", linestyle="{("-", "--", ":")[dash]}", '
+                f"linewidth=3, label={text(label)})",
             ]
         return lines + ["ax.grid(alpha=0.3)", *self._axes(op.x_label, op.y_label, op.title, legend=True)]
 

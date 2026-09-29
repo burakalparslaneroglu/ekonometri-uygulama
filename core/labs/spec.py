@@ -459,6 +459,8 @@ class Scalar:
     decimals: int = 4
     percent: bool = False
     p_value: bool = False
+    shown: bool = True
+    """``False``: ekranda ölçü olarak gösterilmez (ör. grafikteki sıfır çizgisinin değeri); kod yine hesaplar."""
 
 
 @dataclass(frozen=True)
@@ -471,6 +473,8 @@ class ScalarTable:
     decimals: int = 2
     heading: str = "Büyüklük"
     value: str = "Değer"
+    title: str = ""
+    """Ekranda tablonun üstündeki başlık (ör. "Tablo 9.2: …"); boşsa başlık yazılmaz. Üretilen kodda yorum satırıdır."""
 
 
 @dataclass(frozen=True)
@@ -485,6 +489,17 @@ class GroupSummary:
     result: str
     order: tuple[object, ...]
     decimals: int = 3
+    labels: tuple[tuple[object, str], ...] = ()
+    """(grup değeri, etiket): satır adları etiketlerle yazılır (ör. 0 → "Erkek", 1 → "Kadın"); grafikte de kategori
+    etiketi olur. Boşsa satır adları grup değerleridir."""
+    heading: str = ""
+    """Ekranda satır etiketlerinin sütun başlığı (boşsa gruplama değişkeninin etiketi)."""
+    title: str = ""
+    """Ekranda tablonun üstündeki başlık (ör. "Tablo 10.1: …"); boşsa başlık yazılmaz. Üretilen kodda yorum satırıdır."""
+
+    def __post_init__(self) -> None:
+        if self.labels and [value for value, _ in self.labels] != list(self.order):
+            raise ValueError("Grup etiketleri order sırasıyla, her grup için bir etiket olarak verilir.")
 
 
 @dataclass(frozen=True)
@@ -540,6 +555,22 @@ class JoinColumns:
     percent: bool = False
     heading: str = ""
     """Ekranda satır etiketlerinin sütun başlığı (boşsa satır adının adı ya da "Kategori")."""
+    column_decimals: tuple[tuple[str, int], ...] = ()
+    """(sütun adı, basamak): bir sütunun ekrandaki basamağı (ör. katsayı 3, gözlem sayısı 0); diğerleri ``decimals``."""
+    row_decimals: tuple[tuple[str, int], ...] = ()
+    """(satır adı, basamak): bir satırın ekrandaki basamağı; sütun basamağından önce gelir (ör. R² 6, SSR 4)."""
+    p_columns: tuple[str, ...] = ()
+    """p-değeri sütunları: p-değeri biçimiyle yazılır (basamakta sıfıra yuvarlanıyorsa "< 0,001")."""
+    title: str = ""
+    """Ekranda tablonun üstündeki başlık (ör. "Tablo 9.7: …"); boşsa başlık yazılmaz. Üretilen kodda yorum satırıdır."""
+
+    def __post_init__(self) -> None:
+        names = {name for name, _, _ in self.columns}
+        if not ({name for name, _ in self.column_decimals} | set(self.p_columns)) <= names:
+            raise ValueError("column_decimals ve p_columns yalnız tablodaki sütunlar için verilir.")
+        if len({name for name, _ in self.row_decimals}) != len(self.row_decimals) or any(
+                decimals < 0 for _, decimals in (*self.row_decimals, *self.column_decimals)):
+            raise ValueError("row_decimals ve column_decimals: her ad bir kez, basamak sıfır ya da pozitif.")
 
 
 @dataclass(frozen=True)
@@ -707,6 +738,12 @@ class LineChart:
     """(sütun, etiket): aynı eksende düz çizgiyle çizilen başka seriler (ör. enflasyon ve işsizlik oranı). Verilirse
     ilk seri ``y`` sütunudur ve adı ``legend`` alanıdır; bütün seriler açıklamada görünür."""
     legend: str = ""
+    vlines: tuple[tuple[str, str], ...] = ()
+    """(skaler adı, etiket): dikey başvuru çizgileri (ör. karesel modelde dönüm noktası); açıklamada görünür."""
+
+    def __post_init__(self) -> None:
+        if self.vlines and self.series:
+            raise ValueError("Dikey başvuru çizgileri tek serili çizgi grafiğinde kullanılır.")
 
 
 @dataclass(frozen=True)
@@ -734,6 +771,9 @@ class ScatterPlot:
     means: str = ""
     """Boş değilse aynı x değerindeki gözlemlerin y ortalamaları (koşullu ortalamanın örneklem karşılığı) bu etiketle
     ayrı noktalar olarak çizilir (ör. eğitim düzeylerine göre ortalama ücret)."""
+    curves: tuple[tuple[str, str, str, str], ...] = ()
+    """(veri çerçevesi, x sütunu, y sütunu, etiket): noktaların üzerine düz çizgiyle çizilen eğriler (ör. karesel
+    modelin tahmin edilen eğrisi); çerçevenin satırları x'e göre sıralı bir ızgaradır."""
 
 
 @dataclass(frozen=True)
@@ -1028,6 +1068,15 @@ class ShowModel:
     columns: tuple[str, ...] = COEF_QUANTITIES
     stats: tuple[str, ...] = ("nobs", "r2", "f")
     stars: bool = True
+    decimals: tuple[tuple[str, int], ...] = ()
+    """(sütun, basamak): ekrandaki basamak notlardaki çıktıdan farklıysa (ör. Kod 10.2'de standart hata ve p 4 basamak)."""
+    exact: bool = False
+    """``True``: katsayılar tam ``coef`` basamağıyla yazılır (notlardaki çıktı gibi −0,0006); ``False``: küçük
+    katsayıda en az üç anlamlı basamak (−0,000592)."""
+
+    def __post_init__(self) -> None:
+        if not {column for column, _ in self.decimals} <= set(self.columns):
+            raise ValueError("ShowModel.decimals yalnız gösterilen sütunlar için verilir.")
 
 
 @dataclass(frozen=True)
@@ -1075,9 +1124,15 @@ class RegressionTable:
     term_decimals: tuple[tuple[str, int], ...] = ()
     extra: tuple[tuple[str, str, tuple[str, ...]], ...] = ()
     """(satır adı, etiket, her sütun için skaler adı): terimlerden sonra, gözlem sayısından önce eklenen satırlar (ör.
-    ortak F istatistiği ve p-değeri; Konu 8). Satır adı ``_p`` ile bitiyorsa değerler p-değeri biçimiyle yazılır."""
+    ortak F istatistiği ve p-değeri; Konu 8). Satır adı ``_p`` ile bitiyorsa değerler p-değeri biçimiyle yazılır. Skaler
+    adı yerine boş dize verilirse o sütunun hücresi boştur ("—"; ör. ortak test yalnız bir sütunda)."""
     extra_decimals: int = 2
     """Ek satırların ekrandaki basamağı (p-değeri satırları hariç; ör. F için 2, artık kareleri toplamı için 3)."""
+    r2_decimals: int | None = None
+    """R² ve düzeltilmiş R² satırlarının basamağı (ör. katsayılar 4, R² 3 basamak); verilmezse ``decimals``."""
+    exact: bool = False
+    """``True``: katsayılar tam ``decimals`` (ya da ``term_decimals``) basamakla yazılır, notlardaki tablo gibi
+    (0,087); ``False``: 0,1'in altındaki katsayıda en az üç anlamlı basamak (0,0875)."""
 
     def __post_init__(self) -> None:
         if any(len(names) != len(self.models) for _, _, names in self.extra):
@@ -1184,6 +1239,13 @@ class CoefficientPlot:
     x_label: str
     level: float = 0.95
     y_label: str = "Değişken"
+    percent: bool = False
+    """Log bağımlı değişkende katsayı ve aralık sınırları tam yüzdeye çevrilir: 100·(exp(değer) − 1) (Konu 10)."""
+    labels: tuple[tuple[str, str], ...] = ()
+    """Eksendeki kısa adlar (ör. ``("south", "Güney")``); verilmeyen terim tanımın etiketiyle yazılır."""
+
+    def term_label(self, term: str, fallback) -> str:
+        return dict(self.labels).get(term) or fallback(term)
 
 
 @dataclass(frozen=True)
@@ -1529,7 +1591,7 @@ def _names(value) -> set[str]:
 
 
 _READ_FIELDS = ("frame", "source", "table", "model", "models", "tables", "series", "columns", "statistic", "df", "df2",
-                "truth", "extra")
+                "truth", "extra", "curves", "vlines")
 _WRITE_FIELDS = ("result", "name", "p_value")
 _FRAME_WRITERS = ("LoadWooldridge", "InlineData", "FromCounts", "Outcomes", "Selections", "Support", "Rectangles",
                   "NewSample", "Derive", "Event", "MapCodes", "Groups", "RowSum", "Draw", "DrawCount", "DrawCategory",

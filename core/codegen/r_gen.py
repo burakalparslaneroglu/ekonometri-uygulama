@@ -12,9 +12,11 @@ from core.codegen.base import (
     REFERENCE_COLORS,
     STAT_NAMES,
     Generator,
+    curve_style,
     flatten,
     listing,
     text,
+    title_lines,
     uses_charts,
     wrapped,
 )
@@ -549,7 +551,8 @@ class RGenerator(Generator):
             ]
             if op.extra:
                 count = len(op.terms) * (2 if op.standard_errors else 1)
-                rows = [f"  {key} = c({', '.join(names)}),  # {label}" for key, label, names in op.extra]
+                rows = [f"  {key} = c({', '.join(name or 'NA' for name in names)}),  # {label}"
+                        for key, label, names in op.extra]
                 lines += [
                     "# Ek satırlar (skalerlerden): terimlerden sonra, gözlem sayısından önce",
                     f"{op.result} <- rbind({op.result}[seq_len({count}), , drop = FALSE],",
@@ -559,8 +562,14 @@ class RGenerator(Generator):
             lines.append(f"print(round({op.result}, {op.decimals}))")
             for digits in sorted({digits for _, digits in op.term_decimals}):
                 terms = [term for term, value in op.term_decimals if value == digits]
+                if op.standard_errors:
+                    terms = [row for term in terms for row in (term, f"{term}_sh")]
                 lines.append(f"print(round({op.result}[{_vector(terms)}, , drop = FALSE], {digits}))  "
                              f"# notlardaki gibi {digits} basamak")
+            if op.r2 and op.r2_decimals is not None and op.r2_decimals != op.decimals:
+                fits = ("r2", *(("adj_r2",) if op.adj_r2 else ()))
+                lines.append(f"print(round({op.result}[{_vector(fits)}, , drop = FALSE], {op.r2_decimals}))  "
+                             f"# R² {op.r2_decimals} basamak")
             if op.stars:
                 for heading, name in op.models:
                     terms = ", ".join(text(r_term(term)) for term in op.terms)
@@ -703,7 +712,8 @@ class RGenerator(Generator):
             dialect = self.dialect("")
             rows = [f"  {text(label)} = {_r(expression, dialect)}" for label, expression in op.rows]
             rows = [row + ("," if index < len(rows) - 1 else "") for index, row in enumerate(rows)]
-            return [f"{op.result} <- data.frame(deger = c(", *rows, "))", f"print(round({op.result}, {op.decimals}))"]
+            return [*([f"# {op.title}"] if op.title else []), f"{op.result} <- data.frame(deger = c(", *rows, "))",
+                    f"print(round({op.result}, {op.decimals}))"]
         if isinstance(op, GroupSummary):
             return self._group_summary(op)
         if isinstance(op, FrequencyTable):
@@ -712,13 +722,20 @@ class RGenerator(Generator):
             return self._crosstab(op)
         if isinstance(op, JoinColumns):
             items = [f'  {text(name)} = {table}[, "{column}"],' for name, table, column in op.columns]
+            digits = max((op.decimals, *(d for _, d in op.column_decimals), *(d for _, d in op.row_decimals),
+                          *((4,) if op.p_columns else ())))
+            # Monte Carlo sonuç tabloları (bir satır = bir tekrar) yalnız ilk satırlarıyla yazdırılır
+            simulated = any(isinstance(item, MonteCarlo) and item.result == op.columns[0][1]
+                            for step in self.spec.steps for item in step.operations)
+            shown = f"head(round({op.result}, {digits}))" if simulated else f"round({op.result}, {digits})"
             return [
+                *([f"# {op.title}"] if op.title else []),
                 f"{op.result} <- data.frame(",
                 *items,
                 f"  row.names = rownames({op.columns[0][1]}),",
                 "  check.names = FALSE",
                 ")",
-                f"print(round({op.result}, {op.decimals}))",
+                f"print({shown})" + ("  # ilk altı tekrar" if simulated else ""),
             ]
         if isinstance(op, BoxSummary):
             items = [f"  {text(label)} = kutu_ozeti({frame}${variable})," for frame, variable, label in op.series]
@@ -784,6 +801,15 @@ class RGenerator(Generator):
                 names.append(label)
                 colors.append(color)
                 types.append("2")
+            for index, (frame, x, y, label) in enumerate(op.curves):
+                color, dash = curve_style(index)
+                lines += [
+                    f"# {label}: ızgaradaki x değerlerinde hesaplanan eğri",
+                    f'lines({frame}${x}, {frame}${y}, col = "{color}", lwd = 3, lty = {dash + 1})',
+                ]
+                names.append(label)
+                colors.append(color)
+                types.append(str(dash + 1))
             if op.means:
                 # Açıklama: ortalamalar nokta (pch), doğrular çizgi (lty) olarak.
                 entries = [op.means, *names]
@@ -1004,13 +1030,17 @@ class RGenerator(Generator):
     def _group_summary(self, op: GroupSummary) -> list[str]:
         # tapply sonucunun adları metindir; sayısal grup değerleri (0, 1, …) konumla değil adla seçilsin
         order = _vector(tuple(value if isinstance(value, str) else E.format_number(float(value)) for value in op.order))
-        lines = [f"{op.result} <- data.frame("]
+        lines = [*([f"# {op.title}"] if op.title else []), f"{op.result} <- data.frame("]
         for index, (name, variable, stat) in enumerate(op.columns):
             ending = "," if index < len(op.columns) - 1 else ""
             lines.append(
                 f"  {name} = tapply({op.frame}${variable}, {op.frame}${op.by}, {_STAT[stat]})[{order}]{ending}"
             )
-        return lines + [")", f"print(round({op.result}, 4))"]
+        lines.append(")")
+        if op.labels:
+            lines.append(f"rownames({op.result}) <- {_vector(tuple(label for _, label in op.labels))}  "
+                         "# grup değerlerinin adları")
+        return lines + [f"print(round({op.result}, 4))"]
 
     def _frequency(self, op: FrequencyTable) -> list[str]:
         order = f"{op.result}_sira"
@@ -1239,7 +1269,7 @@ class RGenerator(Generator):
             return lines
         values = [f"{op.frame}${op.y}", *(name for name, _ in op.references),
                   *(f"{op.frame}${column}" for column, _ in op.bands)]
-        legend = bool(op.references or op.bands)
+        legend = bool(op.references or op.bands or op.vlines)
         # Başvuru çizgileri ve bantlar dikey eksenin içinde kalsın: eksen hepsini kapsar. Üstteki boşluk
         # açıklama içindir; açıklama seriyi ve çizgileri örtmez.
         limits = ['     ylim = c(aralik[1], aralik[2] + 0.3 * diff(aralik)), yaxt = "n",'] if legend else []
@@ -1268,9 +1298,18 @@ class RGenerator(Generator):
                     colors.append(f'"{PALETTE[2]}"')
                     ltys.append("2")
                     labels.append(text(label))
+            for index, (name, label) in enumerate(op.vlines, start=len(op.references)):
+                color, lty = _REFERENCE_STYLES[index % len(_REFERENCE_STYLES)]
+                lines.append(f'abline(v = {name}, col = "{color}", lty = {lty}, lwd = 2)')
+                colors.append(f'"{color}"')
+                ltys.append(lty)
+                labels.append(f'paste0({text(label + ": ")}, formatC({name}, format = "f", '
+                              f'digits = ifelse({name} == round({name}), 0, 2), decimal.mark = ","))')
+            # Açıklama kutusu opak: tam boy dikey çizgiler açıklamanın altında kalır
+            box = ', bg = "white", box.lty = 0' if op.vlines else ', bty = "n"'
             lines.append(
                 f'legend("top", legend = c({", ".join(labels)}), col = c({", ".join(colors)}), '
-                f'lty = c({", ".join(ltys)}), lwd = 2, bty = "n")'
+                f'lty = c({", ".join(ltys)}), lwd = 2{box})'
             )
         return lines
 
@@ -1760,18 +1799,23 @@ class RGenerator(Generator):
         return lines
 
     def _coefficient_plot(self, op: CoefficientPlot) -> list[str]:
-        labels = [self.spec.label(term) for term in op.terms]
+        labels = [op.term_label(term, self.spec.label) for term in op.terms]
+        left = max(5, min(16, round(0.55 * max(len(item) for item in labels)) + 3))  # sol kenar: en uzun ad sığsın
+        title = _quote(title_lines(op.title)).replace("\n", "\\n")
         return [
             f"# Katsayılar ve yüzde {E.format_number(round(100 * op.level, 8))} güven aralıkları; ilk terim en üstte",
             f"terimler <- {_vector(op.terms)}",
             f"aralik <- confint({op.model}, level = {E.format_number(op.level)})[terimler, , drop = FALSE]",
             f"tahmin <- coef({op.model})[terimler]",
+            *(["# Log bağımlı değişken: katsayı ve aralık sınırları tam yüzdeye çevrilir, 100·(exp(değer) − 1)",
+               "aralik <- 100 * (exp(aralik) - 1)",
+               "tahmin <- 100 * (exp(tahmin) - 1)"] if op.percent else []),
             "konum <- rev(seq_along(terimler))",
-            "eski_par <- par(mar = c(5, 9, 4, 2))  # sol kenar boşluğu: değişken adları yatay yazılır",
+            f"eski_par <- par(mar = c(5, {left}, 4, 2))  # sol kenar boşluğu: değişken adları yatay yazılır",
             'plot(tahmin, konum, xlim = range(c(aralik, 0)), ylim = c(0.5, length(terimler) + 0.5), pch = 19,',
             f'     col = "{PALETTE[0]}", yaxt = "n", xlab = "{_quote(op.x_label)}", ylab = "",',
-            f'     main = "{_quote(op.title)}")',
-            f'mtext("{_quote(op.y_label)}", side = 2, line = 7.5)',
+            f'     main = "{title}")',
+            f'mtext("{_quote(op.y_label)}", side = 2, line = {left - 1.5:g})',
             f'arrows(aralik[, 1], konum, aralik[, 2], konum, angle = 90, code = 3, length = 0.05, col = "{PALETTE[0]}",',
             "       lwd = 2)",
             f"axis(2, at = konum, labels = {_vector(labels)}, las = 1)",
@@ -1856,7 +1900,8 @@ class RGenerator(Generator):
             return lines + [f"print(round({op.result}, {op.decimals}))"]
         shown = f"{op.result}_goster"
         lines.append(f"{shown} <- round({op.result}, {op.decimals})")
-        lines += [f"{shown}${name} <- round({op.result}${name}, {value})  # notlardaki gibi {value} basamak"
+        source = "notlardaki gibi " if self.spec.kind != "sezgi" else ""
+        lines += [f"{shown}${name} <- round({op.result}${name}, {value})  # {source}{value} basamak"
                   for name, value in digits.items()]
         return lines + [f"print({shown})"]
 

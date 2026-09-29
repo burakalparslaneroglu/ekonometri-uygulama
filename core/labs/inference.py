@@ -104,12 +104,16 @@ def coefficient_intervals(op: CoefficientPlot, result) -> pd.DataFrame:
 
     interval = result.conf_int(alpha=round(1 - op.level, 10))
     terms = list(op.terms)
-    return pd.DataFrame({
+    data = pd.DataFrame({
         "terim": terms,
         "tahmin": result.params[terms].to_numpy(dtype=float),
         "alt": interval.loc[terms, 0].to_numpy(dtype=float),
         "ust": interval.loc[terms, 1].to_numpy(dtype=float),
     })
+    if op.percent:  # log bağımlı değişken: tam yüzde, 100·(exp(değer) − 1); dönüşüm artan olduğu için sıra korunur
+        for column in ("tahmin", "alt", "ust"):
+            data[column] = 100 * (np.exp(data[column].to_numpy(dtype=float)) - 1)
+    return data
 
 
 def first_intervals(op: IntervalPlot, table: pd.DataFrame, truth: float) -> pd.DataFrame:

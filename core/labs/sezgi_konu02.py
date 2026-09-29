@@ -40,12 +40,14 @@ def _rounded(parameters: Parameters, key: str, decimals: int) -> float:
 
 
 def _tex(value: float, decimals: int = 2) -> str:
-    text = f"{value:.{decimals}f}".rstrip("0").rstrip(".")
+    text = f"{value:.{decimals}f}"
+    text = text.rstrip("0").rstrip(".") if "." in text else text  # 20 → "2" olmasın
     return text.replace(".", "{,}")
 
 
 def _short(value: float, decimals: int = 2) -> str:
-    text = f"{value:.{decimals}f}".rstrip("0").rstrip(".")
+    text = f"{value:.{decimals}f}"
+    text = text.rstrip("0").rstrip(".") if "." in text else text  # 20 → "2" olmasın
     return text.replace(".", ",").replace("-", "−")
 
 

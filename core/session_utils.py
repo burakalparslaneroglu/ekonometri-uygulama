@@ -32,13 +32,6 @@ def synchronize_question_state(state: MutableMapping[str, Any], model_id: str, t
     state[answer_key] = False
     return True
 
-
-def reveal_answer(state: MutableMapping[str, Any], topic_id: str = "konu03") -> None:
-    """Mevcut sorunun cevabını görünür yapar."""
-    _, _, answer_key = question_state_keys(topic_id)
-    state[answer_key] = True
-
-
 def next_question(state: MutableMapping[str, Any], topic_id: str = "konu03") -> int:
     """Soru sırasını artırır ve yeni cevabı gizler."""
     index_key, _, answer_key = question_state_keys(topic_id)

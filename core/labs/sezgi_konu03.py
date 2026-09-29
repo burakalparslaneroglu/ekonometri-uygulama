@@ -49,14 +49,16 @@ def _rounded(parameters: Parameters, key: str, decimals: int) -> float:
 def _tex(value: float, decimals: int = 2) -> str:
     """LaTeX içinde sondaki sıfırları atılmış sayı (0{,}5; 3)."""
 
-    text = f"{value:.{decimals}f}".rstrip("0").rstrip(".")
+    text = f"{value:.{decimals}f}"
+    text = text.rstrip("0").rstrip(".") if "." in text else text  # 20 → "2" olmasın
     return "0" if text == "-0" else text.replace(".", "{,}")
 
 
 def _short(value: float, decimals: int = 2) -> str:
     """Sondaki sıfırları atılmış düz metin sayı (0,5; 1,5; 3); yuvarlanınca sıfır olan değer "0" yazılır."""
 
-    text = f"{value:.{decimals}f}".rstrip("0").rstrip(".")
+    text = f"{value:.{decimals}f}"
+    text = text.rstrip("0").rstrip(".") if "." in text else text  # 20 → "2" olmasın
     return "0" if text in ("-0", "0", "") else text.replace(".", ",").replace("-", "−")
 
 

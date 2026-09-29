@@ -28,7 +28,8 @@ TOPIC_MODULES = {
 }
 
 # Uygulama + Sezgi + Kendini sına yapısına geçmiş konular: kod iki dilde, tek tanımdan üretilir.
-MIGRATED_TOPICS = {"konu00", "konu01", "konu02", "konu03", "konu04", "konu05", "konu06", "konu07", "konu08"}
+MIGRATED_TOPICS = {"konu00", "konu01", "konu02", "konu03", "konu04", "konu05", "konu06", "konu07", "konu08",
+                   "konu09", "konu10"}
 
 
 def test_registry_has_exact_course_order() -> None:
@@ -72,5 +73,8 @@ def test_legacy_modules_of_migrated_topics_are_gone() -> None:
                  "tests/test_konu06_questions.py", "tests/test_konu06_ui.py", "tests/test_multiple_regression_utils.py",
                  "tests/test_assumption_diagnostics_utils.py", "core/konu07_questions.py", "core/konu08_questions.py",
                  "tests/test_konu07_questions.py", "tests/test_konu07_ui.py", "tests/test_konu08_questions.py",
-                 "tests/test_konu08_ui.py"):
+                 "tests/test_konu08_ui.py", "core/konu09_questions.py", "core/konu10_questions.py",
+                 "core/functional_form_utils.py", "core/categorical_regression_utils.py", "tests/test_konu09_questions.py",
+                 "tests/test_konu09_ui.py", "tests/test_konu10_questions.py", "tests/test_konu10_ui.py",
+                 "tests/test_functional_form_utils.py", "tests/test_categorical_regression_utils.py"):
         assert not Path(name).exists(), name

@@ -103,7 +103,8 @@ def _resolve(name: str, known: set[str]) -> str:
 
 def _split_products(name: str, known: set[str]) -> list[str] | None:
     """Tanımsız bir ad tanımlı sembollerin ardışık yazımıysa çarpım olarak okunur: ``mx`` → ``m``, ``x``;
-    ``n1m1`` → ``n1``, ``m1``. Bölme en uzun sembolden başlar; tek bir okunuş bulunamazsa ad olduğu gibi kalır."""
+    ``n1m1`` → ``n1``, ``m1``; ``b_1c`` → ``b1``, ``c``. Bölme en uzun sembolden başlar; tek bir okunuş bulunamazsa ad
+    olduğu gibi kalır."""
 
     if _resolve(name, known) in known or name.lower() in FUNCTIONS:
         return None
@@ -126,6 +127,8 @@ def _split_products(name: str, known: set[str]) -> list[str] | None:
         return None
 
     parts = split(text)
+    if parts is None and "_" in text:  # LaTeX alt indisleri: b_1c → b1, c
+        parts = split(text.replace("_", ""))
     return parts if parts is not None and len(parts) > 1 else None
 
 
@@ -236,10 +239,23 @@ def _latex_lite(text: str) -> str:
         group = _brace_group(text, match.end()) if match else None
         if group is None:
             break
-        text = f"{text[:match.start()]}sqrt({group[0]}){text[group[1]:]}"
+        text = f"{text[:match.start()]} sqrt({group[0]}){text[group[1]:]}"  # "s\\sqrt{…}" → "s sqrt(…)"
     for command, replacement in _LATEX_COMMANDS:
         text = text.replace(command, replacement)
     return _TEXT_COMMANDS.sub("", text)
+
+
+def _exponent_groups(text: str) -> str:
+    """Çok terimli üs süslü parantezler silinmeden önce parantezle korunur: ``e^{a - c s}`` → ``e^(a - c s)``. Tek
+    terimli üs (``x^{2}``, ``x^{b}``, ``R^{2}_{UR}``) olduğu gibi kalır."""
+
+    start = 0
+    while (index := text.find("^", start)) >= 0:
+        group = _brace_group(text, index + 1)
+        if group is not None and not re.fullmatch(r"\s*[\w.,]+\s*", group[0]):
+            text = f"{text[:index + 1]}({group[0]}){text[group[1]:]}"
+        start = index + 1
+    return text
 
 
 def parse(text: str, symbols: tuple[Symbol, ...]) -> E.Expr:
@@ -256,7 +272,7 @@ def parse(text: str, symbols: tuple[Symbol, ...]) -> E.Expr:
     text = re.split(r"=|≈|\\approx", text)[-1]
     if not text.strip():
         raise FormulaError("Eşittir işaretinden sonra bir ifade yazın.")
-    text = _latex_lite(text)
+    text = _exponent_groups(_latex_lite(text))
     text = text.replace("{", "").replace("}", "")  # LaTeX yazımı: y_{1}, e^{l}
     text = re.sub(r"([A-Za-z])\^(\d+)_([A-Za-z0-9]+)", r"\1_\3^\2", text)  # s^2_x → s_x^2
     replacements = sorted(

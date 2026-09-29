@@ -6,7 +6,7 @@ import pytest
 import statsmodels.formula.api as smf
 
 from core.data_registry import load_dataset
-from core.regression_inference_utils import fit_ols_inference, format_p_value, significance_stars
+from core.regression_inference_utils import fit_ols_inference, format_p_value
 
 
 @pytest.fixture(scope="module")
@@ -44,7 +44,7 @@ def test_hprice1_uses_raw_scale() -> None:
 
 
 def test_validation_and_presentation_rules() -> None:
-    """Geçersiz girdiler, katı yıldız eşikleri ve p-değeri biçimi denetlenir."""
+    """Geçersiz girdiler ve p-değeri biçimi denetlenir."""
     with pytest.raises(ValueError):
         fit_ols_inference(pd.DataFrame({"y": [1, 2, 3, 4], "x": [1, 1, 1, 1]}), "y", ("x",))
     with pytest.raises(ValueError):
@@ -52,7 +52,5 @@ def test_validation_and_presentation_rules() -> None:
     with pytest.raises(ValueError):
         fit_ols_inference(load_dataset("wage1"), "wage", ("educ", "educ"))
     assert format_p_value(0.0001) == "< 0.001" and format_p_value(0.0641) == "0.064"
-    assert significance_stars(0.009) == "***" and significance_stars(0.03) == "**"
-    assert significance_stars(0.07) == "*" and significance_stars(0.10) == ""
     with pytest.raises(ValueError):
         format_p_value(1.2)

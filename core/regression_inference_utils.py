@@ -148,28 +148,3 @@ def format_p_value(p_value: float) -> str:
     if not 0.0 <= value <= 1.0:
         raise ValueError("p-değeri 0 ile 1 arasında olmalıdır.")
     return "< 0.001" if value < 0.001 else f"{value:.3f}"
-
-
-def significance_stars(
-    p_value: float,
-    *,
-    thresholds: tuple[tuple[float, str], ...] = ((0.01, "***"), (0.05, "**"), (0.10, "*")),
-) -> str:
-    """Tablo notundaki katı eşiklere göre anlamlılık yıldızı üretir."""
-    value = _finite(p_value, "p-değeri")
-    if not 0.0 <= value <= 1.0:
-        raise ValueError("p-değeri 0 ile 1 arasında olmalıdır.")
-    if not thresholds:
-        raise ValueError("En az bir yıldız eşiği gereklidir.")
-    checked: list[tuple[float, str]] = []
-    for threshold, label in thresholds:
-        limit = _finite(threshold, "Yıldız eşiği")
-        if not 0.0 < limit < 1.0 or not isinstance(label, str) or not label:
-            raise ValueError("Yıldız eşikleri 0 ile 1 arasında, etiketleri boş olmayan metin olmalıdır.")
-        checked.append((limit, label))
-    if len({threshold for threshold, _ in checked}) != len(checked):
-        raise ValueError("Yıldız eşikleri benzersiz olmalıdır.")
-    for threshold, label in sorted(checked, key=lambda item: item[0]):
-        if value < threshold:
-            return label
-    return ""

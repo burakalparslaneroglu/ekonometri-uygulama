@@ -138,7 +138,8 @@ def regression_table(op: RegressionTable, models: dict, scalars: dict | None = N
             cells.append(float(result.params[term]) if present else np.nan)
             if op.standard_errors:
                 cells.append(float(result.bse[term]) if present else np.nan)
-        cells += [float((scalars or {})[names[position]]) for _, _, names in op.extra]
+        # Boş skaler adı: o sütunda bu satırın değeri yok (ör. ortak test yalnız karesel modelde).
+        cells += [float((scalars or {})[names[position]]) if names[position] else np.nan for _, _, names in op.extra]
         cells.append(float(result.nobs))
         if op.r2:
             cells.append(float(result.rsquared))

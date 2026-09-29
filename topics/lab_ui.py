@@ -156,6 +156,24 @@ def _formatted(table: pd.DataFrame, formats: dict[str, Callable[[float], str]], 
     return shown.rename_axis(index_label).reset_index()
 
 
+def _join_cells(op: JoinColumns, table: pd.DataFrame) -> pd.DataFrame:
+    """Birleşik tablonun hücre metinleri: p-değeri sütunları p-değeri biçimiyle; satır basamağı sütun basamağından
+    önce gelir; ondalıksız sayılar binlik ayırıcıyla (526)."""
+
+    columns, rows = dict(op.column_decimals), dict(op.row_decimals)
+
+    def cell(row, column: str, value: float) -> str:
+        if pd.isna(value):
+            return "—"
+        if column in op.p_columns:
+            return p_text(value, 3)
+        digits = rows.get(str(row), columns.get(column, op.decimals))
+        return _integer(value) if digits == 0 else tr_number(value, digits, op.percent)
+
+    return pd.DataFrame({column: [cell(row, column, value) for row, value in table[column].items()]
+                         for column in table.columns}, index=table.index)
+
+
 def display_table(op, table: pd.DataFrame, label: Callable[[str], str] = lambda name: name) -> pd.DataFrame:
     """Bir sonuç tablosunun ekranda gösterilecek biçimi."""
 
@@ -192,12 +210,14 @@ def display_table(op, table: pd.DataFrame, label: Callable[[str], str] = lambda 
     if isinstance(op, GroupSummary):
         formats = {name: _count if stat == "count" else (lambda v: tr_number(v, op.decimals))
                    for name, _, stat in op.columns}
-        return _formatted(table, formats, label(op.by), label)
+        return _formatted(table, formats, op.heading or label(op.by), label)
     if isinstance(op, JoinColumns):
-        formats = {name: (lambda v: tr_number(v, op.decimals, op.percent)) for name, _, _ in op.columns}
         index = str(table.index.name or "")
         heading = op.heading or _COLUMN_LABELS.get(index, label(index)) or "Kategori"
-        return _formatted(table, formats, heading, label)
+        if not (op.column_decimals or op.row_decimals or op.p_columns):
+            formats = {name: (lambda v: tr_number(v, op.decimals, op.percent)) for name, _, _ in op.columns}
+            return _formatted(table, formats, heading, label)
+        return _formatted(_join_cells(op, table), {}, heading, label)
     if isinstance(op, BoxSummary):
         shown = table.rename(index=_BOX_LABELS)
         formats = {str(column): _boundary for column in shown.columns}
@@ -264,11 +284,12 @@ def coefficient_display(op: ShowModel, result, label: Callable[[str], str]) -> p
 
     table = RG.coefficient_table(result)
     shown = pd.DataFrame({"Terim": [f"{RG.term_label(term, label)} · {term}" for term in table.index]})
+    digits = {**_COEF_DECIMALS, **dict(op.decimals)}
     for column in op.columns:
-        if column == "coef":
-            shown[_COEF_LABELS[column]] = [coefficient_number(value, _COEF_DECIMALS[column]) for value in table[column]]
+        if column == "coef" and not op.exact:
+            shown[_COEF_LABELS[column]] = [coefficient_number(value, digits[column]) for value in table[column]]
         else:
-            shown[_COEF_LABELS[column]] = [tr_number(value, _COEF_DECIMALS[column]) for value in table[column]]
+            shown[_COEF_LABELS[column]] = [tr_number(value, digits[column]) for value in table[column]]
     return shown
 
 
@@ -283,21 +304,24 @@ def regression_display(op: RegressionTable, state: LabState, label: Callable[[st
         coefficients, errors = {"": RG.term_label(term, label)}, {"": ""}
         for heading, _ in op.models:
             value = table.loc[term, heading]
-            coefficients[heading] = ("" if pd.isna(value) else coefficient_number(value, digits.get(term, op.decimals))
+            number = tr_number if op.exact else coefficient_number
+            coefficients[heading] = ("" if pd.isna(value) else number(value, digits.get(term, op.decimals))
                                      + marks.get((term, heading), ""))
-            if op.standard_errors:
+            if op.standard_errors:  # standart hata katsayıyla aynı basamakta (ör. karesel terimde 6)
                 error = table.loc[f"{term}_sh", heading]
-                errors[heading] = "" if pd.isna(error) else f"({tr_number(error, op.decimals)})"
+                errors[heading] = ("" if pd.isna(error)
+                                   else f"({tr_number(error, digits.get(term, op.decimals))})")
         rows += [coefficients, errors] if op.standard_errors else [coefficients]
-    for key, row_label, _ in op.extra:  # ör. ortak F ve p-değeri (Konu 8)
+    for key, row_label, _ in op.extra:  # ör. ortak F ve p-değeri (Konu 8); boş hücre "—"
         formatter = p_text if key.endswith("_p") else (lambda value: tr_number(value, op.extra_decimals))
-        rows.append({"": row_label, **{heading: formatter(table.loc[key, heading]) for heading, _ in op.models}})
+        rows.append({"": row_label, **{heading: "—" if pd.isna(table.loc[key, heading])
+                                       else formatter(table.loc[key, heading]) for heading, _ in op.models}})
     rows.append({"": "Gözlem sayısı", **{heading: _count(table.loc["n", heading]) for heading, _ in op.models}})
+    fit = op.decimals if op.r2_decimals is None else op.r2_decimals
     if op.r2:
-        rows.append({"": "R²", **{heading: tr_number(table.loc["r2", heading], op.decimals)
-                                  for heading, _ in op.models}})
+        rows.append({"": "R²", **{heading: tr_number(table.loc["r2", heading], fit) for heading, _ in op.models}})
     if op.adj_r2:
-        rows.append({"": "Düzeltilmiş R²", **{heading: tr_number(table.loc["adj_r2", heading], op.decimals)
+        rows.append({"": "Düzeltilmiş R²", **{heading: tr_number(table.loc["adj_r2", heading], fit)
                                               for heading, _ in op.models}})
     return pd.DataFrame(rows).rename(columns={"": "Değişken"})
 
@@ -416,6 +440,8 @@ def _metrics(op, state: LabState) -> list[tuple[str, str]]:
                 ("Değişken sayısı", _count(state.scalars[op.variables]))]
     if isinstance(op, Count):
         return [(op.comment, _count(state.scalars[op.name]))]
+    if isinstance(op, Scalar) and not op.shown:
+        return []
     if isinstance(op, JointTest):
         return [(op.comment, tr_number(state.scalars[op.name], op.decimals)),
                 ("Ortak p-değeri", p_text(state.scalars[op.p_value]))]
@@ -543,6 +569,8 @@ def render_operations(operations, state: LabState, label: Callable[[str], str], 
                              CoefficientTable)):
             if isinstance(op, (Describe, GroupStats, PanelSummary, SummaryTable, CoefficientTable)):
                 st.markdown(f"**{op.comment}**")
+            elif getattr(op, "title", ""):  # ScalarTable, GroupSummary, JoinColumns: notlardaki tablo başlığı
+                st.markdown(f"**{op.title}**")
             show_table(display_table(op, state.tables[op.result], label))
         if isinstance(op, PieChart):
             show_figure(figure_for(op, state, label), key=f"{key_prefix}_grafik_{index}")

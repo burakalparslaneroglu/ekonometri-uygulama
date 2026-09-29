@@ -68,6 +68,27 @@ PALETTE = ("#107C89", "#B3392F", "#2F9E6B", "#C98A1B", "#6B4C9A", "#07373D")
 """Grafik serilerinin renkleri; uygulamada ve iki dilde aynı sırayla kullanılır."""
 REFERENCE_COLORS = ("#07373D", "#6B4C9A", "#C98A1B")
 """Dikey başvuru çizgilerinin renkleri (ör. ortalama, medyan, çeyrekler)."""
+CURVE_DASHES = ("solid", "dash", "dot")
+"""Saçılım grafiğine eklenen eğrilerin çizgi biçimleri: düz, kesikli, noktalı (Plotly adları)."""
+
+
+def curve_style(index: int) -> tuple[str, int]:
+    """``index``'inci (0'dan) eğrinin rengi ve çizgi biçiminin sırası. Renkler PALETTE[2]'den başlar: PALETTE[0]
+    noktaların, PALETTE[1] tahmin edilen doğrunun rengidir; eğriler doğrunun ve birbirlerinin altında kaybolmasın diye
+    biçimleri de farklıdır."""
+
+    return PALETTE[(index + 2) % len(PALETTE)], index % len(CURVE_DASHES)
+
+
+def title_lines(title: str, width: int = 60) -> str:
+    """Uzun grafik başlığı betikte iki satıra bölünür (``\n``): matplotlib ve R başlığı sarmaz, kenardan keser."""
+
+    if len(title) <= width or " " not in title[:width]:
+        return title
+    cut = title.rfind(" ", 0, width)
+    return title[:cut] + "\n" + title[cut + 1:]
+
+
 HEAT_LOW = "#E7F2F3"
 """Isı haritasında sıfırın rengi: ana rengin açık tonu. Sıfır hücreler de beyaz zeminden ayrılır (notlardaki gibi)."""
 
@@ -156,7 +177,7 @@ def numeric_tables(spec: LabSpec) -> set[str]:
 
     return {
         op.result for step in spec.steps for op in flatten(step.operations)
-        if (isinstance(op, GroupSummary) and _numbers(op.order)) or isinstance(op, GroupStats)
+        if (isinstance(op, GroupSummary) and _numbers(op.order) and not op.labels) or isinstance(op, GroupStats)
     }
 
 

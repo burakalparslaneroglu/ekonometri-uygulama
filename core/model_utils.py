@@ -18,7 +18,8 @@ def format_student_number(value: float, *, decimals: int = 6, zero_tolerance: fl
         raise ValueError("Sıfır toleransı negatif olamaz.")
     if abs(number) <= zero_tolerance:
         return "0"
-    return f"{number:.{decimals}f}".rstrip("0").rstrip(".")
+    text = f"{number:.{decimals}f}"
+    return text.rstrip("0").rstrip(".") if "." in text else text
 
 
 def format_numerical_difference(value: float, *, decimals: int = 6, zero_tolerance: float = 1e-10) -> str:
