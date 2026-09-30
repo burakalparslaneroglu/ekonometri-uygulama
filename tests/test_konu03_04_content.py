@@ -18,7 +18,6 @@ from __future__ import annotations
 import contextlib
 import io
 import math
-import os
 import re
 import subprocess
 from pathlib import Path
@@ -41,7 +40,6 @@ from core.quiz.konu03 import KONU03_QUIZ
 from core.quiz.konu04 import KONU04_QUIZ
 from core.quiz.model import grade
 
-R_ENVIRONMENT = dict(os.environ, LANG="C.UTF-8", LC_ALL="C.UTF-8")
 LABS = (KONU03_LAB, KONU04_LAB)
 
 
@@ -143,7 +141,8 @@ def test_every_single_choice_gives_the_same_numbers_in_the_app_and_in_python(spe
 
 
 @pytest.mark.parametrize("spec", LABS, ids=lambda s: s.topic_key)
-def test_generated_r_runs_for_the_last_option_of_every_control(spec: LabSpec, tmp_path: Path, rscript: str) -> None:
+def test_generated_r_runs_for_the_last_option_of_every_control(spec: LabSpec, tmp_path: Path, rscript: str,
+                                                               r_environment: dict[str, str]) -> None:
     last = {}
     for change in _single_changes(spec):
         last[next(iter(change))] = change
@@ -151,7 +150,7 @@ def test_generated_r_runs_for_the_last_option_of_every_control(spec: LabSpec, tm
         path = tmp_path / "secim.R"
         path.write_text(render_script(spec.resolve(change), "R"), encoding="utf-8")
         result = subprocess.run([rscript, str(path)], cwd=tmp_path, capture_output=True, encoding="utf-8",
-                                errors="replace", timeout=300, env=R_ENVIRONMENT)
+                                errors="replace", timeout=300, env=r_environment)
         assert result.returncode == 0, (change, result.stderr[-1500:])
         assert "warning" not in (result.stdout + result.stderr).lower(), change
         assert "HATA" not in result.stdout, change

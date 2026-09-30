@@ -283,8 +283,8 @@ QUESTIONS = (
         explanation=(
             "SSR ve R² karşılaştırması iki modelin aynı gözlemlerle tahmin edilmesini gerektirir; aksi hâlde SSR farkı "
             "kısıtların yarattığı uyum kaybını değil, farklı örneklemleri de yansıtır (Sık Yapılan Hatalar, madde 3). "
-            "Kısıtlı model de kısıtsız modelin kullandığı 510 gözlemle yeniden tahmin edilmelidir; statsmodels "
-            "`f_test` bunu kendiliğinden sağlar, çünkü kısıtları aynı modelin tahmininde sınar (§8.13)."
+            "Kısıtlı model de kısıtsız modelin kullandığı 510 gözlemle yeniden tahmin edilmelidir; `statsmodels` "
+            "içindeki `f_test` bunu kendiliğinden sağlar, çünkü kısıtları aynı modelin tahmininde sınar (§8.13)."
         ),
     ),
     # --- Boşluk doldurma ----------------------------------------------------------

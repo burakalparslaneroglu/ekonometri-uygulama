@@ -14,7 +14,7 @@ class TopicMetadata:
     title: str
     short_title: str
     guiding_question: str = ""
-    """Konu başlığının altında gösterilen yönlendirici soru (yeni mimariye taşınan konularda)."""
+    """Konu başlığının altında gösterilen yönlendirici soru."""
 
     @property
     def label(self) -> str:

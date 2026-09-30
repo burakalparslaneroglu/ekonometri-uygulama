@@ -24,6 +24,7 @@ from core.labs.spec import (
     OLS,
     CoefficientPlot,
     CoefficientTable,
+    HeteroskedasticityTest,
     HypothesisPlot,
     IntervalPlot,
     JointTest,
@@ -307,7 +308,7 @@ def execute(op: Operation, state: LabState) -> None:
             raise ValueError(f"'{op.model}' modeli henüz tahmin edilmedi.")
     elif isinstance(op, ModelValue):
         result = state.models[op.model]
-        state.scalars[op.name] = (R.coefficient(result, op.term, op.quantity) if op.term is not None
+        state.scalars[op.name] = (R.coefficient(result, op.term, op.quantity, op.cov_type) if op.term is not None
                                   else R.model_quantity(result, op.quantity))
     elif isinstance(op, RegressionTable):
         state.tables[op.result] = R.regression_table(op, state.models, state.scalars)
@@ -315,6 +316,8 @@ def execute(op: Operation, state: LabState) -> None:
         state.tables[op.result] = R.inference_table(op, state.models[op.model])
     elif isinstance(op, JointTest):
         state.scalars[op.name], state.scalars[op.p_value] = R.joint_test(state.models[op.model], op.terms)
+    elif isinstance(op, HeteroskedasticityTest):
+        state.scalars[op.name], state.scalars[op.p_value] = R.hetero_test(state.models[op.model], op.kind)
     elif isinstance(op, InlineData):
         state.frames[op.frame] = T.inline_frame(op.columns, op.rows)
     elif isinstance(op, FromCounts):
@@ -525,7 +528,7 @@ def execute(op: Operation, state: LabState) -> None:
         state.plots[plot_key(op)] = I.hypothesis_layout(op, parameter(op.statistic, state), parameter(op.df, state),
                                                         second)
     elif isinstance(op, CoefficientPlot):
-        state.plots[plot_key(op)] = I.coefficient_intervals(op, state.models[op.model])
+        state.plots[plot_key(op)] = I.coefficient_intervals(op, state.models)
     elif isinstance(op, IntervalPlot):
         state.plots[plot_key(op)] = I.first_intervals(op, state.tables[op.table], parameter(op.truth, state))
     elif isinstance(op, MonteCarlo):
@@ -587,22 +590,26 @@ _ROW_FUNCTIONS = frozenset(("cumprod", "cummean", "seq", "factorial", "comb", "p
 
 def batchable(op: MonteCarlo) -> bool:
     """Gövde toplu hesaba uygun mu: tohumsuz örneklemler, sürekli çekilişler, türetmeler, alt grupsuz istatistikler,
-    iki değişkenli istatistikler, en küçük kareler, katsayı ve uyum nicelikleri ile skalerler."""
+    iki değişkenli istatistikler, en küçük kareler (etkileşim terimleri ve dayanıklı kovaryansla), artıklar, katsayı
+    ve uyum nicelikleri ile skalerler."""
 
     frames: set[str] = set()
     written: set[tuple[str, str]] = set()
+    models: dict[str, OLS] = {}
     for inner in op.body:
         if isinstance(inner, NewSample):
             if inner.seed is not None or inner.frame in frames:
                 return False
             frames.add(inner.frame)
-        elif isinstance(inner, (Draw, Derive)):
+        elif isinstance(inner, (Draw, Derive, Residuals)):
             if inner.frame not in frames or (inner.frame, inner.name) in written:
                 return False
             written.add((inner.frame, inner.name))
             if isinstance(inner, Draw) and inner.distribution not in _BATCH_DRAWS:
                 return False
             if isinstance(inner, Derive) and E.functions_in(inner.expr) & _ROW_FUNCTIONS:
+                return False
+            if isinstance(inner, Residuals) and (inner.model not in models or models[inner.model].frame != inner.frame):
                 return False
         elif isinstance(inner, Statistic):
             if inner.where is not None or inner.stat not in _BATCH_STATS:
@@ -613,7 +620,9 @@ def batchable(op: MonteCarlo) -> bool:
         elif isinstance(inner, Scalar):
             if E.functions_in(inner.expr) & _ROW_FUNCTIONS:
                 return False
-        elif not isinstance(inner, (PairStatistic, OLS)):
+        elif isinstance(inner, OLS):
+            models[inner.name] = inner
+        elif not isinstance(inner, PairStatistic):
             return False
     return not any(E.variables(expression) or E.functions_in(expression) & _ROW_FUNCTIONS
                    for _, expression in op.collect)
@@ -622,28 +631,61 @@ def batchable(op: MonteCarlo) -> bool:
 @dataclass
 class _BatchFit:
     """Bütün tekrarların en küçük kareler sonuçları: satırlar tekrarlar. Standart hata, t, p, güven aralığı ve F,
-    statsmodels'in hesap sırasıyla (``bse = sqrt(diag(pinv·pinvᵀ · SSR/(n − k)))``, ``t = β̂/bse``,
-    ``p = 2·sf(|t|)``, ``β̂ ± t_{0,975}·bse``, ``F = (ESS/df_model)/(SSR/df_resid)``)."""
+    statsmodels'in hesap sırasıyla (``bse = sqrt(diag(pinv·pinvᵀ · SSR/(n − k − 1)))``, k sabit dışındaki
+    açıklayıcı sayısı; ``t = β̂/bse``, ``p = 2·sf(|t|)``, ``β̂ ± t_{0,975}·bse``, ``F = (ESS/df_model)/(SSR/df_resid)``).
+
+    Dayanıklı kovaryans (HC0–HC3) statsmodels'in ``cov_HC*`` hesabıyla, tekrar tekrar: pinv·diag(ω)·pinvᵀ;
+    ω = û² (HC0), n/(n − k − 1)·û² (HC1), û²/(1 − h) (HC2), (û/(1 − h))² (HC3), h = diag(X·pinv·pinvᵀ·Xᵀ)."""
 
     terms: tuple[str, ...]
+    frame: str
     params: np.ndarray
     ssr: np.ndarray
     tss: np.ndarray
     nobs: int
-    bse: np.ndarray
+    classical: np.ndarray
+    residuals: np.ndarray
+    designs: np.ndarray
+    pinvs: np.ndarray
+    cov_type: str = "nonrobust"
+    robust: dict[str, np.ndarray] = field(default_factory=dict)
 
     @property
     def df_resid(self) -> float:
         return float(self.nobs - self.params.shape[1])
 
-    def coefficient(self, term: str, quantity: str = "coef") -> np.ndarray:
+    def standard_errors(self, cov_type: str | None = None) -> np.ndarray:
+        """Standart hatalar (tekrar × terim): ``cov_type`` verilmezse modelin kendi kovaryansıyla."""
+
+        kind = self.cov_type if cov_type is None else cov_type
+        if kind == "nonrobust":
+            return self.classical
+        if kind not in self.robust:
+            reps, width = self.params.shape
+            bse = np.empty((reps, width))
+            nobs, df_resid = float(self.nobs), self.df_resid
+            for index in range(reps):
+                pinv, residuals = self.pinvs[index], self.residuals[index]
+                if kind == "HC0":
+                    scale = residuals**2
+                elif kind == "HC1":
+                    scale = nobs / df_resid * (residuals**2)
+                else:
+                    design = self.designs[index]
+                    leverage = np.einsum("ij,ik,kj->i", design, design, np.dot(pinv, np.transpose(pinv)))
+                    scale = residuals**2 / (1 - leverage) if kind == "HC2" else (residuals / (1 - leverage))**2
+                bse[index] = np.sqrt(np.diag(np.dot(pinv, scale[:, None] * pinv.T)))
+            self.robust[kind] = bse
+        return self.robust[kind]
+
+    def coefficient(self, term: str, quantity: str = "coef", cov_type: str | None = None) -> np.ndarray:
         if term not in self.terms:
             raise KeyError(f"Modelde böyle bir terim yok: {term}")
         index = self.terms.index(term)
         params = self.params[:, index]
         if quantity == "coef":
             return params
-        bse = self.bse[:, index]
+        bse = self.standard_errors(cov_type)[:, index]
         if quantity == "se":
             return bse
         if quantity in ("t", "p"):
@@ -661,6 +703,8 @@ class _BatchFit:
         if name == "df_resid":
             return np.full(reps, self.df_resid)
         if name in ("f", "f_p"):
+            if self.cov_type != "nonrobust":  # statsmodels dayanıklı modelde Wald F'yi verir: döngü yolu
+                raise _Fallback
             df_model = float(width - 1)
             fvalue = ((self.tss - self.ssr) / df_model) / (self.ssr / self.df_resid)  # mse_model / mse_resid
             return fvalue if name == "f" else stats.f.sf(fvalue, df_model, self.df_resid)
@@ -718,13 +762,18 @@ def _batch_pair(x: np.ndarray, y: np.ndarray, stat: str) -> np.ndarray:
 def _batch_ols(op: OLS, frame: dict[str, np.ndarray]) -> _BatchFit:
     """Bütün tekrarlarda EKK, tekrar tekrar: statsmodels'in ``pinv`` yönteminin numpy adımlarıyla (tekil değer
     ayrışımı, sözde ters, ``np.dot``; artık kareleri ``np.dot``, toplam kareler statsmodels'teki gibi ağırlıklı
-    toplam). Formül ayrıştırma ve veri çerçevesi kurma yükü olmadan aynı sayıları verir."""
+    toplam). Formül ayrıştırma ve veri çerçevesi kurma yükü olmadan aynı sayıları verir. Etkileşim terimi patsy'deki
+    gibi iki sütunun çarpımıdır."""
 
-    missing = sorted({op.outcome, *op.regressors} - set(frame))
+    missing = sorted(set(op.variables) - set(frame))
     if missing:
         raise ValueError(f"Veride olmayan değişken: {', '.join(missing)}")
     outcome = _finite(np.asarray(frame[op.outcome], dtype=float))
-    columns = [_finite(np.asarray(frame[name], dtype=float)) for name in op.regressors]
+    variables = {name: _finite(np.asarray(frame[name], dtype=float)) for name in op.variables[1:]}
+    columns = []
+    for term in op.regressors:
+        parts = term.split(":")
+        columns.append(variables[parts[0]] if len(parts) == 1 else variables[parts[0]] * variables[parts[1]])
     reps, nobs = outcome.shape
     width = len(columns) + 1
     if nobs <= width:
@@ -733,6 +782,9 @@ def _batch_ols(op: OLS, frame: dict[str, np.ndarray]) -> _BatchFit:
     bse = np.empty((reps, width))
     ssr = np.empty(reps)
     tss = np.empty(reps)
+    residuals = np.empty((reps, nobs))
+    designs = np.empty((reps, nobs, width))
+    pinvs = np.empty((reps, width, nobs))
     eps = np.finfo(float).eps
     for index in range(reps):
         y = np.ascontiguousarray(outcome[index])
@@ -748,16 +800,19 @@ def _batch_ols(op: OLS, frame: dict[str, np.ndarray]) -> _BatchFit:
         inverse = np.where(s > cutoff, 1.0 / s, 0.0)
         pinv = np.dot(np.transpose(vt), np.multiply(inverse[:, np.newaxis], np.transpose(u)))
         beta = np.dot(pinv, y)
-        residuals = y - np.dot(design, beta)
+        residuals[index] = y - np.dot(design, beta)
         params[index] = beta
-        ssr[index] = np.dot(residuals, residuals)
+        ssr[index] = np.dot(residuals[index], residuals[index])
         # statsmodels OLS'i ağırlıkları 1 olan WLS olarak kurar: centered_tss = Σ w (y − ȳ_w)², ȳ_w = Σ w·y / Σ w.
         # w = 1 iken w·y = y ve Σ w = n olduğu için aynı sayılar ağırlıksız yazımla elde edilir.
         tss[index] = np.sum((y - y.sum() / nobs) ** 2)
-        # Klasik standart hata: normalized_cov_params = pinv·pinvᵀ, ölçek = SSR / (n − k)
+        # Klasik standart hata: normalized_cov_params = pinv·pinvᵀ, ölçek = SSR / (n − k − 1); width = k + 1
         normalized = np.dot(pinv, np.transpose(pinv))
         bse[index] = np.sqrt(np.diag(normalized * (ssr[index] / float(nobs - width))))
-    return _BatchFit(terms=(INTERCEPT, *op.regressors), params=params, ssr=ssr, tss=tss, nobs=nobs, bse=bse)
+        designs[index] = design
+        pinvs[index] = pinv
+    return _BatchFit(terms=(INTERCEPT, *op.regressors), frame=op.frame, params=params, ssr=ssr, tss=tss, nobs=nobs,
+                     classical=bse, residuals=residuals, designs=designs, pinvs=pinvs, cov_type=op.cov_type)
 
 
 def monte_carlo_batch(op: MonteCarlo) -> tuple[pd.DataFrame, np.random.Generator]:
@@ -790,6 +845,8 @@ def monte_carlo_batch(op: MonteCarlo) -> tuple[pd.DataFrame, np.random.Generator
         elif isinstance(inner, Derive):
             values = np.asarray(E.evaluate(inner.expr, frames[inner.frame], scalar=lookup), dtype=float)
             frames[inner.frame][inner.name] = np.broadcast_to(values, (reps, sizes[inner.frame]))
+        elif isinstance(inner, Residuals):
+            frames[inner.frame][inner.name] = models[inner.model].residuals
         elif isinstance(inner, Statistic):
             values = _finite(np.asarray(frames[inner.frame][inner.variable], dtype=float))
             scalars[inner.name] = column(_batch_statistic(values, inner.stat)[:, None])
@@ -804,7 +861,7 @@ def monte_carlo_batch(op: MonteCarlo) -> tuple[pd.DataFrame, np.random.Generator
             if inner.model not in models:
                 raise ValueError(f"'{inner.model}' modeli henüz tahmin edilmedi.")
             fit = models[inner.model]
-            values = (fit.coefficient(inner.term, inner.quantity) if inner.term is not None
+            values = (fit.coefficient(inner.term, inner.quantity, inner.cov_type) if inner.term is not None
                       else fit.quantity(inner.quantity))
             scalars[inner.name] = column(values[:, None])
         elif isinstance(inner, Scalar):

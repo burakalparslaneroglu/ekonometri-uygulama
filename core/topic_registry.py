@@ -1,7 +1,6 @@
 """İKT 305 Ekonometri I konu sırası. Başlıklar ders notlarındaki bölüm adlarıdır.
 
-Yönlendirici soru yalnız yeni yapıya (Uygulama, Sezgi, Kendini sına) taşınan konularda gösterilir; metni notların
-bölüm girişindeki bağlantı kutusundan gelir.
+Yönlendirici soru konu başlığının altında gösterilir; metni notların bölüm girişindeki bağlantı kutusundan gelir.
 """
 
 from __future__ import annotations
@@ -69,10 +68,12 @@ TOPICS: tuple[TopicMetadata, ...] = (
     TopicMetadata(
         "konu11", 11, "Etkileşim Terimleri ve Gruplar Arasında Sabit ile Eğim Farklılıkları",
         "Etkileşimler ve Grup Farkları",
+        "Bir nicel değişkenin sonuçla ilişkisi, ait olunan gruba göre değişebilir mi?",
     ),
     TopicMetadata(
         "konu12", 12, "Heteroskedastisite ve Heteroskedastisiteye Dayanıklı Çıkarım",
         "Heteroskedastisite ve Dayanıklı Çıkarım",
+        "Regresyon doğrusunun çevresindeki belirsizlik bütün gözlemler için aynı büyüklükte değilse ne olur?",
     ),
 )
 

@@ -99,17 +99,23 @@ def hypothesis_layout(op: HypothesisPlot, statistic: float, df: float, df2: floa
     }
 
 
-def coefficient_intervals(op: CoefficientPlot, result) -> pd.DataFrame:
-    """Katsayı grafiğinin verisi: terim, tahmin ve güven aralığının sınırları (``terms`` sırasıyla)."""
+def coefficient_intervals(op: CoefficientPlot, models: dict) -> pd.DataFrame:
+    """Katsayı grafiğinin verisi: model, terim, tahmin ve güven aralığının sınırları (``terms`` sırasıyla; karşılaştırılan
+    modeller ``compare`` sırasıyla alt alta)."""
 
-    interval = result.conf_int(alpha=round(1 - op.level, 10))
     terms = list(op.terms)
-    data = pd.DataFrame({
-        "terim": terms,
-        "tahmin": result.params[terms].to_numpy(dtype=float),
-        "alt": interval.loc[terms, 0].to_numpy(dtype=float),
-        "ust": interval.loc[terms, 1].to_numpy(dtype=float),
-    })
+    parts = []
+    for legend, name in op.models:
+        result = models[name]
+        interval = result.conf_int(alpha=round(1 - op.level, 10))
+        parts.append(pd.DataFrame({
+            "model": legend,
+            "terim": terms,
+            "tahmin": result.params[terms].to_numpy(dtype=float),
+            "alt": interval.loc[terms, 0].to_numpy(dtype=float),
+            "ust": interval.loc[terms, 1].to_numpy(dtype=float),
+        }))
+    data = pd.concat(parts, ignore_index=True)
     if op.percent:  # log bağımlı değişken: tam yüzde, 100·(exp(değer) − 1); dönüşüm artan olduğu için sıra korunur
         for column in ("tahmin", "alt", "ust"):
             data[column] = 100 * (np.exp(data[column].to_numpy(dtype=float)) - 1)

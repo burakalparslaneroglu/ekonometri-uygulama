@@ -56,11 +56,11 @@ COMPARISONS = {"le": "<=", "lt": "<", "ge": ">=", "gt": ">", "eq": "==", "ne": "
 DISTRIBUTION_FUNCTIONS = ("dbinom", "pbinom", "dpois", "ppois", "dhyper", "phyper", "dnorm")
 """Olasılık fonksiyonları ve birikimli olasılıklar (vektör üzerinde de çalışır): Python'da ``scipy.stats``, R'de
 ``dbinom``/``pbinom``, ``dpois``/``ppois``, ``dhyper``/``phyper`` ve ``dnorm``."""
-TEST_FUNCTIONS = ("tcdf", "tsf", "tinv", "fsf", "finv")
+TEST_FUNCTIONS = ("tcdf", "tsf", "tinv", "fsf", "finv", "chi2sf", "chi2inv")
 """Test istatistiklerinin dağılımları: t dağılımının birikimli olasılığı P(T ≤ x), üst kuyruğu P(T > x) ve ters
-fonksiyonu (kritik değer), F dağılımının üst kuyruğu P(F > x) ve ters fonksiyonu. Python'da ``scipy.stats`` (``t``,
-``f``), R'de ``pt``/``qt``/``pf``/``qf``. Üst kuyruk doğrudan hesaplanır: 1 − P(T ≤ x) çok küçük p-değerlerinde
-(ör. 10⁻²²) sıfıra yuvarlanırdı."""
+fonksiyonu (kritik değer), F ve χ² dağılımlarının üst kuyruğu P(F > x), P(χ² > x) ve ters fonksiyonları. Python'da
+``scipy.stats`` (``t``, ``f``, ``chi2``), R'de ``pt``/``qt``/``pf``/``qf``/``pchisq``/``qchisq``. Üst kuyruk doğrudan
+hesaplanır: 1 − P(T ≤ x) çok küçük p-değerlerinde (ör. 10⁻²²) sıfıra yuvarlanırdı."""
 FUNCTIONS = (
     "neg", "log", "exp", "sqrt", "abs", "maximum", "minimum", "round", "roundto", "floor", "normcdf", "normpdf",
     "norminv",
@@ -68,7 +68,7 @@ FUNCTIONS = (
 )
 ARITY = {
     **{name: 2 for name in ("maximum", "minimum", "roundto", "comb", "perm", "dpois", "ppois", "tcdf", "tsf", "tinv",
-                            *COMPARISONS)},
+                            "chi2sf", "chi2inv", *COMPARISONS)},
     **{name: 3 for name in ("dbinom", "pbinom", "dnorm", "fsf", "finv")},
     "dhyper": 4, "phyper": 4,
 }
@@ -287,6 +287,18 @@ def finv(q, df1, df2) -> Call:
     return Call("finv", (_wrap(q), _wrap(df1), _wrap(df2)))
 
 
+def chi2sf(x, df) -> Call:
+    """χ²(df) dağılımının üst kuyruğu P(χ² > x): LM testinin p-değeri (ör. Breusch–Pagan)."""
+
+    return Call("chi2sf", (_wrap(x), _wrap(df)))
+
+
+def chi2inv(q, df) -> Call:
+    """χ²(df) dağılımının ters fonksiyonu: P(χ² ≤ c) = q olan c (ör. q = 0,95 ile yüzde 5 kritik değeri)."""
+
+    return Call("chi2inv", (_wrap(q), _wrap(df)))
+
+
 def compare(name: str, a, b) -> Call:
     """Gösterge: ``a`` ile ``b`` karşılaştırması doğruysa 1, değilse 0 (``name``: le, lt, ge, gt, eq, ne)."""
 
@@ -459,6 +471,10 @@ def evaluate(
             return stats.f.sf(*values)
         if expr.fn == "finv":
             return stats.f.ppf(*values)
+        if expr.fn == "chi2sf":
+            return stats.chi2.sf(*values)
+        if expr.fn == "chi2inv":
+            return stats.chi2.ppf(*values)
         if expr.fn in COMPARISONS:
             left, right = np.asarray(values[0]), np.asarray(values[1])
             outcome = {

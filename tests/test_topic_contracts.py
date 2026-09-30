@@ -29,7 +29,7 @@ TOPIC_MODULES = {
 
 # Uygulama + Sezgi + Kendini sına yapısına geçmiş konular: kod iki dilde, tek tanımdan üretilir.
 MIGRATED_TOPICS = {"konu00", "konu01", "konu02", "konu03", "konu04", "konu05", "konu06", "konu07", "konu08",
-                   "konu09", "konu10"}
+                   "konu09", "konu10", "konu11", "konu12"}
 
 
 def test_registry_has_exact_course_order() -> None:
@@ -76,5 +76,14 @@ def test_legacy_modules_of_migrated_topics_are_gone() -> None:
                  "tests/test_konu08_ui.py", "core/konu09_questions.py", "core/konu10_questions.py",
                  "core/functional_form_utils.py", "core/categorical_regression_utils.py", "tests/test_konu09_questions.py",
                  "tests/test_konu09_ui.py", "tests/test_konu10_questions.py", "tests/test_konu10_ui.py",
-                 "tests/test_functional_form_utils.py", "tests/test_categorical_regression_utils.py"):
+                 "tests/test_functional_form_utils.py", "tests/test_categorical_regression_utils.py",
+                 "core/konu11_questions.py", "core/konu12_questions.py", "core/interaction_utils.py",
+                 "core/robust_inference_utils.py", "core/joint_inference_utils.py",
+                 "core/regression_inference_utils.py", "core/model_utils.py", "core/question_engine.py",
+                 "core/data_registry.py", "core/ui_components.py", "core/session_utils.py", "core/formatting.py",
+                 "tests/test_konu11_questions.py", "tests/test_konu11_ui.py", "tests/test_konu12_questions.py",
+                 "tests/test_konu12_ui.py", "tests/test_interaction_utils.py", "tests/test_joint_inference_utils.py",
+                 "tests/test_regression_inference_utils.py", "tests/test_robust_inference_utils.py",
+                 "tests/test_model_utils.py", "tests/test_question_engine.py", "tests/test_ui_components.py",
+                 "tests/test_data_registry.py"):
         assert not Path(name).exists(), name

@@ -65,6 +65,7 @@ from core.labs.spec import (
     Groups,
     GroupSummary,
     HeatMap,
+    HeteroskedasticityTest,
     Histogram,
     HypothesisPlot,
     InlineData,
@@ -121,7 +122,7 @@ _FUNCTIONS = {
     "dbinom": "stats.binom.pmf", "pbinom": "stats.binom.cdf", "dpois": "stats.poisson.pmf",
     "ppois": "stats.poisson.cdf", "dhyper": "stats.hypergeom.pmf", "phyper": "stats.hypergeom.cdf",
     "dnorm": "stats.norm.pdf", "tcdf": "stats.t.cdf", "tsf": "stats.t.sf", "tinv": "stats.t.ppf",
-    "fsf": "stats.f.sf", "finv": "stats.f.ppf",
+    "fsf": "stats.f.sf", "finv": "stats.f.ppf", "chi2sf": "stats.chi2.sf", "chi2inv": "stats.chi2.ppf",
     **{name: f"np.where({{0}} {symbol} {{1}}, 1.0, 0.0)" for name, symbol in E.COMPARISONS.items()},
 }
 
@@ -167,6 +168,24 @@ _BOX_SUMMARY = [
     '        "alt_sinir": alt, "ust_sinir": ust, "alt_biyik": icerde.min(), "ust_biyik": icerde.max(),',
     '        "aykiri_sayisi": float(((x < alt) | (x > ust)).sum()),',
     "    })",
+]
+_WHITE_TEST = [
+    "def white_testi(model):",
+    '    """White (1980) LM testi: kareli artıklar, açıklayıcıların düzeyleri, kareleri ve çapraz çarpımları üzerine',
+    "    regrese edilir; LM = n·R², serbestlik derecesi = yardımcı regresyondaki bağımsız terim sayısı (sabit hariç).",
+    "    0/1 kuklanın karesi kendisidir: yinelenen sütun rankla ayıklanır ve bir kez sayılır. statsmodels het_white",
+    "    aynı sayıyı verir; ancak rank denetimi kukla varken sayısal gürültüyle AssertionError verebildiği için",
+    '    yardımcı regresyon burada açıkça kurulur."""',
+    "    duzey = model.model.exog[:, 1:]  # sabit terim dışındaki sütunlar",
+    "    i, j = np.triu_indices(duzey.shape[1])  # (i ≤ j) çiftleri: kareler ve çapraz çarpımlar",
+    "    tasarim = np.column_stack([np.ones(len(duzey)), duzey, duzey[:, i] * duzey[:, j]])",
+    "    tasarim = tasarim[:, tasarim.any(axis=0)]  # yalnız sıfırdan oluşan sütun varsa atılır",
+    "    tasarim = tasarim / np.linalg.norm(tasarim, axis=0)  # birim uzunluk: ölçek rank kararını etkilemez",
+    "    e2 = np.asarray(model.resid) ** 2",
+    "    katsayi, _, rank, _ = np.linalg.lstsq(tasarim, e2, rcond=1e-10)  # yinelenen sütunlar rankla ayıklanır",
+    "    r2 = 1 - np.sum((e2 - tasarim @ katsayi) ** 2) / np.sum((e2 - e2.mean()) ** 2)",
+    "    lm = len(e2) * r2  # LM = n·R²",
+    "    return lm, stats.chi2.sf(lm, rank - 1)  # rank sabit terimi de sayar",
 ]
 
 
@@ -267,7 +286,7 @@ _COEF = {
     "coef": '{m}.params["{t}"]', "se": '{m}.bse["{t}"]', "t": '{m}.tvalues["{t}"]', "p": '{m}.pvalues["{t}"]',
     "ci_low": '{m}.conf_int().loc["{t}", 0]', "ci_high": '{m}.conf_int().loc["{t}", 1]',
 }
-"""Katsayı niceliklerinin statsmodels yazımı (t ve p: n − k serbestlik dereceli t dağılımı; GA: %95)."""
+"""Katsayı niceliklerinin statsmodels yazımı (t ve p: n − k − 1 serbestlik dereceli t dağılımı; GA: %95)."""
 _MODEL = {
     "r2": "{m}.rsquared", "adj_r2": "{m}.rsquared_adj", "nobs": "{m}.nobs", "f": "{m}.fvalue",
     "f_p": "{m}.f_pvalue", "ssr": "{m}.ssr", "df_resid": "{m}.df_resid",
@@ -352,7 +371,20 @@ _STARS = [
 ]
 
 
-def coef_expression(model: str, term: str, quantity: str) -> str:
+_ROBUST_COEF = {
+    "se": '{m}.{c}_se["{t}"]',
+    "t": '{m}.params["{t}"] / {m}.{c}_se["{t}"]',
+    "p": 'stats.t.sf(abs({m}.params["{t}"] / {m}.{c}_se["{t}"]), {m}.df_resid) * 2',
+    "ci_low": '{m}.params["{t}"] - stats.t.ppf(1 - 0.05 / 2, {m}.df_resid) * {m}.{c}_se["{t}"]',
+    "ci_high": '{m}.params["{t}"] + stats.t.ppf(1 - 0.05 / 2, {m}.df_resid) * {m}.{c}_se["{t}"]',
+}
+"""Aynı EKK tahmininden dayanıklı kovaryansla katsayı nicelikleri (statsmodels ``HC1_se`` gibi özellikler); t ve p
+n − k − 1 serbestlik dereceli t dağılımından, güven aralığı yüzde 95 (``conf_int`` ile aynı hesap)."""
+
+
+def coef_expression(model: str, term: str, quantity: str, cov_type: str | None = None) -> str:
+    if cov_type is not None and quantity != "coef":
+        return _ROBUST_COEF[quantity].format(m=model, t=term, c=cov_type)
     return _COEF[quantity].format(m=model, t=term)
 
 
@@ -388,14 +420,21 @@ class PythonGenerator(Generator):
             lines.append("import matplotlib.pyplot as plt")
         if any(isinstance(op, HeatMap) for op in flat):
             lines.append("from matplotlib.colors import LinearSegmentedColormap")
-        if _needs_numpy(operations) or any(isinstance(op, RegressionTable) for op in flat):
+        white = any(isinstance(op, HeteroskedasticityTest) and op.kind == "white" for op in flat)
+        if _needs_numpy(operations) or any(isinstance(op, RegressionTable) for op in flat) or white:
             lines.append("import numpy as np")
         lines.append("import pandas as pd")
         if any(isinstance(op, OLS) for op in flat):
             lines.append("import statsmodels.formula.api as smf")
         if any(isinstance(op, LoadWooldridge) for op in flat):
             lines.append("import wooldridge as wd  # Wooldridge (2020) veri setleri: pip install wooldridge")
-        if functions_used(operations) & _SCIPY_FUNCTIONS or any(_uses_density(op) for op in flat):
+        if any(isinstance(op, HeteroskedasticityTest) and op.kind == "bp" for op in flat):
+            lines.append("from statsmodels.stats.diagnostic import het_breuschpagan")
+        robust_values = any(isinstance(op, ModelValue) and op.cov_type is not None and op.quantity in ("p", "ci_low",
+                                                                                                        "ci_high")
+                            for op in flat)
+        if (functions_used(operations) & _SCIPY_FUNCTIONS or any(_uses_density(op) for op in flat) or robust_values
+                or white):
             lines.append("from scipy import stats")
         lines.append("")
         return lines
@@ -431,6 +470,8 @@ class PythonGenerator(Generator):
             lines += helper + ["", ""]
             if any(isinstance(op, RegressionTable) and op.stars for op in flat):
                 lines += _STARS + ["", ""]
+        if any(isinstance(op, HeteroskedasticityTest) and op.kind == "white" for op in flat):
+            lines += _WHITE_TEST + ["", ""]
         if with_checks:
             lines += [
                 "def kontrol_et(etiket, deger, beklenen, ondalik=4):",
@@ -493,7 +534,15 @@ class PythonGenerator(Generator):
                 f"print({op.result})",
             ]
         if isinstance(op, OLS):
-            return [f"# {op.comment}", f'{op.name} = smf.ols("{op.formula}", data={op.frame}).fit()']
+            if op.cov_type == "nonrobust":
+                return [f"# {op.comment}", f'{op.name} = smf.ols("{op.formula}", data={op.frame}).fit()']
+            return [
+                f"# {op.comment}",
+                f"# Katsayılar EKK ile aynı; standart hata, t, p, güven aralığı ve F {op.cov_type} dayanıklı kovaryansla.",
+                "# use_t=True: t ve F dağılımı (n − k − 1 serbestlik derecesi, k: sabit dışındaki açıklayıcı sayısı);",
+                "# yazılmazsa statsmodels normal dağılım kullanır.",
+                f'{op.name} = smf.ols("{op.formula}", data={op.frame}).fit(cov_type="{op.cov_type}", use_t=True)',
+            ]
         if isinstance(op, Residuals):
             return [f"# {op.comment}", f'{op.frame}["{op.name}"] = {op.model}.resid']
         if isinstance(op, ShowModel):
@@ -501,7 +550,7 @@ class PythonGenerator(Generator):
             return [f"# {op.comment}", *_read_fields_note(op, topic, self.fields_read(op)),
                     f"print({op.model}.summary())"]
         if isinstance(op, ModelValue):
-            value = (coef_expression(op.model, op.term, op.quantity) if op.term is not None
+            value = (coef_expression(op.model, op.term, op.quantity, op.cov_type) if op.term is not None
                      else model_expression(op.model, op.quantity))
             return [
                 f"# {op.comment}",
@@ -777,7 +826,9 @@ class PythonGenerator(Generator):
         if isinstance(op, CoefficientTable):
             return self._coefficient_table(op)
         if isinstance(op, JointTest):
-            return self._joint_test(op)
+            return self._joint_test(op, self.robust_models.get(op.model))
+        if isinstance(op, HeteroskedasticityTest):
+            return self._hetero_test(op)
         if isinstance(op, HypothesisPlot):
             return self._hypothesis(op)
         if isinstance(op, CoefficientPlot):
@@ -805,11 +856,36 @@ class PythonGenerator(Generator):
         ]
 
     @staticmethod
-    def _joint_test(op: JointTest) -> list[str]:
-        hypothesis = ", ".join(f"{term} = 0" for term in op.terms)
+    def _hetero_test(op: HeteroskedasticityTest) -> list[str]:
+        if op.kind == "bp":
+            call = [
+                "# Breusch–Pagan testi (Koenker'in n·R² biçimi): H0 homoskedastisite. Artık kareleri modelin",
+                "# açıklayıcılarına regrese edilir; LM = n·R², serbestlik derecesi = açıklayıcı sayısı.",
+                f"{op.name}_test = het_breuschpagan({op.model}.resid, {op.model}.model.exog)",
+                f"{op.name} = {op.name}_test[0]  # LM istatistiği",
+                f"{op.p_value} = {op.name}_test[1]  # p-değeri (χ² dağılımı)",
+            ]
+        else:
+            call = [
+                "# White testi: H0 homoskedastisite. Artık kareleri açıklayıcıların düzeyleri, kareleri ve çapraz",
+                "# çarpımları üzerine regrese edilir; LM = n·R², serbestlik derecesi = bağımsız terim sayısı",
+                "# (yardımcı regresyon yukarıdaki white_testi işlevinde).",
+                f"{op.name}, {op.p_value} = white_testi({op.model})  # LM istatistiği ve p-değeri (χ² dağılımı)",
+            ]
         return [
             f"# {op.comment}",
-            f"# H0: {hypothesis} (q = {len(op.terms)} kısıt); statsmodels f_test kısıtlı modeli kendisi kurar",
+            *call,
+            f'print(f"{_fstring(op.comment)}: LM = {_number(op.name, op.decimals)}, p-değeri = {{{op.p_value}:.3g}}")',
+        ]
+
+    @staticmethod
+    def _joint_test(op: JointTest, cov_type: str | None = None) -> list[str]:
+        hypothesis = ", ".join(f"{term} = 0" for term in op.terms)
+        how = ("statsmodels f_test kısıtlı modeli kendisi kurar" if cov_type is None
+               else f"{cov_type} dayanıklı kovaryansla Wald testi, F biçiminde")
+        return [
+            f"# {op.comment}",
+            f"# H0: {hypothesis} (q = {len(op.terms)} kısıt); {how}",
             f'{op.name}_test = {op.model}.f_test("{hypothesis}")',
             f"print({op.name}_test)",
             f"{op.name} = float({op.name}_test.fvalue)",
@@ -902,6 +978,29 @@ class PythonGenerator(Generator):
     def _coefficient_plot(self, op: CoefficientPlot) -> list[str]:
         alpha = E.format_number(round(1 - op.level, 10))
         labels = [op.term_label(term, self.spec.label) for term in op.terms]
+        if op.compare:
+            models = ", ".join(f"({text(legend)}, {name})" for legend, name in op.models)
+            colors = _list(PALETTE[index % len(PALETTE)] for index in range(len(op.models)))
+            return [
+                f"# Aynı terimlerin yüzde {E.format_number(round(100 * op.level, 8))} güven aralıkları, modeller alt alta "
+                "(ilk terim ve ilk model üstte)",
+                f"terimler = {_list(op.terms)}",
+                "konum = np.arange(len(terimler))[::-1]",
+                f"modeller = [{models}]",
+                f"renkler = {colors}",
+                "fig, ax = plt.subplots(figsize=(8, 5))",
+                "for sira, (etiket, model) in enumerate(modeller):",
+                f"    aralik = model.conf_int(alpha={alpha}).loc[terimler]",
+                "    tahmin = model.params[terimler]",
+                *(["    aralik = 100 * (np.exp(aralik) - 1)  # tam yüzde",
+                   "    tahmin = 100 * (np.exp(tahmin) - 1)"] if op.percent else []),
+                "    kayma = 0.25 * ((len(modeller) - 1) / 2 - sira)",
+                "    ax.errorbar(tahmin, konum + kayma, xerr=[tahmin - aralik[0], aralik[1] - tahmin], fmt=\"o\",",
+                "                capsize=5, color=renkler[sira], markersize=8, linewidth=2, label=etiket)",
+                f'ax.axvline(0, color="{REFERENCE_COLORS[0]}", linestyle="--", linewidth=2)',
+                f"ax.set_yticks(konum, {_list(labels)})",
+                *self._axes(op.x_label, op.y_label, title_lines(op.title), legend=True),
+            ]
         return [
             f"# Katsayılar ve yüzde {E.format_number(round(100 * op.level, 8))} güven aralıkları; ilk terim en üstte",
             f"terimler = {_list(op.terms)}",
@@ -1270,12 +1369,16 @@ class PythonGenerator(Generator):
             for index, (column, label) in enumerate(op.series, start=1):
                 lines.append(f'ax.plot({op.frame}["{op.x}"], {op.frame}["{column}"]{marker}, '
                              f'color="{PALETTE[index % len(PALETTE)]}", label={text(label)})')
+            for column, label in op.bands:  # bilinen gerçek eğri: kesikli ve koyu
+                shown = text(label) if label else '"_nolegend_"'
+                lines.append(f'ax.plot({op.frame}["{op.x}"], {op.frame}["{column}"], color="{REFERENCE_COLORS[0]}", '
+                             f'linestyle="--", linewidth=2, label={shown})')
             return lines + ["ax.grid(alpha=0.3)", *self._axes(op.x_label, op.y_label, op.title, legend=True)]
         plot = f'ax.plot({op.frame}["{op.x}"], {op.frame}["{op.y}"]{marker}, color="{PALETTE[0]}"'
         lines = ["fig, ax = plt.subplots(figsize=(8, 5))"]
         legend = bool(op.references or op.bands or op.vlines)
         # Başvuru çizgisi ya da bant varsa açıklama (legend) gerekir; seri de adıyla açıklamada yer alır.
-        lines += [plot + ",", f"        label={text(op.y_label)})"] if legend else [plot + ")"]
+        lines += [plot + ",", f"        label={text(op.legend or op.y_label)})"] if legend else [plot + ")"]
         for index, (name, label) in enumerate(op.references):
             color = REFERENCE_COLORS[index % len(REFERENCE_COLORS)]
             style = ("--", ":", "-.")[index % 3]
@@ -1408,11 +1511,15 @@ class PythonGenerator(Generator):
             f'cubuklar = ax.bar(cizim.index, cizim.values, color="{PALETTE[0]}")',
             f"ax.bar_label(cubuklar, labels={labels}, padding=3)",
         ]
+        for index, (value, label) in enumerate(op.references):  # yatay başvuru çizgisi (ör. nominal düzey)
+            number = f"sayi_metni({E.format_number(value)}, {op.decimals}{', yuzde=True' if op.percent else ''})"
+            lines.append(f'ax.axhline({E.format_number(value)}, color="{REFERENCE_COLORS[index % len(REFERENCE_COLORS)]}", '
+                         f'linestyle="{("--", ":", "-.")[index % 3]}", linewidth=2, label="{_quote(label)}: " + {number})')
         if op.y_range is not None:
             lines.append(f"ax.set_ylim({E.format_number(op.y_range[0])}, {E.format_number(op.y_range[1])})")
         else:
             lines.append("ax.margins(y=0.1)  # en yüksek sütunun etiketi için üstte boşluk")
-        return lines + self._axes(op.x_label, op.y_label, op.title)
+        return lines + self._axes(op.x_label, op.y_label, op.title, legend=bool(op.references))
 
     def _grouped(self, op: GroupedBarChart) -> list[str]:
         table = self._chart_table(op.table)
@@ -1481,7 +1588,8 @@ class PythonGenerator(Generator):
             color = REFERENCE_COLORS[index % len(REFERENCE_COLORS)]
             position = value if isinstance(value, str) else E.format_number(value)
             lines.append(
-                f'ax.axvline({position}, color="{color}", linestyle="--", linewidth=2, label={text(label)})'
+                f'ax.axvline({position}, color="{color}", linestyle="{("--", ":", "-.")[index % 3]}", linewidth=2, '
+                f'label={text(label)})'
             )
         if op.curves:
             first = op.columns[0][0]

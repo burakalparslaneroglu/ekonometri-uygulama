@@ -46,6 +46,7 @@ from core.labs.spec import (
     FrequencyTable,
     FromCounts,
     GroupSummary,
+    HeteroskedasticityTest,
     InlineData,
     JoinColumns,
     JointTest,
@@ -165,8 +166,8 @@ def _join_cells(op: JoinColumns, table: pd.DataFrame) -> pd.DataFrame:
     def cell(row, column: str, value: float) -> str:
         if pd.isna(value):
             return "—"
-        if column in op.p_columns:
-            return p_text(value, 3)
+        if column in op.p_columns:  # p-değeri: 3 basamak ya da sütuna verilen basamak (ör. notlardaki gibi 4)
+            return p_text(value, columns.get(column, 3))
         digits = rows.get(str(row), columns.get(column, op.decimals))
         return _integer(value) if digits == 0 else tr_number(value, digits, op.percent)
 
@@ -206,7 +207,10 @@ def display_table(op, table: pd.DataFrame, label: Callable[[str], str] = lambda 
     if isinstance(op, StemLeaf):
         return _formatted(table, {"yaprak_sayisi": _count}, "Gövde", label)
     if isinstance(op, ScalarTable):
-        return pd.DataFrame({op.heading: table.index, op.value: [tr_number(v, op.decimals) for v in table["deger"]]})
+        digits, percent = dict(op.row_decimals), set(op.percent_rows)
+        return pd.DataFrame({op.heading: table.index,
+                             op.value: [tr_number(value, digits.get(row, op.decimals), row in percent)
+                                        for row, value in table["deger"].items()]})
     if isinstance(op, GroupSummary):
         formats = {name: _count if stat == "count" else (lambda v: tr_number(v, op.decimals))
                    for name, _, stat in op.columns}
@@ -214,6 +218,8 @@ def display_table(op, table: pd.DataFrame, label: Callable[[str], str] = lambda 
     if isinstance(op, JoinColumns):
         index = str(table.index.name or "")
         heading = op.heading or _COLUMN_LABELS.get(index, label(index)) or "Kategori"
+        if op.term_rows:  # yazılım çıktısı gibi: "Türkçe etiket · terim"
+            table = table.rename(index=lambda term: f"{RG.term_label(str(term), label)} · {term}")
         if not (op.column_decimals or op.row_decimals or op.p_columns):
             formats = {name: (lambda v: tr_number(v, op.decimals, op.percent)) for name, _, _ in op.columns}
             return _formatted(table, formats, heading, label)
@@ -249,7 +255,8 @@ def display_table(op, table: pd.DataFrame, label: Callable[[str], str] = lambda 
         level = tr_number(100 * op.level, 0 if float(round(100 * op.level, 8)).is_integer() else 1)
         return pd.DataFrame({
             "Değişken": [RG.term_label(term, label) for term in table.index],
-            "Katsayı": [coefficient_number(value, op.decimals) for value in table["katsayi"]],
+            "Katsayı": [(tr_number if op.exact else coefficient_number)(value, op.decimals)
+                        for value in table["katsayi"]],
             "SH": [tr_number(value, op.decimals) for value in table["sh"]],
             "t": [tr_number(value, op.t_decimals) for value in table["t"]],
             "p": [p_text(value, op.p_decimals) for value in table["p"]],
@@ -326,6 +333,19 @@ def regression_display(op: RegressionTable, state: LabState, label: Callable[[st
     return pd.DataFrame(rows).rename(columns={"": "Değişken"})
 
 
+def standard_error_note(op: RegressionTable, state: LabState) -> str:
+    """Tablo notu: parantez içindeki standart hataların türü; sütunlar farklı kovaryans kullanıyorsa sütun sütun."""
+
+    kinds = [RG.covariance_label(state.models[name]) for _, name in op.models]
+    words = {"nonrobust": "klasik (geleneksel)"}
+    if len(set(kinds)) == 1:
+        kind = kinds[0]
+        return ("Parantez içinde klasik (geleneksel) standart hatalar." if kind == "nonrobust"
+                else f"Parantez içinde {kind} heteroskedastisiteye dayanıklı standart hatalar.")
+    parts = [f"{heading}: {words.get(kind, kind + ' dayanıklı')}" for (heading, _), kind in zip(op.models, kinds)]
+    return "Parantez içinde standart hatalar; " + "; ".join(parts) + "."
+
+
 def crosstab_caption(op: CrossTab, label: Callable[[str], str] = lambda name: name) -> str:
     """Çapraz tablonun ne gösterdiği: sayılar mı, hangi paydayla yüzdeler mi, hangi alt grupta mı."""
 
@@ -363,15 +383,20 @@ def _decimals(values: pd.Series) -> int:
 
 
 def frame_display(frame: pd.DataFrame, label: Callable[[str], str], decimals: int | None = None):
-    """Veri çerçevesinin ekran biçimi: tam sayı değerli sütunlar tam sayı, kesirli sütunlar ondalık virgülle.
+    """Veri çerçevesinin ekran biçimi: tam sayı değerli sütunlar tam sayı, kesirli sütunlar ondalık virgülle; negatif
+    değerlerde tipografik eksi.
 
-    Kesirli sütunlar Styler ile biçimlenir; sütun sayısal kaldığı için sağa hizalı görünür. ``decimals`` verilirse
-    bütün kesirli sütunlar o basamakla yazılır.
+    Kesirli ve negatif değerli sütunlar Styler ile biçimlenir; sütun sayısal kaldığı için sağa hizalı görünür.
+    ``decimals`` verilirse bütün kesirli sütunlar o basamakla yazılır.
     """
 
     shown = frame.copy()
     formats: dict[str, Callable[[float], str]] = {}
     for column in shown.columns:
+        if shown[column].dtype.kind in "iu":
+            if (shown[column] < 0).any():  # tipografik eksi: −1 (ör. merkezlenmiş eğitim, educ − 12)
+                formats[column] = lambda value: tr_number(value, 0)
+            continue
         if shown[column].dtype.kind != "f":
             continue
         if np.allclose(shown[column], np.round(shown[column]), rtol=0, atol=1e-9):
@@ -423,7 +448,8 @@ def _render_navigation(spec: LabSpec) -> LabStep:
 
 # --- Sonuçlar ----------------------------------------------------------------------
 
-_METRICS = (Shape, Count, Statistic, PairStatistic, Scalar, Percentile, ModelValue, JointTest)
+_METRICS = (Shape, Count, Statistic, PairStatistic, Scalar, Percentile, ModelValue, JointTest,
+            HeteroskedasticityTest)
 _SUBSCRIPTS = str.maketrans("0123456789,", "₀₁₂₃₄₅₆₇₈₉,")
 
 
@@ -440,11 +466,19 @@ def _metrics(op, state: LabState) -> list[tuple[str, str]]:
                 ("Değişken sayısı", _count(state.scalars[op.variables]))]
     if isinstance(op, Count):
         return [(op.comment, _count(state.scalars[op.name]))]
-    if isinstance(op, Scalar) and not op.shown:
+    if isinstance(op, (Scalar, ModelValue)) and not op.shown:
         return []
     if isinstance(op, JointTest):
+        if not op.shown:
+            return []
         return [(op.comment, tr_number(state.scalars[op.name], op.decimals)),
-                ("Ortak p-değeri", p_text(state.scalars[op.p_value]))]
+                ("Ortak p-değeri" if len(op.terms) > 1 else "p-değeri",
+                 p_text(state.scalars[op.p_value], op.p_decimals))]
+    if isinstance(op, HeteroskedasticityTest):
+        if not op.shown:
+            return []
+        return [(f"{op.comment} — LM", tr_number(state.scalars[op.name], op.decimals)),
+                (f"{op.comment} — p-değeri", p_text(state.scalars[op.p_value], 4))]
     if isinstance(op, ModelValue) and op.quantity in ("p", "f_p"):
         return [(op.comment, p_text(state.scalars[op.name], op.decimals))]
     if isinstance(op, (Statistic, PairStatistic, ModelValue)):
@@ -510,7 +544,9 @@ def render_operations(operations, state: LabState, label: Callable[[str], str], 
             continue
         if isinstance(op, ShowModel):
             result = state.models[op.model]
-            st.markdown(f"**{op.comment}** · bağımlı değişken: {label(result.model.endog_names)}")
+            covariance = RG.covariance_label(result)
+            robust = "" if covariance == "nonrobust" else f" · standart hatalar: {covariance} (heteroskedastisiteye dayanıklı)"
+            st.markdown(f"**{op.comment}** · bağımlı değişken: {label(result.model.endog_names)}{robust}")
             show_table(coefficient_display(op, result, label))
             _show_metrics([(_MODEL_LABELS[stat], _model_stat_text(stat, RG.model_quantity(result, stat)))
                            for stat in op.stats])
@@ -519,8 +555,7 @@ def render_operations(operations, state: LabState, label: Callable[[str], str], 
             st.markdown(f"**{op.comment}**")
             show_table(regression_display(op, state, label))
             if op.stars:
-                st.caption("Parantez içinde klasik (geleneksel) standart hatalar. *** p < 0,01; ** p < 0,05; "
-                           "* p < 0,10.")
+                st.caption(f"{standard_error_note(op, state)} *** p < 0,01; ** p < 0,05; * p < 0,10.")
             elif op.standard_errors:
                 st.caption("Parantez içinde standart hatalar.")
             else:

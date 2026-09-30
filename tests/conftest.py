@@ -45,6 +45,27 @@ def find_rscript() -> str | None:
     return None
 
 
+def _r_environment() -> dict[str, str]:
+    """Rscript alt süreçlerinin ortam değişkenleri.
+
+    R iletileri İngilizcedir (``LANGUAGE=en``): testlerin "warning" denetimi R'nin ileti çevirisine bağlı kalmaz
+    (Türkçe yerel ayarda uyarı ve hata metinleri Türkçe yazılır). Linux'ta ``C.UTF-8``, macOS'ta ``en_US.UTF-8``
+    yerel ayarı kullanılır. Windows'ta R 4.2'den beri yerel kodlama UTF-8'dir ve ``C.UTF-8`` adlı yerel ayar yoktur:
+    ``LC_ALL=C.UTF-8`` verilirse R açılışta "Setting LC_... failed" uyarıları yazar ve C yerel ayarına düşer.
+    Windows'ta ``LC_*`` ve ``LANG`` ortamdan çıkarılır; R sistemin yerel ayarıyla (öğrencinin koşulu) çalışır.
+    Üretilen R kodu yerel ayara bağlı sıralama ve harf dönüşümü kullanmaz: çıktısı C, Türkçe ve İngilizce yerel
+    ayarda aynıdır."""
+
+    environment = {key: value for key, value in os.environ.items()
+                   if not key.startswith("LC_") and key not in ("LANG", "LANGUAGE")}
+    environment["LANGUAGE"] = "en"
+    if sys.platform.startswith("linux"):
+        environment.update(LANG="C.UTF-8", LC_ALL="C.UTF-8")
+    elif sys.platform == "darwin":
+        environment.update(LANG="en_US.UTF-8", LC_ALL="en_US.UTF-8")
+    return environment
+
+
 @lru_cache(maxsize=1)
 def _r_missing() -> str | None:
     """Üretilen R kodunu çalıştırmanın önündeki engel; ``None`` ise Rscript ve R ``wooldridge`` paketi hazırdır."""
@@ -54,7 +75,7 @@ def _r_missing() -> str | None:
         return "Rscript bulunamadı (PATH, RSCRIPT ortam değişkeni ve standart R kurulum klasörleri)."
     check = 'quit(status = if (requireNamespace("wooldridge", quietly = TRUE)) 0 else 1)'
     try:
-        result = subprocess.run([rscript, "-e", check], capture_output=True, timeout=120)
+        result = subprocess.run([rscript, "-e", check], capture_output=True, timeout=120, env=_r_environment())
     except (OSError, subprocess.TimeoutExpired) as error:
         return f"Rscript çalıştırılamadı: {error}"
     if result.returncode != 0:
@@ -70,3 +91,10 @@ def rscript() -> str:
     if reason is not None:
         pytest.skip(reason)
     return find_rscript()
+
+
+@pytest.fixture(scope="session")
+def r_environment() -> dict[str, str]:
+    """Rscript alt süreçlerinin ortam değişkenleri (``_r_environment``)."""
+
+    return _r_environment()

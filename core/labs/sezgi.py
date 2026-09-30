@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Mapping
 
 from core.labs.runner import LabState
-from core.labs.spec import LabSpec, LabStep, NoteRef, Operation, ReproClass
+from core.labs.spec import LabSpec, LabStep, NoteRef, Operation, ReproClass, interaction_label
 
 Parameters = Mapping[str, float]
 
@@ -76,7 +76,7 @@ class SimExperiment:
         return {item.key: item.default for item in self.parameters}
 
     def label(self, name: str) -> str:
-        return dict(self.labels).get(name, name)
+        return interaction_label(dict(self.labels), name)
 
     def spec(self, parameters: Parameters) -> LabSpec:
         """Kod üreticilerinin beklediği biçimde tek adımlık bir tanım."""

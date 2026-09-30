@@ -4,7 +4,7 @@
 
 Uygulama çalışma zamanında bir büyük dil modeli veya dış API kullanmaz. Wooldridge veri setleri `wooldridge` Python paketi üzerinden yerel olarak yüklenir.
 
-Konu 0–10 yeni yapıdadır: her konu **Uygulama**, **Sezgi** ve **Kendini sına** sekmelerinden oluşur. Uygulama sekmesi notlardaki laboratuvarın adımlarını izler ve notlarda basılı her sayıyı gerçek veriyle yeniden üretir; öğrenci bir adımda farklı bir spesifikasyon seçebilir (ör. açıklayıcı değişken), seçim yalnız ona bağlı sonraki adımlara geçer ve notlardaki modelle yan yana gösterilir. Her adımın ve her Sezgi deneyinin Python ve R kodu aynı tanımdan üretilir. Konu 11–12 eski sayfalarıyla çalışır ve son blokta yeni yapıya taşınır.
+Her konu **Uygulama**, **Sezgi** ve **Kendini sına** sekmelerinden oluşur. Uygulama sekmesi notlardaki laboratuvarın adımlarını izler ve notlarda basılı her sayıyı gerçek veriyle yeniden üretir; öğrenci bir adımda farklı bir spesifikasyon seçebilir (ör. açıklayıcı değişken), seçim yalnız ona bağlı sonraki adımlara geçer ve notlardaki modelle yan yana gösterilir. Her adımın ve her Sezgi deneyinin Python ve R kodu aynı tanımdan üretilir.
 
 ## Kapsam
 
@@ -35,7 +35,8 @@ Konu 0–10 yeni yapıdadır: her konu **Uygulama**, **Sezgi** ve **Kendini sın
 | 8 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | 3 deney | 24 soru |
 | 9 | Uygulama · Sezgi · Kendini sına | WAGE1 | 3 deney | 24 soru |
 | 10 | Uygulama · Sezgi · Kendini sına | WAGE1 | 3 deney | 24 soru |
-| 11–12 | Eski sayfa (taşınacak) | — | — | — |
+| 11 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | 3 deney | 24 soru |
+| 12 | Uygulama · Sezgi · Kendini sına | HPRICE1, WAGE1 | 3 deney | 24 soru |
 
 ## Teknik yapı
 
@@ -84,13 +85,13 @@ Yalnız uygulamayı çalıştırmak için geliştirme bağımlılıkları yerine
 git diff --check
 ```
 
-`requirements-dev.txt` testlerin ihtiyaç duyduğu paketleri de kurar (üretilen Python kodu için matplotlib). Üretilen R kodunu çalıştıran testler `Rscript` ve `wooldridge` R paketini ister (`install.packages("wooldridge")`). `Rscript` önce `RSCRIPT` ortam değişkeninde, sonra PATH'te, Windows'ta sonra standart R kurulum klasörlerinde (`Program Files\R`, `AppData\Local\Programs\R`; en yeni sürüm) aranır. İkisinden biri yoksa R testleri atlanır; nedeni `pytest -rs` ile görülür.
+`requirements-dev.txt` testlerin ihtiyaç duyduğu paketleri de kurar (üretilen Python kodu için matplotlib). Üretilen R kodunu çalıştıran testler `Rscript` ve `wooldridge` R paketini ister (`install.packages("wooldridge")`). `Rscript` önce `RSCRIPT` ortam değişkeninde, sonra PATH'te, Windows'ta sonra standart R kurulum klasörlerinde (`Program Files\R`, `AppData\Local\Programs\R`; en yeni sürüm) aranır. İkisinden biri yoksa R testleri atlanır; nedeni `pytest -rs` ile görülür. R testleri R'yi İngilizce iletilerle çalıştırır (`LANGUAGE=en`; uyarı denetimi çeviriye bağlı kalmaz). Yerel ayar Linux'ta `C.UTF-8`, macOS'ta `en_US.UTF-8`, Windows'ta sistemin yerel ayarıdır (Windows'ta `C.UTF-8` yoktur). Üretilen R kodunun çıktısı C, Türkçe ve İngilizce yerel ayarda aynıdır.
 
-Sürüm adayı öncesinde otomatik testlere ek olarak Konu 00–12, metin ölçeği seçenekleri, soru düğmeleri, tablolar, metric kartları ve grafik eksenleri canlı Streamlit oturumunda kontrol edilmelidir.
+Sürüm adayı öncesinde otomatik testlere ek olarak Konu 00–12, metin ölçeği seçenekleri, adım ve deney düğmeleri, tablolar, metric kartları ve grafik eksenleri canlı Streamlit oturumunda kontrol edilmelidir.
 
 ## Veri kaynakları
 
-Uygulama Wooldridge veri paketindeki başlıca `WAGE1`, `HPRICE1`, `PHILLIPS`, `CPS78_85`, `WAGEPAN` ve `JTRAIN2` veri setlerini kullanır (kitabın 7. baskısının verisi). Yeni yapıdaki konular veriyi ve Türkçe değişken etiketlerini `core/wooldridge_data.py` üzerinden yükler; eski sayfalar `core/data_registry.py` kullanır. Veri dosyası depoda tutulmaz: uygulama ve üretilen Python kodu `wooldridge` Python paketinden, üretilen R kodu `wooldridge` R paketinden okur; iki paketin aynı veriyi verdiği testle denetlenir.
+Uygulama Wooldridge veri paketindeki başlıca `WAGE1`, `HPRICE1`, `PHILLIPS`, `CPS78_85`, `WAGEPAN` ve `JTRAIN2` veri setlerini kullanır (kitabın 7. baskısının verisi). Konular veriyi ve Türkçe değişken etiketlerini `core/wooldridge_data.py` üzerinden yükler. Veri dosyası depoda tutulmaz: uygulama ve üretilen Python kodu `wooldridge` Python paketinden, üretilen R kodu `wooldridge` R paketinden okur; iki paketin aynı veriyi verdiği testle denetlenir.
 
 ## Dağıtım
 

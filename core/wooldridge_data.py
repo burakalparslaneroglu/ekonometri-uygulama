@@ -73,7 +73,7 @@ DATASETS: dict[str, Dataset] = {
             "bdrms": Variable("Yatak odası sayısı", "adet"),
             "lotsize": Variable("Arsa büyüklüğü", "fit²"),
             "sqrft": Variable("Konut büyüklüğü", "fit²"),
-            "colonial": Variable("Koloni tarzı konut", _INDICATOR),
+            "colonial": Variable("Kolonyal mimari tarz", _INDICATOR),
             "lprice": Variable("Fiyatın logaritması", "log"),
             "lassess": Variable("Vergi değerinin logaritması", "log"),
             "llotsize": Variable("Arsa büyüklüğünün logaritması", "log"),

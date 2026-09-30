@@ -40,8 +40,8 @@ Approach* (7. baskı). Cengage.
 18. Uygulama adımlarında öğrencinin seçimi (ör. açıklayıcı değişken) notlardaki spesifikasyonu varsayılan olarak
     korur. Notlardan farklı bir seçimde kontroller gösterilmez; seçim sonraki adımlara geçer ve notlardaki model ile
     seçilen model yan yana gösterilir.
-19. Yeni yapıya taşınan konu `tests/test_topic_contracts.py` içindeki `MIGRATED_TOPICS` kümesine eklenir. Taşınan
-    konunun eski modülleri ve testleri aynı blokta kaldırılır.
+19. Bütün konular (0–12) yeni yapıdadır ve `tests/test_topic_contracts.py` içindeki `MIGRATED_TOPICS` kümesindedir;
+    kaldırılan eski modüller ve testler (aynı dosyadaki liste) geri eklenmez. Yeni bir konu aynı sözleşmeyle eklenir.
 
 ## Teknik çerçeve
 

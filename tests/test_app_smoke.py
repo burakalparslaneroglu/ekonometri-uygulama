@@ -46,7 +46,8 @@ def test_app_opens_on_topic_00_with_three_tabs() -> None:
 def test_every_lab_step_renders_in_both_languages() -> None:
     app = _run_app()
     for topic, steps in (("konu00", 9), ("konu01", 6), ("konu02", 6), ("konu03", 8), ("konu04", 10), ("konu05", 10),
-                         ("konu06", 6), ("konu07", 10), ("konu08", 7), ("konu09", 8), ("konu10", 11)):
+                         ("konu06", 6), ("konu07", 10), ("konu08", 7), ("konu09", 8), ("konu10", 11),
+                         ("konu11", 10), ("konu12", 8)):
         _select(app, topic)
         for language in ("Python", "R"):
             app.segmented_control(key="code_language").set_value(language).run()
@@ -127,7 +128,7 @@ def test_every_experiment_runs_and_reacts_to_its_sliders() -> None:
     assert _metrics(app)["R²"] == "1,000"
     assert _metrics(app)["Tahmin β̂₁"] == _metrics(app)["Gerçek eğim β₁"] == "13,50"
     for topic in ("konu00", "konu01", "konu02", "konu03", "konu04", "konu05", "konu06", "konu07", "konu08", "konu09",
-                  "konu10"):
+                  "konu10", "konu11", "konu12"):
         _select(app, topic)
         for number in (1, 2, 3):
             app.segmented_control(key=f"{topic}_sezgi_deney").set_value(number).run()
@@ -338,4 +339,28 @@ def test_konu09_and_konu10_choices_notice_and_quizzes() -> None:
     assert any("notlardan farklı" in item.value for item in app.info)
     app.radio(key="konu10_quiz_k01").set_value(2).run()
     app.button(key="konu10_quiz_check_k01").click().run()
+    assert any(item.value == "Doğru." for item in app.success)
+
+
+def test_konu11_and_konu12_choices_notice_and_quizzes() -> None:
+    app = _run_app()
+    _select(app, "konu11")
+    assert "Etkileşim Terimleri ve Gruplar Arasında Sabit ile Eğim Farklılıkları" in _markdown(app)
+    assert _metrics(app)["Dikey fark: en küçük (her eğitim düzeyinde)"] == "−0,3011"
+    app.segmented_control(key="konu11_secim_adim1_kukla").set_value("married").run()
+    assert not app.exception
+    assert _metrics(app)["Dikey fark: en küçük (her eğitim düzeyinde)"] != "−0,3011"
+    assert any("notlardan farklı" in item.value for item in app.info)
+    app.radio(key="konu11_quiz_k01").set_value(0).run()
+    app.button(key="konu11_quiz_check_k01").click().run()
+    assert any(item.value == "Doğru." for item in app.success)
+    _select(app, "konu12")
+    assert "Heteroskedastisite ve Heteroskedastisiteye Dayanıklı Çıkarım" in _markdown(app)
+    assert _metrics(app)["R²"] == "0,672"
+    app.segmented_control(key="konu12_secim_adim1_model").set_value("log").run()
+    assert not app.exception
+    assert _metrics(app)["R²"] == "0,643"
+    assert any("notlardan farklı" in item.value for item in app.info)
+    app.radio(key="konu12_quiz_k01").set_value(3).run()
+    app.button(key="konu12_quiz_check_k01").click().run()
     assert any(item.value == "Doğru." for item in app.success)

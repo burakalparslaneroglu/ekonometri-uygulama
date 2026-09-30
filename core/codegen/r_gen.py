@@ -64,6 +64,7 @@ from core.labs.spec import (
     Groups,
     GroupSummary,
     HeatMap,
+    HeteroskedasticityTest,
     Histogram,
     HypothesisPlot,
     InlineData,
@@ -113,6 +114,7 @@ _FUNCTIONS = {
     "dbinom": "dbinom", "pbinom": "pbinom", "dpois": "dpois", "ppois": "ppois", "dnorm": "dnorm",
     "dhyper_r": "dhyper", "phyper_r": "phyper", "tcdf": "pt", "tsf": "pt({0}, {1}, lower.tail = FALSE)",
     "tinv": "qt", "fsf": "pf({0}, {1}, {2}, lower.tail = FALSE)", "finv": "qf",
+    "chi2sf": "pchisq({0}, {1}, lower.tail = FALSE)", "chi2inv": "qchisq",
     **{name: f"as.numeric({{0}} {symbol} {{1}})" for name, symbol in E.COMPARISONS.items()},
 }
 _REFERENCE_STYLES = tuple(zip(REFERENCE_COLORS, ("2", "3", "4")))
@@ -334,14 +336,75 @@ _STARS = [
     "# Katsayının yanındaki yıldız: *** p < 0,01; ** p < 0,05; * p < 0,10",
     'yildiz <- function(p) if (p < 0.01) "***" else if (p < 0.05) "**" else if (p < 0.10) "*" else ""',
 ]
+_HC_COVARIANCE = [
+    "# Heteroskedastisiteye dayanıklı (HC) kovaryans matrisi, sandviç formülüyle (ek paket gerekmez):",
+    "# (X'X)^-1 X' diag(w) X (X'X)^-1; w: HC0 = u², HC1 = u²·n/(n − k − 1), HC2 = u²/(1 − h), HC3 = u²/(1 − h)²;",
+    "# u: artıklar, h: kaldıraç değerleri (X(X'X)^-1 X' matrisinin köşegeni), k: sabit dışındaki açıklayıcı sayısı",
+    "hc_kovaryans <- function(model, tur) {",
+    "  X <- model.matrix(model)",
+    "  u <- resid(model)",
+    "  n <- nrow(X)",
+    "  k <- ncol(X) - 1  # sabit dışındaki açıklayıcı sayısı",
+    "  ekmek <- solve(crossprod(X))",
+    "  h <- rowSums((X %*% ekmek) * X)",
+    "  w <- switch(tur, HC0 = u^2, HC1 = u^2 * n / (n - k - 1), HC2 = u^2 / (1 - h), HC3 = u^2 / (1 - h)^2)",
+    "  ekmek %*% crossprod(X, X * w) %*% ekmek",
+    "}",
+]
+_HC_SE = [
+    "# Aynı EKK tahmininden HC standart hataları (model yeniden tahmin edilmez)",
+    "hc_sh <- function(model, tur) sqrt(diag(hc_kovaryans(model, tur)))",
+]
+_ROBUST_MODEL = [
+    "# Dayanıklı model: katsayılar lm() ile aynıdır; vcov(), summary() ve confint() HC kovaryansını kullanır.",
+    "# t ve p n − k − 1 serbestlik dereceli t dağılımından; özetteki F istatistiği dayanıklı Wald testidir.",
+    "dayanikli <- function(model, tur) {",
+    "  model$hc_turu <- tur",
+    "  model$hc_kovaryans <- hc_kovaryans(model, tur)",
+    '  class(model) <- c("dayanikli_lm", class(model))',
+    "  model",
+    "}",
+    "vcov.dayanikli_lm <- function(object, ...) object$hc_kovaryans",
+    "summary.dayanikli_lm <- function(object, ...) {",
+    "  ozet <- summary.lm(object, ...)",
+    "  sh <- sqrt(diag(object$hc_kovaryans))",
+    '  t_degeri <- ozet$coefficients[, "Estimate"] / sh',
+    '  ozet$coefficients[, "Std. Error"] <- sh',
+    '  ozet$coefficients[, "t value"] <- t_degeri',
+    '  ozet$coefficients[, "Pr(>|t|)"] <- 2 * pt(abs(t_degeri), df.residual(object), lower.tail = FALSE)',
+    "  b <- coef(object)[-1]  # sabit terim dışındaki katsayılar birlikte sıfır mı (genel F testi)",
+    "  v <- object$hc_kovaryans[-1, -1, drop = FALSE]",
+    '  ozet$fstatistic[["value"]] <- drop(t(b) %*% solve(v, b)) / length(b)',
+    "  ozet",
+    "}",
+    "confint.dayanikli_lm <- function(object, parm, level = 0.95, ...) {",
+    "  sh <- sqrt(diag(object$hc_kovaryans))",
+    "  kritik <- qt(1 - (1 - level) / 2, df.residual(object))",
+    "  aralik <- cbind(coef(object) - kritik * sh, coef(object) + kritik * sh)",
+    '  colnames(aralik) <- paste(100 * c((1 - level) / 2, 1 - (1 - level) / 2), "%")',
+    "  aralik",
+    "}",
+]
 
 
 def r_term(term: str) -> str:
     return "(Intercept)" if term == INTERCEPT else term
 
 
-def coef_expression(model: str, term: str, quantity: str) -> str:
+_ROBUST_COEF = {
+    "se": 'hc_sh({m}, "{c}")[[{t}]]',
+    "t": 'coef({m})[[{t}]] / hc_sh({m}, "{c}")[[{t}]]',
+    "p": '2 * pt(abs(coef({m})[[{t}]] / hc_sh({m}, "{c}")[[{t}]]), df.residual({m}), lower.tail = FALSE)',
+    "ci_low": 'coef({m})[[{t}]] - qt(0.975, df.residual({m})) * hc_sh({m}, "{c}")[[{t}]]',
+    "ci_high": 'coef({m})[[{t}]] + qt(0.975, df.residual({m})) * hc_sh({m}, "{c}")[[{t}]]',
+}
+"""Aynı EKK tahmininden dayanıklı kovaryansla katsayı nicelikleri (``hc_sh`` yardımcısı)."""
+
+
+def coef_expression(model: str, term: str, quantity: str, cov_type: str | None = None) -> str:
     name = text(r_term(term))
+    if cov_type is not None and quantity != "coef":
+        return _ROBUST_COEF[quantity].format(m=model, t=name, c=cov_type)
     if quantity == "coef":
         return f"coef({model})[[{name}]]"
     if quantity in _COEF_COLUMNS:
@@ -437,6 +500,14 @@ class RGenerator(Generator):
             lines += helper + [""]
             if any(isinstance(op, RegressionTable) and op.stars for op in flat):
                 lines += _STARS + [""]
+        robust_models = any(isinstance(op, OLS) and op.cov_type != "nonrobust" for op in flat)
+        robust_values = any(isinstance(op, ModelValue) and op.cov_type is not None for op in flat)
+        if robust_models or robust_values:
+            lines += _HC_COVARIANCE + [""]
+        if robust_values:
+            lines += _HC_SE + [""]
+        if robust_models:
+            lines += _ROBUST_MODEL + [""]
         if with_checks:
             lines += [
                 "# Hesaplanan değeri ders notlarındaki basılı değerle karşılaştırır",
@@ -510,7 +581,13 @@ class RGenerator(Generator):
                 f"print({op.result})",
             ]
         if isinstance(op, OLS):
-            return [f"# {op.comment}", f"{op.name} <- lm({op.formula}, data = {op.frame})"]
+            if op.cov_type == "nonrobust":
+                return [f"# {op.comment}", f"{op.name} <- lm({op.formula}, data = {op.frame})"]
+            return [
+                f"# {op.comment}",
+                f"# Katsayılar EKK ile aynı; standart hata, t, p, güven aralığı ve F {op.cov_type} dayanıklı kovaryansla.",
+                f'{op.name} <- dayanikli(lm({op.formula}, data = {op.frame}), "{op.cov_type}")',
+            ]
         if isinstance(op, Residuals):
             return [f"# {op.comment}", f"{op.frame}${op.name} <- resid({op.model})"]
         if isinstance(op, ShowModel):
@@ -524,6 +601,11 @@ class RGenerator(Generator):
                 note = [f"# Tam çıktı yazdırılır; bu adımda yalnız {read} okunur.",
                         "# Std. Error, t value, Pr(>|t|) ve güven aralıkları Konu 7'de, F istatistiği Konu 8'de "
                         "yorumlanır."]
+            robust = self.robust_models.get(op.model)
+            if robust is not None:
+                note = [f"# Std. Error sütunu {robust} dayanıklı standart hatadır; t value, Pr(>|t|), güven aralıkları ve "
+                        "özetteki F", "# istatistiği aynı kovaryansla hesaplanır (Residual standard error klasik "
+                        "hesaptır)."] + note
             return [
                 f"# {op.comment}",
                 "# R özetindeki karşılıklar: Estimate = coef, Std. Error = std err, t value = t, Pr(>|t|) = P>|t|,",
@@ -534,7 +616,7 @@ class RGenerator(Generator):
                 f'cat("Gözlem sayısı:", nobs({op.model}), "\\n")',
             ]
         if isinstance(op, ModelValue):
-            value = (coef_expression(op.model, op.term, op.quantity) if op.term is not None
+            value = (coef_expression(op.model, op.term, op.quantity, op.cov_type) if op.term is not None
                      else model_expression(op.model, op.quantity))
             return [
                 f"# {op.comment}",
@@ -856,7 +938,9 @@ class RGenerator(Generator):
         if isinstance(op, CoefficientTable):
             return self._coefficient_table(op)
         if isinstance(op, JointTest):
-            return self._joint_test(op)
+            return self._joint_test(op, self.robust_models.get(op.model))
+        if isinstance(op, HeteroskedasticityTest):
+            return self._hetero_test(op)
         if isinstance(op, HypothesisPlot):
             return self._hypothesis(op)
         if isinstance(op, CoefficientPlot):
@@ -1252,8 +1336,10 @@ class RGenerator(Generator):
             columns = [op.y, *(column for column, _ in op.series)]
             labels = [text(op.legend or op.y_label), *(text(label) for _, label in op.series)]
             colors = [f'"{PALETTE[index % len(PALETTE)]}"' for index in range(len(columns))]
+            ltys = ["1"] * len(columns)
+            bands = [column for column, _ in op.bands]
             lines = [
-                f"aralik <- range(c({', '.join(f'{op.frame}${column}' for column in columns)}), na.rm = TRUE)",
+                f"aralik <- range(c({', '.join(f'{op.frame}${column}' for column in columns + bands)}), na.rm = TRUE)",
                 f'plot({op.frame}${op.x}, {op.frame}${op.y}, type = "{kind}", pch = 19, lwd = 2, col = {colors[0]},',
                 "     ylim = c(aralik[1], aralik[2] + 0.25 * diff(aralik)),",
                 f'     xlab = "{_quote(op.x_label)}", ylab = "{_quote(op.y_label)}", main = "{_quote(op.title)}")',
@@ -1261,10 +1347,17 @@ class RGenerator(Generator):
             for column, color in zip(columns[1:], colors[1:]):
                 lines.append(f'lines({op.frame}${op.x}, {op.frame}${column}, type = "{kind}", pch = 19, lwd = 2, '
                              f"col = {color})")
+            for column, label in op.bands:  # bilinen gerçek eğri: kesikli ve koyu
+                lines.append(f'lines({op.frame}${op.x}, {op.frame}${column}, col = "{REFERENCE_COLORS[0]}", lty = 2, '
+                             "lwd = 2)")
+                if label:
+                    labels.append(text(label))
+                    colors.append(f'"{REFERENCE_COLORS[0]}"')
+                    ltys.append("2")
             lines += [
                 "grid()",
-                f'legend("top", legend = c({", ".join(labels)}), col = c({", ".join(colors)}), lwd = 2, '
-                'horiz = TRUE, bty = "n")',
+                f'legend("top", legend = c({", ".join(labels)}), col = c({", ".join(colors)}), '
+                f'lty = c({", ".join(ltys)}), lwd = 2, horiz = TRUE, bty = "n")',
             ]
             return lines
         values = [f"{op.frame}${op.y}", *(name for name, _ in op.references),
@@ -1285,7 +1378,7 @@ class RGenerator(Generator):
         ]
         if legend:
             lines.append("axis(2, at = pretty(aralik))  # eksen değerleri yalnız verinin aralığında")
-            colors, ltys, labels = [f'"{PALETTE[0]}"'], ["1"], [text(op.y_label)]
+            colors, ltys, labels = [f'"{PALETTE[0]}"'], ["1"], [text(op.legend or op.y_label)]
             for index, (name, label) in enumerate(op.references):
                 color, lty = _REFERENCE_STYLES[index % len(_REFERENCE_STYLES)]
                 lines.append(f'abline(h = {name}, col = "{color}", lty = {lty}, lwd = 2)')
@@ -1391,6 +1484,22 @@ class RGenerator(Generator):
             placement = ["# Etiket pozitif sütunun üstüne, negatif sütunun altına yazılır"]
         else:
             position, placement = "3", []
+        if op.references:  # yatay başvuru çizgisi (ör. nominal düzey); değer ekseni çizgiyi de kapsar
+            values = ", ".join(E.format_number(value) for value, _ in op.references)
+            names = ", ".join(f'paste0("{_quote(label)}: ", sayi_metni({E.format_number(value)}, {op.decimals}'
+                              f'{", yuzde = TRUE" if op.percent else ""}))' for value, label in op.references)
+            styles = _REFERENCE_STYLES[:len(op.references)]
+            return lines + [
+                f'konum <- barplot(cizim, col = "{PALETTE[0]}", border = NA, ylim = range(0, cizim, {values}) * 1.15,',
+                f'                 xlab = "{x_label}", ylab = "{y_label}",',
+                f'                 main = "{title}")',
+                *placement,
+                f"text(konum, cizim, labels = {labels}, pos = {position}, xpd = TRUE)",
+                f"abline(h = c({values}), col = {_vector(color for color, _ in styles)}, "
+                f"lty = c({', '.join(style for _, style in styles)}), lwd = 2)",
+                f'legend("topright", legend = c({names}), col = {_vector(color for color, _ in styles)},',
+                f"       lty = c({', '.join(style for _, style in styles)}), lwd = 2, bty = \"n\")",
+            ]
         return lines + [
             f'konum <- barplot(cizim, col = "{PALETTE[0]}", border = NA, ylim = range(0, cizim) * 1.15,',
             f'                 xlab = "{x_label}", ylab = "{y_label}",',
@@ -1699,7 +1808,53 @@ class RGenerator(Generator):
         ]
 
     @staticmethod
-    def _joint_test(op: JointTest) -> list[str]:
+    def _hetero_test(op: HeteroskedasticityTest) -> list[str]:
+        x, aux = f"{op.name}_x", f"{op.name}_yardimci"
+        if op.kind == "bp":
+            build = [
+                "# Breusch–Pagan testi (Koenker'in n·R² biçimi): H0 homoskedastisite. Artık kareleri modelin",
+                "# açıklayıcılarına regrese edilir; LM = n·R², serbestlik derecesi = açıklayıcı sayısı.",
+                f"{x} <- model.matrix({op.model})[, -1, drop = FALSE]  # sabit terim dışındaki sütunlar",
+            ]
+        else:
+            build = [
+                "# White testi: H0 homoskedastisite. Artık kareleri açıklayıcıların düzeyleri, kareleri ve çapraz",
+                "# çarpımları üzerine regrese edilir; LM = n·R², serbestlik derecesi = bağımsız terim sayısı",
+                "# (0/1 kuklanın karesi kendisidir; lm() tekrar eden sütunu atar ve $rank onu saymaz).",
+                f"{x}_duzey <- model.matrix({op.model})[, -1, drop = FALSE]",
+                f"{x} <- {x}_duzey",
+                f"for (i in seq_len(ncol({x}_duzey))) {{",
+                f"  for (j in i:ncol({x}_duzey)) {x} <- cbind({x}, {x}_duzey[, i] * {x}_duzey[, j])  # kareler, çarpımlar",
+                "}",
+            ]
+        return [
+            f"# {op.comment}",
+            *build,
+            f"{aux} <- lm(resid({op.model})^2 ~ {x})",
+            f"{op.name} <- nobs({op.model}) * summary({aux})$r.squared  # LM = n·R²",
+            f"{op.p_value} <- pchisq({op.name}, df = {aux}$rank - 1, lower.tail = FALSE)",
+            f'cat(sprintf("{_sprintf(op.comment)}: LM = %.{op.decimals}f, p-değeri = %.3g\\n", {op.name}, '
+            f"{op.p_value}))",
+        ]
+
+    @staticmethod
+    def _joint_test(op: JointTest, cov_type: str | None = None) -> list[str]:
+        if cov_type is not None:
+            count = len(op.terms)
+            names = f"{op.name}_terimler"
+            return [
+                f"# {op.comment}",
+                f"# H0: {', '.join(f'{term} = 0' for term in op.terms)} (q = {count} kısıt). {cov_type} dayanıklı "
+                "kovaryansla Wald testi,",
+                "# F biçiminde: F = b' V^-1 b / q; b sınanan katsayılar, V onların dayanıklı kovaryans matrisi (vcov).",
+                f"{names} <- {_vector(op.terms)}",
+                f"{op.name}_b <- coef({op.model})[{names}]",
+                f"{op.name} <- drop(t({op.name}_b) %*% solve(vcov({op.model})[{names}, {names}, drop = FALSE], "
+                f"{op.name}_b)) / {count}",
+                f"{op.p_value} <- pf({op.name}, {count}, df.residual({op.model}), lower.tail = FALSE)",
+                f'cat(sprintf("{_sprintf(op.comment)}: F = %.{op.decimals}f, p-değeri = %.3g\\n", {op.name}, '
+                f"{op.p_value}))",
+            ]
         removed = " - ".join(op.terms)
         return [
             f"# {op.comment}",
@@ -1773,8 +1928,9 @@ class RGenerator(Generator):
         band = f'adjustcolor("{PALETTE[1]}", 0.3)'
         lines += [
             "eksen <- seq(eksen_alt, eksen_ust, length.out = 801)",
-            f'plot(eksen, {pdf.format("eksen")}, type = "l", lwd = 2, col = "{PALETTE[0]}", xaxs = "i",',
-            f'     ylim = c(0, 1.08 * max({pdf.format("eksen")})), xlab = "{_quote(op.x_label)}",',
+            f"yogunluk <- {pdf.format('eksen')}",
+            f'plot(eksen, yogunluk, type = "l", lwd = 2, col = "{PALETTE[0]}", xaxs = "i",',
+            f'     ylim = c(0, 1.08 * max(yogunluk[is.finite(yogunluk)])), xlab = "{_quote(op.x_label)}",',
             f'     ylab = "{_quote(op.y_label)}", main = "{_quote(op.title)}")',
             "for (bolge in reddetme_bolgesi) {",
             "  xa <- seq(bolge[1], bolge[2], length.out = 200)",
@@ -1802,6 +1958,42 @@ class RGenerator(Generator):
         labels = [op.term_label(term, self.spec.label) for term in op.terms]
         left = max(5, min(16, round(0.55 * max(len(item) for item in labels)) + 3))  # sol kenar: en uzun ad sığsın
         title = _quote(title_lines(op.title)).replace("\n", "\\n")
+        if op.compare:
+            models = ", ".join(f"{text(legend)} = {name}" for legend, name in op.models)
+            level = E.format_number(op.level)
+            convert = ([
+                "  aralik <- 100 * (exp(aralik) - 1)  # tam yüzde",
+                "  tahmin <- 100 * (exp(tahmin) - 1)",
+            ] if op.percent else [])
+            return [
+                f"# Aynı terimlerin yüzde {E.format_number(round(100 * op.level, 8))} güven aralıkları, modeller alt alta "
+                "(ilk terim ve ilk model üstte)",
+                f"terimler <- {_vector(op.terms)}",
+                f"modeller <- list({models})",
+                f"renkler <- {_colors(len(op.models))}",
+                "konum <- rev(seq_along(terimler))",
+                "sonuc <- lapply(modeller, function(model) {",
+                f"  aralik <- confint(model, level = {level})[terimler, , drop = FALSE]",
+                "  tahmin <- coef(model)[terimler]",
+                *convert,
+                "  list(tahmin = tahmin, aralik = aralik)",
+                "})",
+                f"eski_par <- par(mar = c(5, {left}, 4, 2))  # sol kenar boşluğu: değişken adları yatay yazılır",
+                "plot(NA, xlim = range(c(unlist(lapply(sonuc, `[[`, \"aralik\")), 0)), "
+                "ylim = c(0.5, length(terimler) + 0.5),",
+                f'     yaxt = "n", xlab = "{_quote(op.x_label)}", ylab = "", main = "{title}")',
+                "for (sira in seq_along(sonuc)) {",
+                "  kayma <- 0.25 * ((length(sonuc) - 1) / 2 - (sira - 1))",
+                "  points(sonuc[[sira]]$tahmin, konum + kayma, pch = 19, col = renkler[sira])",
+                "  arrows(sonuc[[sira]]$aralik[, 1], konum + kayma, sonuc[[sira]]$aralik[, 2], konum + kayma, angle = 90,",
+                "         code = 3, length = 0.05, col = renkler[sira], lwd = 2)",
+                "}",
+                f'mtext("{_quote(op.y_label)}", side = 2, line = {left - 1.5:g})',
+                f"axis(2, at = konum, labels = {_vector(labels)}, las = 1)",
+                f'abline(v = 0, lty = 2, col = "{REFERENCE_COLORS[0]}", lwd = 2)',
+                'legend("topright", legend = names(modeller), col = renkler, pch = 19, lwd = 2, bty = "n")',
+                "par(eski_par)",
+            ]
         return [
             f"# Katsayılar ve yüzde {E.format_number(round(100 * op.level, 8))} güven aralıkları; ilk terim en üstte",
             f"terimler <- {_vector(op.terms)}",

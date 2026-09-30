@@ -103,10 +103,20 @@ def _bar(op: BarChart, data: pd.DataFrame) -> go.Figure:
         return style_figure(figure, title=op.title, x_title=op.y_label, y_title=op.x_label)
     trace = go.Bar(
         x=data["kategori"], y=data["deger"], marker_color=PALETTE[0], text=labels, textposition="outside",
-        cliponaxis=False, hovertemplate="%{x}: %{text}<extra></extra>",
+        cliponaxis=False, hovertemplate="%{x}: %{text}<extra></extra>", showlegend=False,
     )
     figure = go.Figure(trace)
     figure.update_xaxes(type="category")
+    for index, (value, name) in enumerate(op.references):  # yatay başvuru çizgisi: sütunların bütün genişliğinde
+        figure.add_trace(go.Scatter(
+            x=[0, 1], y=[value, value], mode="lines", xaxis="x2", hoverinfo="skip",
+            name=f"{name}: {tr_number(value, op.decimals, op.percent)}",
+            line={"color": REFERENCE_COLORS[index % len(REFERENCE_COLORS)], "width": 2.5,
+                  "dash": ("dash", "dot", "dashdot")[index % 3]},
+        ))
+    if op.references:
+        figure.update_layout(xaxis2={"overlaying": "x", "range": [0, 1], "visible": False},
+                             legend={"orientation": "h", "y": -0.25})
     if op.y_range is not None:
         figure.update_yaxes(range=list(op.y_range))
     else:
@@ -170,11 +180,16 @@ def _line(op: LineChart, data: pd.DataFrame, state: LabState) -> go.Figure:
                 line={"color": PALETTE[index % len(PALETTE)], "width": 2.5}, marker={"size": 6},
                 hovertemplate=f"{label}<br>%{{x}}: %{{y}}<extra></extra>",
             ))
+        for column, label in op.bands:  # ör. bilinen gerçek eğri: tahminlerden ayrılsın diye kesikli ve koyu
+            figure.add_trace(go.Scatter(
+                x=x, y=data[column], mode="lines", name=label, showlegend=bool(label), hoverinfo="skip",
+                line={"color": REFERENCE_COLORS[0], "width": 2.5, "dash": "dash"},
+            ))
         figure.update_layout(legend={"orientation": "h", "y": -0.25})
         return style_figure(figure, title=op.title, x_title=op.x_label, y_title=op.y_label)
     figure = go.Figure(
         go.Scatter(
-            x=x, y=data[op.y], mode="lines+markers" if op.markers else "lines", name=op.y_label,
+            x=x, y=data[op.y], mode="lines+markers" if op.markers else "lines", name=op.legend or op.y_label,
             line={"color": PALETTE[0], "width": 2.5}, marker={"size": 8},
             hovertemplate="%{x}: %{y}<extra></extra>" if op.markers else "%{x}: %{y:.3f}<extra></extra>",
         )
@@ -311,7 +326,8 @@ def _histogram(op: Histogram, data: pd.DataFrame, state: LabState) -> go.Figure:
         figure.add_trace(
             go.Scatter(
                 x=[value, value], y=[0, 1], mode="lines", name=label, yaxis="y2", hoverinfo="skip",
-                line={"color": REFERENCE_COLORS[index % len(REFERENCE_COLORS)], "width": 2.5, "dash": "dash"},
+                line={"color": REFERENCE_COLORS[index % len(REFERENCE_COLORS)], "width": 2.5,
+                      "dash": ("dash", "dot", "dashdot")[index % 3]},  # yalnız renge dayanmasın
             )
         )
     if op.curves:  # beklenen sayı: gözlem sayısı × kutu genişliği × f(x)
@@ -649,24 +665,40 @@ def _hypothesis(op: HypothesisPlot, data: dict) -> go.Figure:
     return style_figure(figure, title=op.title, x_title=op.x_label, y_title=op.y_label)
 
 
-def _coefficients(op: CoefficientPlot, data: pd.DataFrame, label) -> go.Figure:
-    """Katsayılar ve güven aralıkları; ilk terim en üstte, sıfırda kesikli dikey çizgi."""
+def coefficient_offsets(count: int) -> list[float]:
+    """Karşılaştırmalı katsayı grafiğinde modellerin dikey kayması: ilk model üstte (üretilen kodla aynı kural)."""
 
-    names = [op.term_label(term, label) for term in data["terim"]]
+    return [0.25 * ((count - 1) / 2 - index) for index in range(count)]
+
+
+def _coefficients(op: CoefficientPlot, data: pd.DataFrame, label) -> go.Figure:
+    """Katsayılar ve güven aralıkları; ilk terim en üstte, sıfırda kesikli dikey çizgi. Karşılaştırılan modeller
+    (``compare``) her terimde alt alta ve ayrı renkte çizilir."""
+
+    names = [op.term_label(term, label) for term in op.terms]
     level = tr_number(100 * op.level, 0)
     unit = "%" if op.percent else ""
-    figure = go.Figure(go.Scatter(
-        x=data["tahmin"], y=names, mode="markers", name=f"Tahmin ve yüzde {level} güven aralığı",
-        marker={"color": PALETTE[0], "size": 10},
-        error_x={"type": "data", "symmetric": False, "array": data["ust"] - data["tahmin"],
-                 "arrayminus": data["tahmin"] - data["alt"], "color": PALETTE[0], "thickness": 2.5, "width": 8},
-        customdata=np.column_stack([data["alt"], data["ust"]]),
-        hovertemplate=(f"%{{y}}: {unit}%{{x:.3f}}<br>aralık [{unit}%{{customdata[0]:.3f}}; "
-                       f"{unit}%{{customdata[1]:.3f}}]<extra></extra>"),
-    ))
+    positions = np.arange(len(op.terms))[::-1].astype(float)  # ilk terim en üstte
+    offsets = coefficient_offsets(len(op.models))
+    figure = go.Figure()
+    for index, (legend, _) in enumerate(op.models):
+        part = data[data["model"] == legend]
+        color = PALETTE[index % len(PALETTE)]
+        figure.add_trace(go.Scatter(
+            x=part["tahmin"], y=positions + offsets[index], mode="markers",
+            name=legend or f"Tahmin ve yüzde {level} güven aralığı", marker={"color": color, "size": 10},
+            error_x={"type": "data", "symmetric": False, "array": part["ust"] - part["tahmin"],
+                     "arrayminus": part["tahmin"] - part["alt"], "color": color, "thickness": 2.5, "width": 8},
+            text=names, customdata=np.column_stack([part["alt"], part["ust"]]),
+            hovertemplate=(f"%{{text}}: {unit}%{{x:.3f}}<br>aralık [{unit}%{{customdata[0]:.3f}}; "
+                           f"{unit}%{{customdata[1]:.3f}}]<extra>{legend}</extra>"),
+        ))
     figure.add_vline(x=0, line={"color": REFERENCE_COLORS[0], "width": 2, "dash": "dash"})
-    figure.update_yaxes(categoryorder="array", categoryarray=names[::-1])
-    figure.update_layout(showlegend=False)
+    figure.update_yaxes(tickvals=list(positions), ticktext=names, range=[-0.6, len(op.terms) - 0.4], showgrid=False)
+    if op.compare:
+        figure.update_layout(legend={"orientation": "h", "y": -0.25})
+    else:
+        figure.update_layout(showlegend=False)
     return style_figure(figure, title=op.title, x_title=op.x_label, y_title=op.y_label)
 
 

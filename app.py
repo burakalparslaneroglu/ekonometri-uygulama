@@ -9,7 +9,6 @@ import streamlit as st
 from core.app_config import APP_CONFIG
 from core.codegen.base import LANGUAGES
 from core.labs.registry import LABS
-from core.session_utils import synchronize_active_topic
 from core.topic_registry import list_topics
 from core.ui_preferences import DEFAULT_TEXT_SCALE_LABEL, TEXT_SCALE_OPTIONS, normalize_text_scale, text_scale_css
 from topics import (
@@ -24,15 +23,16 @@ from topics import (
     konu08_coklu_testler_buyuk_orneklem,
     konu09_fonksiyonel_bicimler,
     konu10_kukla_degiskenler,
+    konu11_etkilesimler_grup_farklari,
+    konu12_heteroskedastisite,
 )
-from topics.konu11_etkilesimler_grup_farklari import render as render_konu11
-from topics.konu12_heteroskedastisite import render as render_konu12
 from topics.lab_ui import CODE_LANGUAGE_KEY
 from topics.shared import keep_widget_state
 
-# Uygulama, Sezgi ve Kendini sına sekmeli konular. (app.py Streamlit'in ana betiğidir: modül düzeyindeki çıplak
-# metinleri "magic" ile sayfaya yazar; bu yüzden burada açıklamalar docstring değil yorum satırıdır.)
-MIGRATED_PAGES = (
+# Konu sayfaları: her biri Uygulama, Sezgi ve Kendini sına sekmelerinden oluşur. (app.py Streamlit'in ana betiğidir:
+# modül düzeyindeki çıplak metinleri "magic" ile sayfaya yazar; bu yüzden burada açıklamalar docstring değil yorum
+# satırıdır.)
+TOPIC_PAGES = (
     konu00_baslangic_arac_kutusu,
     konu01_ampirik_arastirma,
     konu02_veri_turleri_nedensellik,
@@ -44,6 +44,8 @@ MIGRATED_PAGES = (
     konu08_coklu_testler_buyuk_orneklem,
     konu09_fonksiyonel_bicimler,
     konu10_kukla_degiskenler,
+    konu11_etkilesimler_grup_farklari,
+    konu12_heteroskedastisite,
 )
 
 TOPIC_RENDERERS = {
@@ -58,15 +60,15 @@ TOPIC_RENDERERS = {
     "konu08": konu08_coklu_testler_buyuk_orneklem.render,
     "konu09": konu09_fonksiyonel_bicimler.render,
     "konu10": konu10_kukla_degiskenler.render,
-    "konu11": render_konu11,
-    "konu12": render_konu12,
+    "konu11": konu11_etkilesimler_grup_farklari.render,
+    "konu12": konu12_heteroskedastisite.render,
 }
 
 # Kenar çubuğundaki konu adı → konu anahtarı ("Konu 01 · Ekonometri ve Ampirik Araştırma" → "konu01").
 TOPIC_LABELS = {topic.label: topic.key for topic in list_topics()}
 
 # Çizilmediği çalıştırmalarda da korunan seçimler: kod dili, adım, spesifikasyon, deney ve kaydırıcılar.
-WIDGET_KEYS = frozenset({CODE_LANGUAGE_KEY}).union(*(page.widget_keys() for page in MIGRATED_PAGES))
+WIDGET_KEYS = frozenset({CODE_LANGUAGE_KEY}).union(*(page.widget_keys() for page in TOPIC_PAGES))
 
 
 def load_styles(scale: float) -> None:
@@ -124,7 +126,6 @@ def main() -> None:
     st.title(APP_CONFIG.course_name)
     st.caption(APP_CONFIG.application_subtitle)
 
-    synchronize_active_topic(st.session_state, topic_id)
     TOPIC_RENDERERS[topic_id]()
 
 

@@ -39,7 +39,6 @@ def _experiments() -> list:
 
 EXPERIMENTS = _experiments()
 UTF8_OUTPUT = 'sys.stdout.reconfigure(encoding="utf-8")'
-R_ENVIRONMENT = dict(os.environ, LANG="C.UTF-8", LC_ALL="C.UTF-8")
 
 
 def _checks(spec) -> int:
@@ -227,11 +226,11 @@ def test_every_experiment_renders_in_every_language_without_checks() -> None:
 # --- Üretilen kod: R ----------------------------------------------------------------------
 
 @pytest.mark.parametrize("spec", SPECS, ids=lambda s: s.topic_key)
-def test_generated_r_reproduces_the_notes(spec, tmp_path: Path, rscript: str) -> None:
+def test_generated_r_reproduces_the_notes(spec, tmp_path: Path, rscript: str, r_environment: dict[str, str]) -> None:
     path = tmp_path / f"{spec.topic_key}.R"
     path.write_text(render_script(spec, "R"), encoding="utf-8")
     result = subprocess.run([rscript, str(path)], cwd=tmp_path, capture_output=True, encoding="utf-8",
-                            errors="replace", timeout=300, env=R_ENVIRONMENT)
+                            errors="replace", timeout=300, env=r_environment)
     assert result.returncode == 0, result.stdout[-1500:] + result.stderr[-1500:]
     assert result.stdout.count("  OK   ") == _checks(spec)
     assert "warning" not in (result.stdout + result.stderr).lower()
@@ -240,11 +239,12 @@ def test_generated_r_reproduces_the_notes(spec, tmp_path: Path, rscript: str) ->
 
 
 @pytest.mark.parametrize("experiment", EXPERIMENTS, ids=lambda e: e.key)
-def test_generated_r_experiment_runs_cleanly(experiment, tmp_path: Path, rscript: str) -> None:
+def test_generated_r_experiment_runs_cleanly(experiment, tmp_path: Path, rscript: str,
+                                             r_environment: dict[str, str]) -> None:
     path = tmp_path / "deney.R"
     path.write_text(generator(experiment.spec(experiment.defaults()), "R").script(), encoding="utf-8")
     result = subprocess.run([rscript, str(path)], cwd=tmp_path, capture_output=True, encoding="utf-8",
-                            errors="replace", timeout=300, env=R_ENVIRONMENT)
+                            errors="replace", timeout=300, env=r_environment)
     assert result.returncode == 0, result.stderr[-2000:]
     assert "warning" not in (result.stdout + result.stderr).lower()
     assert sorted(item.name for item in tmp_path.iterdir()) == [path.name]

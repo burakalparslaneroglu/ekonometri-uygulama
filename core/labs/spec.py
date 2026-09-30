@@ -22,6 +22,8 @@ sonraki adımların) notlarla karşılaştırması kaldırılır.
 
 from __future__ import annotations
 
+import re
+
 from dataclasses import dataclass, field, fields, replace
 from enum import Enum
 from typing import Callable, Mapping, Union
@@ -475,6 +477,15 @@ class ScalarTable:
     value: str = "Değer"
     title: str = ""
     """Ekranda tablonun üstündeki başlık (ör. "Tablo 9.2: …"); boşsa başlık yazılmaz. Üretilen kodda yorum satırıdır."""
+    row_decimals: tuple[tuple[str, int], ...] = ()
+    """(satır etiketi, basamak): bir satırın ekrandaki basamağı (ör. kapsama oranı 2 basamak); diğerleri ``decimals``."""
+    percent_rows: tuple[str, ...] = ()
+    """Değeri yüzde biriminde olan satırlar: ekranda yüzde işaretiyle (%93,45)."""
+
+    def __post_init__(self) -> None:
+        labels = {label for label, _ in self.rows}
+        if not ({label for label, _ in self.row_decimals} | set(self.percent_rows)) <= labels:
+            raise ValueError("row_decimals ve percent_rows yalnız tablodaki satırlar için verilir.")
 
 
 @dataclass(frozen=True)
@@ -560,9 +571,12 @@ class JoinColumns:
     row_decimals: tuple[tuple[str, int], ...] = ()
     """(satır adı, basamak): bir satırın ekrandaki basamağı; sütun basamağından önce gelir (ör. R² 6, SSR 4)."""
     p_columns: tuple[str, ...] = ()
-    """p-değeri sütunları: p-değeri biçimiyle yazılır (basamakta sıfıra yuvarlanıyorsa "< 0,001")."""
+    """p-değeri sütunları: p-değeri biçimiyle yazılır (basamakta sıfıra yuvarlanıyorsa "< 0,001"); basamak
+    ``column_decimals``'tan, verilmezse 3."""
     title: str = ""
     """Ekranda tablonun üstündeki başlık (ör. "Tablo 9.7: …"); boşsa başlık yazılmaz. Üretilen kodda yorum satırıdır."""
+    term_rows: bool = False
+    """Satırlar model terimleri: ekranda "Türkçe etiket · terim" (yazılım çıktısındaki gibi) yazılır."""
 
     def __post_init__(self) -> None:
         names = {name for name, _, _ in self.columns}
@@ -665,6 +679,12 @@ class BarChart:
     y_range: tuple[float, float] | None = None
     percent: bool = False
     decimals: int = 0
+    references: tuple[tuple[float, str], ...] = ()
+    """(değer, etiket): yatay kesikli başvuru çizgileri (ör. nominal yüzde 95 kapsama); açıklamada görünür."""
+
+    def __post_init__(self) -> None:
+        if self.references and self.horizontal:
+            raise ValueError("Başvuru çizgileri dikey sütunlu grafikte çizilir.")
 
 
 @dataclass(frozen=True)
@@ -738,6 +758,8 @@ class LineChart:
     """(sütun, etiket): aynı eksende düz çizgiyle çizilen başka seriler (ör. enflasyon ve işsizlik oranı). Verilirse
     ilk seri ``y`` sütunudur ve adı ``legend`` alanıdır; bütün seriler açıklamada görünür."""
     legend: str = ""
+    """``y`` serisinin açıklamadaki adı; boşsa ``y_label`` (tek serili grafikte açıklama yalnız başvuru çizgisi, bant
+    ya da dikey çizgi varsa gösterilir)."""
     vlines: tuple[tuple[str, str], ...] = ()
     """(skaler adı, etiket): dikey başvuru çizgileri (ör. karesel modelde dönüm noktası); açıklamada görünür."""
 
@@ -971,10 +993,12 @@ MODEL_QUANTITIES = ("r2", "adj_r2", "nobs", "f", "f_p", "ssr", "df_resid")
 """Modelin tek sayıları: R², düzeltilmiş R², gözlem sayısı, genel anlamlılık F istatistiği ve p-değeri,
 artık kareler toplamı, artık serbestlik derecesi."""
 COEF_QUANTITIES = ("coef", "se", "t", "p", "ci_low", "ci_high")
-"""Katsayının sayıları: tahmin, klasik standart hata, t istatistiği, iki yönlü p-değeri (t dağılımı, n − k
-serbestlik derecesi) ve %95 güven aralığının alt/üst sınırı."""
+"""Katsayının sayıları: tahmin, klasik standart hata, t istatistiği, iki yönlü p-değeri (t dağılımı, n − k − 1
+serbestlik derecesi; k sabit dışındaki açıklayıcı sayısı) ve %95 güven aralığının alt/üst sınırı."""
 INTERCEPT = "Intercept"
 """Sabit terimin adı (statsmodels formül yazımı); R'de ``(Intercept)`` olarak yazılır."""
+COV_TYPES = ("nonrobust", "HC0", "HC1", "HC2", "HC3")
+"""Katsayı kovaryansı: klasik ya da heteroskedastisiteye dayanıklı (White 1980; MacKinnon ve White 1985)."""
 
 
 @dataclass(frozen=True)
@@ -1022,8 +1046,14 @@ class OLS:
 
     Uygulama ve üretilen Python kodu aynı çağrıyı kullanır (statsmodels ``smf.ols(...).fit()``); R'de
     ``lm()``. Standart hatalar klasik (homoskedastik) standart hatalardır; t istatistiği ve p-değeri
-    n − k serbestlik dereceli t dağılımından, güven aralığı aynı dağılımın kritik değeriyle hesaplanır.
+    n − k − 1 serbestlik dereceli t dağılımından (k: sabit dışındaki açıklayıcı sayısı), güven aralığı aynı dağılımın
+    kritik değeriyle hesaplanır.
     Tahmin örneklemi modeldeki değişkenlerde eksik değeri olmayan gözlemlerdir (iki dilde aynı).
+
+    Etkileşim terimi iki değişkenin çarpımıdır ve ``a:b`` yazılır (Konu 11); iki dilde de terimin adı aynıdır. Bir
+    etkileşimin değişkenleri formülde ilk görünme sırasıyla yazılır: R terimi bu sırayla adlandırır (``y ~ b + a:b``
+    R'de ``b:a`` olurdu). Ana etkiler ve etkileşim art arda geliyorsa (``a``, ``b``, ``a:b``) formül notlardaki gibi
+    ``a * b`` yazılır.
     """
 
     name: str
@@ -1031,16 +1061,60 @@ class OLS:
     outcome: str
     regressors: tuple[str, ...]
     comment: str
+    cov_type: str = "nonrobust"
+    """Katsayı kovaryansı: ``nonrobust`` (klasik) ya da heteroskedastisiteye dayanıklı ``HC0``–``HC3`` (Konu 12).
+    Katsayılar, tahmin edilen değerler ve R² değişmez; standart hata, t, p, güven aralığı ve ortak test dayanıklı
+    kovaryansla hesaplanır (t ve F dağılımı, n − k − 1 serbestlik derecesi; statsmodels ``fit(cov_type=..., use_t=True)``,
+    R'de açık sandviç formülü)."""
 
     def __post_init__(self) -> None:
         if not self.regressors:
             raise ValueError("Modelde en az bir açıklayıcı değişken olmalıdır.")
         if len(set(self.regressors)) != len(self.regressors) or self.outcome in self.regressors:
             raise ValueError("Açıklayıcı değişkenler tekil olmalı ve bağımlı değişkeni içermemelidir.")
+        if self.cov_type not in COV_TYPES:
+            raise ValueError(f"Desteklenmeyen kovaryans türü: {self.cov_type}")
+        for term in self.regressors:
+            parts = term.split(":")
+            if len(parts) > 2 or not all(parts) or len(set(parts)) != len(parts):
+                raise ValueError(f"Etkileşim terimi iki farklı değişkenin çarpımıdır (a:b): {term}")
+            if self.outcome in parts:
+                raise ValueError("Bağımlı değişken açıklayıcı terimlerde yer alamaz.")
+        # R etkileşimin adını değişkenlerin formüldeki ilk görünme sırasıyla yazar (y ~ b + a + a:b → "b:a").
+        order = self.variables
+        for term in self.interactions:
+            first, second = term.split(":")
+            if order.index(first) > order.index(second):
+                raise ValueError(f"'{term}' teriminde '{first}' formülde '{second}' değişkeninden önce yer almalıdır "
+                                 "(R etkileşimi değişkenlerin ilk görünme sırasıyla adlandırır).")
+
+    @property
+    def interactions(self) -> tuple[str, ...]:
+        return tuple(term for term in self.regressors if ":" in term)
+
+    @property
+    def variables(self) -> tuple[str, ...]:
+        """Modelin kullandığı veri değişkenleri: bağımlı değişken ve terimlerin (etkileşimlerde çarpanların) değişkenleri,
+        ilk görünme sırasıyla."""
+
+        found = [self.outcome]
+        for term in self.regressors:
+            found += [part for part in term.split(":") if part not in found]
+        return tuple(found)
 
     @property
     def formula(self) -> str:
-        return f"{self.outcome} ~ " + " + ".join(self.regressors)
+        """``y ~ a + b + a:b + z`` art arda ana etkiler ve etkileşimleri notlardaki gibi ``y ~ a * b + z`` yazılır."""
+
+        parts, index, terms = [], 0, self.regressors
+        while index < len(terms):
+            if index + 2 < len(terms) and terms[index + 2] == f"{terms[index]}:{terms[index + 1]}":
+                parts.append(f"{terms[index]} * {terms[index + 1]}")
+                index += 3
+            else:
+                parts.append(terms[index])
+                index += 1
+        return f"{self.outcome} ~ " + " + ".join(parts)
 
 
 @dataclass(frozen=True)
@@ -1090,11 +1164,21 @@ class ModelValue:
     comment: str
     term: str | None = None
     decimals: int = 4
+    cov_type: str | None = None
+    """Katsayının standart hatası, t, p ve güven aralığı bu dayanıklı kovaryansla (``HC0``–``HC3``) hesaplanır; aynı
+    EKK tahmininden, modeli yeniden tahmin etmeden (statsmodels ``model.HC1_se``, R'de sandviç formülü). Verilmezse
+    modelin kendi kovaryansı kullanılır. t ve p n − k − 1 serbestlik dereceli t dağılımından, güven aralığı yüzde 95."""
+    shown: bool = True
+    """``False``: ekranda ölçü olarak gösterilmez (ör. aynı sayı bir tabloda ya da çıktıda); kod yine hesaplar."""
 
     def __post_init__(self) -> None:
         allowed = COEF_QUANTITIES if self.term is not None else MODEL_QUANTITIES
         if self.quantity not in allowed:
             raise ValueError(f"Desteklenmeyen model niceliği: {self.quantity}")
+        if self.cov_type is not None and (self.cov_type not in COV_TYPES[1:] or self.term is None
+                                          or self.quantity == "coef"):
+            raise ValueError("Dayanıklı kovaryans (HC0–HC3) yalnız bir katsayının standart hatası, t, p ve güven "
+                             "aralığı için seçilir.")
 
 
 @dataclass(frozen=True)
@@ -1168,6 +1252,9 @@ class CoefficientTable:
     decimals: int = 3
     t_decimals: int = 2
     p_decimals: int = 3
+    exact: bool = False
+    """``True``: katsayı tam ``decimals`` basamakla yazılır (notlardaki çıktı gibi, −0,0072); ``False``: küçük katsayıda
+    anlamlı basamak kaybolmasın diye basamak artırılır (−0,00724)."""
 
     def __post_init__(self) -> None:
         if not 0 < self.level < 1:
@@ -1181,7 +1268,10 @@ class JointTest:
 
     Kısıtlı model ``terms`` modelden çıkarılarak aynı gözlemlerle tahmin edilir. q = len(terms) kısıt için
     F = [(SSR_R − SSR_UR)/q] / [SSR_UR/(n − k − 1)] ve p = P(F(q, n − k − 1) > F). Uygulama ve Python statsmodels
-    ``model.f_test("x1 = 0, x2 = 0")``, R ``anova(kısıtlı model, model)`` ile hesaplar; sayılar aynıdır. ``name``: F
+    ``model.f_test("x1 = 0, x2 = 0")``, R ``anova(kısıtlı model, model)`` ile hesaplar; sayılar aynıdır. Model
+    dayanıklı kovaryansla tahmin edildiyse (``OLS(cov_type=...)``, Konu 12) test dayanıklı Wald testidir ve F
+    biçiminde raporlanır: F = b'V⁻¹b / q (b sınanan katsayılar, V onların dayanıklı kovaryansı), p = P(F(q, n − k − 1)
+    > F); SSR farkından hesaplanmaz. Python aynı ``f_test`` çağrısıyla, R açık formülle hesaplar. ``name``: F
     istatistiğinin, ``p_value``: p-değerinin skaler adı."""
 
     name: str
@@ -1190,10 +1280,45 @@ class JointTest:
     terms: tuple[str, ...]
     comment: str
     decimals: int = 2
+    p_decimals: int = 3
+    """p-değerinin ekrandaki basamağı (notlardaki gibi, ör. 0,0258 için 4)."""
+    shown: bool = True
+    """``False``: F ve p ekranda ölçü olarak gösterilmez (ör. aynı sayılar bir tabloda); kod yine hesaplar."""
 
     def __post_init__(self) -> None:
         if not self.terms or len(set(self.terms)) != len(self.terms) or INTERCEPT in self.terms:
             raise ValueError("Ortak testte en az bir, tekil ve sabit terim dışında katsayı sınanır.")
+
+
+HETERO_TESTS = {"bp": "Breusch–Pagan", "white": "White"}
+"""Heteroskedastisite testleri: Breusch–Pagan (Koenker'in n·R² biçimi) ve White."""
+
+
+@dataclass(frozen=True)
+class HeteroskedasticityTest:
+    """Heteroskedastisite testi (Konu 12): H₀: Var(u | X) = σ² (homoskedastisite).
+
+    Modelin artıklarının kareleri bir yardımcı regresyonla açıklanır; LM = n·R²_yardımcı ve p = P(χ²_q > LM).
+    ``kind="bp"``: Breusch–Pagan (Koenker 1981 biçimi; statsmodels ``het_breuschpagan`` varsayılanı), yardımcı
+    regresyonda modelin açıklayıcıları, q = açıklayıcı sayısı. ``kind="white"``: White (1980), açıklayıcıların
+    düzeyleri, kareleri ve çapraz çarpımları; q = yardımcı regresyondaki bağımsız terim sayısı (0/1 kuklanın karesi
+    kendisidir, bir kez sayılır). Yardımcı regresyon Python'da (uygulama ve üretilen ``white_testi``) ``numpy`` ile,
+    R'de ``lm()`` ile açıkça kurulur; statsmodels ``het_white`` kullanılmaz (rank ``assert``'ı kukla varken sayısal
+    gürültüye duyarlıdır).
+    ``name``: LM istatistiğinin, ``p_value``: p-değerinin skaler adı."""
+
+    name: str
+    p_value: str
+    model: str
+    kind: str
+    comment: str
+    decimals: int = 3
+    shown: bool = True
+    """``False``: LM ve p ekranda ölçü olarak gösterilmez (ör. aynı sayılar bir tabloda); kod yine hesaplar."""
+
+    def __post_init__(self) -> None:
+        if self.kind not in HETERO_TESTS:
+            raise ValueError(f"Desteklenmeyen heteroskedastisite testi: {self.kind}")
 
 
 @dataclass(frozen=True)
@@ -1243,6 +1368,20 @@ class CoefficientPlot:
     """Log bağımlı değişkende katsayı ve aralık sınırları tam yüzdeye çevrilir: 100·(exp(değer) − 1) (Konu 10)."""
     labels: tuple[tuple[str, str], ...] = ()
     """Eksendeki kısa adlar (ör. ``("south", "Güney")``); verilmeyen terim tanımın etiketiyle yazılır."""
+    compare: tuple[tuple[str, str], ...] = ()
+    """(açıklama, model): aynı terimlerin başka modellerdeki aralıkları, her terimde alt alta ve ayrı renkte (ör. aynı
+    EKK tahmininin geleneksel ve HC1 güven aralıkları; Konu 12). Verilirse ilk modelin açıklaması ``legend``'dır."""
+    legend: str = ""
+
+    def __post_init__(self) -> None:
+        if self.compare and not self.legend:
+            raise ValueError("Karşılaştırmalı katsayı grafiğinde ilk modelin açıklaması (legend) yazılır.")
+
+    @property
+    def models(self) -> tuple[tuple[str, str], ...]:
+        """(açıklama, model): grafikteki bütün modeller, çizim sırasıyla."""
+
+        return ((self.legend, self.model), *self.compare)
 
     def term_label(self, term: str, fallback) -> str:
         return dict(self.labels).get(term) or fallback(term)
@@ -1389,6 +1528,7 @@ Operation = Union[
     SummaryTable,
     CoefficientTable,
     JointTest,
+    HeteroskedasticityTest,
     HypothesisPlot,
     CoefficientPlot,
     IntervalPlot,
@@ -1591,7 +1731,7 @@ def _names(value) -> set[str]:
 
 
 _READ_FIELDS = ("frame", "source", "table", "model", "models", "tables", "series", "columns", "statistic", "df", "df2",
-                "truth", "extra", "curves", "vlines")
+                "truth", "extra", "curves", "vlines", "compare")
 _WRITE_FIELDS = ("result", "name", "p_value")
 _FRAME_WRITERS = ("LoadWooldridge", "InlineData", "FromCounts", "Outcomes", "Selections", "Support", "Rectangles",
                   "NewSample", "Derive", "Event", "MapCodes", "Groups", "RowSum", "Draw", "DrawCount", "DrawCategory",
@@ -1653,6 +1793,23 @@ def tainted_writes(default: tuple, operations: tuple, tainted: set[str]) -> tupl
         dirty = True
         tainted |= missing
     return dirty, tainted
+
+
+_INTERACTION = re.compile(r"[A-Za-z_]\w*:[A-Za-z_]\w*")
+"""Etkileşim teriminin adı: iki değişken adı ve aralarında iki nokta (``female:educ12``)."""
+
+
+def interaction_label(labels: Mapping[str, str], name: str | None) -> str | None:
+    """Etiket; etiketi verilmemiş etkileşim terimi (``a:b``) çarpanlarının etiketleriyle ("Kadın × Eğitim").
+
+    Adsız bir eksen ya da açıklama başlığı (``None``, ör. adı olmayan tablo sütunları) olduğu gibi döner.
+    """
+
+    # "H₀: fark = 0" gibi başlıklar etkileşim değildir
+    if not isinstance(name, str) or name in labels or not _INTERACTION.fullmatch(name):
+        return labels.get(name, name)
+    first, second = name.split(":", 1)
+    return f"{labels.get(first, first)} × {labels.get(second, second)}"
 
 
 # --- Adım ve uygulama --------------------------------------------------------
@@ -1751,9 +1908,10 @@ class LabSpec:
             earlier |= set(step.controls)
 
     def label(self, name: str) -> str:
-        """Değişken, sütun veya tablo için öğrenciye gösterilecek Türkçe ad."""
+        """Değişken, sütun veya tablo için öğrenciye gösterilecek Türkçe ad. Etiketi verilmemiş bir etkileşim terimi
+        (``a:b``) iki değişkenin etiketiyle yazılır: "Kadın × Eğitim"."""
 
-        return dict(self.labels).get(name, name)
+        return interaction_label(dict(self.labels), name)
 
     def step(self, number: int) -> LabStep:
         for item in self.steps:

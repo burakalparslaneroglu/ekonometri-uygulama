@@ -21,6 +21,7 @@ from topics.lab_ui import (
     frame_display,
     regression_display,
     show_table,
+    standard_error_note,
 )
 
 
@@ -137,7 +138,9 @@ def render_experiments(experiments: tuple[SimExperiment, ...]) -> None:
         producer = producers[name]
         if isinstance(producer, RegressionTable):
             show_table(regression_display(producer, state, experiment.label))
-            if producer.standard_errors:
+            if producer.stars:
+                st.caption(f"{standard_error_note(producer, state)} *** p < 0,01; ** p < 0,05; * p < 0,10.")
+            elif producer.standard_errors:
                 st.caption("Parantez içinde standart hatalar.")
             else:
                 st.caption(coefficient_caption(experiment.topic_key))

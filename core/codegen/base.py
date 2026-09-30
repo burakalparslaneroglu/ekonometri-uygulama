@@ -11,6 +11,7 @@ from core.labs.spec import (
     BoxSummary,
     Check,
     ClassTable,
+    CoefficientPlot,
     CopyFrame,
     CrossTab,
     Derive,
@@ -270,6 +271,11 @@ class Generator:
         self.scalar_refs = {
             check.target.name for step in spec.steps for check in step.checks if isinstance(check.target, ScalarTarget)
         }
+        self.robust_models = {
+            op.name: op.cov_type for step in spec.steps for op in flatten(step.operations)
+            if isinstance(op, OLS) and op.cov_type != "nonrobust"
+        }
+        """Dayanıklı kovaryansla tahmin edilen modeller (ad → HC türü): ortak test ve çıktı yorumları buna göre yazılır."""
 
     # --- Alt sınıfların doldurduğu parçalar -------------------------------
     def imports(self, operations: tuple[Operation, ...], *, script: bool = False) -> list[str]:
@@ -394,6 +400,8 @@ class Generator:
                     used.add(value)
             if isinstance(op, RegressionTable):
                 used |= {model for _, model in op.models}
+            if isinstance(op, CoefficientPlot):
+                used |= {model for _, model in op.compare}  # karşılaştırılan modeller
             if isinstance(op, (BoxSummary, BoxPlot)):
                 used |= {frame for frame, _, _ in op.series}  # kutu grafiği serileri
             if isinstance(op, JoinColumns):

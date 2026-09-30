@@ -6,7 +6,15 @@ from collections import Counter
 
 import pytest
 
-from core.quiz.model import FillBlanks, MultipleChoice, NumberBlank, TrueFalse, correct_answer_text, grade
+from core.quiz.model import (
+    Equation,
+    FillBlanks,
+    MultipleChoice,
+    NumberBlank,
+    TrueFalse,
+    correct_answer_text,
+    grade,
+)
 from core.quiz.registry import QUIZZES
 
 SETS = list(QUIZZES.values())
@@ -68,6 +76,16 @@ def test_every_answer_key_grades_itself_and_cites_notes(quiz) -> None:
         assert grade(question, response).correct, (quiz.topic_key, question.key)
         assert correct_answer_text(question)
         assert "§" in question.explanation and len(question.explanation) > 60, question.key
+
+
+@pytest.mark.parametrize("quiz", SETS, ids=lambda q: q.topic_key)
+def test_the_shown_formula_grades_as_correct(quiz) -> None:
+    """Denklem sorularında cevap anahtarının gösterilen (LaTeX) biçimi de doğru okunur: öğrenci gösterilen cevabı
+    aynen yazarsa doğru sayılır."""
+
+    for question in quiz.questions:
+        if isinstance(question.answer, Equation):
+            assert grade(question, question.answer.shown).correct, (quiz.topic_key, question.key)
 
 
 def test_formula_parser_reads_latex_habits_and_left_sides() -> None:
