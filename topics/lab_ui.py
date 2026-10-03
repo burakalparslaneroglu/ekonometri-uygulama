@@ -606,7 +606,10 @@ def render_operations(operations, state: LabState, label: Callable[[str], str], 
             frame = state.frames[op.frame]
             st.markdown(f"**{escape(op.comment)}**")
             show_table(frame_view(op, state, label))
-            dropped = f" Temel sütunlarda boş hücre bulunan {_count(op.dropped)} satır çıkarıldı." if op.dropped else ""
+            names = {name for name, _, _ in op.columns}
+            every = (set(op.required) or names) >= names
+            dropped = (f" {'Kullanılan sütunlardan birinde' if every else 'Temel sütunlarda'} boş hücre bulunan "
+                       f"{_count(op.dropped)} satır çıkarıldı." if op.dropped else "")
             st.caption(f"Analizde {_count(len(frame))} gözlem var.{dropped}")
             continue
         if isinstance(op, CompleteCases):

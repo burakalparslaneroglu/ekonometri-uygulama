@@ -273,7 +273,8 @@ class CustomLab:
     """Bir konunun "Kendi verini yükle" tanımı: roller, genel uygulamayı kuran fonksiyon ve örnek dosya.
 
     ``extra_columns``: öğrenci rollerin dışında ek sütunlar da seçebilir (``extra_use`` kullanımıyla; ör. ek sayısal
-    değişkenler), en çok ``max_extra`` sütun.
+    değişkenler), en çok ``max_extra`` sütun. ``extra_required``: ek sütunlarda da boş hücresi olan satırlar analizden
+    çıkarılır (ör. bütün regresyon modelleri aynı gözlemlerle kurulsun diye).
     """
 
     roles: tuple[Role, ...]
@@ -288,6 +289,7 @@ class CustomLab:
     extra_label: str = "Ek sayısal değişkenler (isteğe bağlı)"
     extra_help: str = ""
     max_extra: int = 6
+    extra_required: bool = False
     validate: Callable[[Case], None] | None = None
     """Konuya özgü ek denetim (ör. dönem sütunu); kullanılamıyorsa ``UploadError``."""
     suggest: Callable[[object], Mapping[str, str]] | None = None
@@ -365,6 +367,7 @@ def _selections(custom: CustomLab, table, choices: CustomChoices):
         if original in uses:
             raise K.UploadError(f"“{original}” sütunu hem bir rol için hem ek sütun olarak seçildi.")
         uses[original] = custom.extra_use
+        required[original] = custom.extra_required
     # Kod adları dosyadaki bütün sütunlar için dosya sırasıyla verilir: bir sütunun adı seçimlere bağlı değildir
     # ("Gelir (TL)" ile "Gelir TL" hangi rollere seçilirse seçilsin gelir_tl ve gelir_tl_2 olur); saklanan adım
     # seçimleri rol değişince başka bir sütunu göstermez.

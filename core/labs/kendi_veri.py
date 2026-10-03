@@ -53,6 +53,11 @@ _R_RESERVED = {
 RESERVED_CODES = frozenset((
     # uygulamaların türettiği sütunlar ve tablolardaki iç adlar (Konu 0–2)
     "gozlem", "sapma", "sapma_kare", "x", "x1", "y", "tam", "log_fark", "fark", "deger", "n", "k", "sira", "atama01",
+    # Konu 3–7: türetilen sütunlar, satır içi tabloların sütunları ve adı sütun adından kurulan skaler ve modellerin
+    # sabit parçaları (ör. b_sabit ile b_<sütun>, yardimci_egim ile yardimci_<sütun> karışmasın)
+    "sabit", "egim", "tahmin", "artik", "artik_kare", "x_sapma", "y_sapma", "carpim", "x_kare", "toplam_kare",
+    "model_kare", "y_artik", "x_artik", "fiyat_tahmin", "y_olcekli", "x_olcekli", "x_ay", "calisan", "konut", "beta1",
+    "beta2", "birlesim", "tahmin_d1", "tahmin_d2", "tahmin_d3",
     # ekranda Türkçe etiketi sabit olan sonuç sütunları (``topics.lab_ui``)
     "frekans", "goreli", "yuzde", "aci", "sayi", "alt", "ust", "orta_nokta", "kumulatif_frekans", "kumulatif_goreli",
     "kumulatif_yuzde", "yapraklar", "yaprak_sayisi", "nicelik", "count", "mean", "std", "min", "max", "sum", "birim",
@@ -635,9 +640,10 @@ def prepare(table: UploadedTable, selections: Iterable[Selection], *, frame: str
             _check_labels(data[item.name].dropna(), item.original)
     notes = []
     if dropped:
-        names = [item.original for item in chosen if item.name in required]
-        notes.append(f"Temel sütunlarda ({_list([f'“{name}”' for name in names])}) boş hücre bulunan {dropped} satır "
-                     f"çıkarıldı; analizde {len(data)} gözlem var.")
+        names = _list([f"“{item.original}”" for item in chosen if item.name in required])
+        scope = (f"Seçilen sütunlardan ({names}) birinde" if len(required) == len(chosen)
+                 else f"Temel sütunlarda ({names})")
+        notes.append(f"{scope} boş hücre bulunan {dropped} satır çıkarıldı; analizde {len(data)} gözlem var.")
     for item in chosen:
         if item.name not in required:
             blanks = int(data[item.name].isna().sum())

@@ -6,7 +6,7 @@ Uygulama çalışma zamanında bir büyük dil modeli veya dış API kullanmaz. 
 
 Her konu **Uygulama**, **Sezgi** ve **Kendini sına** sekmelerinden oluşur. Uygulama sekmesi notlardaki laboratuvarın adımlarını izler ve notlarda basılı her sayıyı gerçek veriyle yeniden üretir; öğrenci bir adımda farklı bir spesifikasyon seçebilir (ör. açıklayıcı değişken), seçim yalnız ona bağlı sonraki adımlara geçer ve notlardaki modelle yan yana gösterilir. Her adımın ve her Sezgi deneyinin Python ve R kodu aynı tanımdan üretilir.
 
-Konu 0–2'de Uygulama sekmesinin üstünde bir **veri kaynağı** seçimi vardır. Varsayılan **Notlardaki örnek**tir (yukarıdaki gibi). **Alternatif örnek** aynı adımları başka Wooldridge verileriyle yapar (WAGE2, OKUN, KIELMC, CRIME4; Konu 2'nin deney adımında veri üretim süreci belgelenmiş kurgusal bir iş arama programı). **Kendi verini yükle** aynı adımları öğrencinin Excel (.xlsx) ya da CSV dosyasıyla yapar: öğrenci sütunları rollere seçer (ör. sonuç ve açıklayıcı değişken), rolü seçilmeyen adım neye ihtiyacı olduğunu yazar. İki ek kaynakta kontrollerin beklenen değerleri uygulamanın kendi hesabıdır; indirilen Python ve R kodu bu değerleri yeniden üretir ve kendi verinde dosyayı betikle aynı klasörden okur. Yüklenen dosya yalnız oturumun belleğinde işlenir; diske, ortak önbelleğe ya da günlüğe yazılmaz.
+Konu 0–7'de Uygulama sekmesinin üstünde bir **veri kaynağı** seçimi vardır. Varsayılan **Notlardaki örnek**tir (yukarıdaki gibi). **Alternatif örnek** aynı adımları başka Wooldridge verileriyle yapar (WAGE2, OKUN, KIELMC, CRIME4; Konu 2'nin deney adımında ve Konu 3'ün sıfır–bir değişken adımında veri üretim süreci belgelenmiş kurgusal bir iş arama programı). **Kendi verini yükle** aynı adımları öğrencinin Excel (.xlsx) ya da CSV dosyasıyla yapar: öğrenci sütunları rollere seçer (ör. sonuç ve açıklayıcı değişken), rolü seçilmeyen adım neye ihtiyacı olduğunu yazar. İki ek kaynakta kontrollerin beklenen değerleri uygulamanın kendi hesabıdır; indirilen Python ve R kodu bu değerleri yeniden üretir ve kendi verinde dosyayı betikle aynı klasörden okur. Yüklenen dosya yalnız oturumun belleğinde işlenir; diske, ortak önbelleğe ya da günlüğe yazılmaz.
 
 ## Kapsam
 
@@ -24,24 +24,23 @@ Konu 0–2'de Uygulama sekmesinin üstünde bir **veri kaynağı** seçimi vard�
 11. Etkileşim Terimleri ve Grup Farkları
 12. Heteroskedastisite ve Dayanıklı Çıkarım
 
-| Konu | Yapı | Uygulama verisi | Sezgi | Kendini sına |
-|---|---|---|---|---|
-| 0 | Uygulama · Sezgi · Kendini sına | Tablo 0.1–0.3 (küçük örnekler), WAGE1 | 3 deney | 24 soru |
-| 1 | Uygulama · Sezgi · Kendini sına | WAGE1 (§1.6) | 3 deney | 24 soru |
-| 2 | Uygulama · Sezgi · Kendini sına | WAGE1, PHILLIPS, CPS78_85, WAGEPAN, JTRAIN2 | 3 deney | 24 soru |
+| Konu | Yapı | Uygulama verisi (notlardaki örnek) | Alternatif örnek | Sezgi | Kendini sına |
+|---|---|---|---|---|---|
+| 0 | Uygulama · Sezgi · Kendini sına | Tablo 0.1–0.3 (küçük örnekler), WAGE1 | WAGE2, OKUN | 3 deney | 24 soru |
+| 1 | Uygulama · Sezgi · Kendini sına | WAGE1 (§1.6) | WAGE2 | 3 deney | 24 soru |
+| 2 | Uygulama · Sezgi · Kendini sına | WAGE1, PHILLIPS, CPS78_85, WAGEPAN, JTRAIN2 | WAGE2, OKUN, KIELMC, CRIME4, kurgusal deney | 3 deney | 24 soru |
+| 3 | Uygulama · Sezgi · Kendini sına | WAGE1, Tablo 3.2 (küçük örnek), JTRAIN2 | WAGE2, kurgusal deney | 3 deney | 24 soru |
+| 4 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | WAGE2, KIELMC (1978) | 3 deney | 24 soru |
+| 5 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | WAGE2, KIELMC (1978) | 3 deney | 24 soru |
+| 6 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | WAGE2, KIELMC (1978) | 3 deney | 24 soru |
+| 7 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | WAGE2, KIELMC (1978) | 3 deney | 24 soru |
+| 8 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | — | 3 deney | 24 soru |
+| 9 | Uygulama · Sezgi · Kendini sına | WAGE1 | — | 3 deney | 24 soru |
+| 10 | Uygulama · Sezgi · Kendini sına | WAGE1 | — | 3 deney | 24 soru |
+| 11 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | — | 3 deney | 24 soru |
+| 12 | Uygulama · Sezgi · Kendini sına | HPRICE1, WAGE1 | — | 3 deney | 24 soru |
 
-Konu 0–2'nin alternatif örnekleri: Konu 0 ve 1 WAGE2 (Konu 0'da ayrıca OKUN), Konu 2 WAGE2, OKUN, KIELMC, CRIME4 ve kurgusal deney verisi.
-
-| 3 | Uygulama · Sezgi · Kendini sına | WAGE1, Tablo 3.2 (küçük örnek), JTRAIN2 | 3 deney | 24 soru |
-| 4 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | 3 deney | 24 soru |
-| 5 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | 3 deney | 24 soru |
-| 6 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | 3 deney | 24 soru |
-| 7 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | 3 deney | 24 soru |
-| 8 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | 3 deney | 24 soru |
-| 9 | Uygulama · Sezgi · Kendini sına | WAGE1 | 3 deney | 24 soru |
-| 10 | Uygulama · Sezgi · Kendini sına | WAGE1 | 3 deney | 24 soru |
-| 11 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | 3 deney | 24 soru |
-| 12 | Uygulama · Sezgi · Kendini sına | HPRICE1, WAGE1 | 3 deney | 24 soru |
+Alternatif örnek ve **Kendi verini yükle** Konu 0–7'de vardır. Konu 4–7'de notlarda HPRICE1 kullanılan konut adımları KIELMC'nin 1978 satışlarıyla (179 konut, tek dönemlik yatay kesit) yapılır. "Kurgusal deney" Konu 2'nin iş arama programıdır (kurayla atama; veri üretim süreci belgelidir, gerçek etki bilinir). Konu 3–7'de kendi verinde sonuç ve temel açıklayıcı değişken zorunludur, en çok üç ek sayısal değişken seçilir; seçilen sütunlardan birinde boş hücresi olan satırlar çıkarılır, böylece bütün modeller aynı gözlemlerle kurulur.
 
 ## Teknik yapı
 
@@ -99,7 +98,7 @@ Sürüm adayı öncesinde otomatik testlere ek olarak Konu 00–12, metin ölçe
 
 ## Veri kaynakları
 
-Uygulama Wooldridge veri paketindeki başlıca `WAGE1`, `HPRICE1`, `PHILLIPS`, `CPS78_85`, `WAGEPAN` ve `JTRAIN2` veri setlerini, Konu 0–2'nin alternatif örneklerinde ayrıca `WAGE2`, `OKUN`, `KIELMC` ve `CRIME4` veri setlerini kullanır (kitabın 7. baskısının verisi). Konu 2'nin alternatif deney adımındaki iş arama programı kurgusaldır (`core/labs/kurgusal_veri.py`; veri üretim süreci modül belgesinde yazılıdır, tohum 305). Kendi veri seçeneğinin örnek dosyası da bu kurgusal veriden üretilir. Konular veriyi ve Türkçe değişken etiketlerini `core/wooldridge_data.py` üzerinden yükler. Veri dosyası depoda tutulmaz: uygulama ve üretilen Python kodu `wooldridge` Python paketinden, üretilen R kodu `wooldridge` R paketinden okur; iki paketin aynı veriyi verdiği testle denetlenir.
+Uygulama Wooldridge veri paketindeki başlıca `WAGE1`, `HPRICE1`, `PHILLIPS`, `CPS78_85`, `WAGEPAN` ve `JTRAIN2` veri setlerini, Konu 0–7'nin alternatif örneklerinde ayrıca `WAGE2`, `OKUN`, `KIELMC` (Konu 4–7'de yalnız 1978 satışları) ve `CRIME4` veri setlerini kullanır (kitabın 7. baskısının verisi). Konu 2'nin alternatif deney adımındaki ve Konu 3'ün sıfır–bir değişken adımındaki iş arama programı kurgusaldır (`core/labs/kurgusal_veri.py`; veri üretim süreci modül belgesinde yazılıdır, tohum 305). Kendi veri seçeneğinin örnek dosyaları da bu kurgusal veriden üretilir. Konular veriyi ve Türkçe değişken etiketlerini `core/wooldridge_data.py` üzerinden yükler. Veri dosyası depoda tutulmaz: uygulama ve üretilen Python kodu `wooldridge` Python paketinden, üretilen R kodu `wooldridge` R paketinden okur; iki paketin aynı veriyi verdiği testle denetlenir.
 
 ## Dağıtım
 

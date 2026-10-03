@@ -48,15 +48,18 @@ from core.labs.spec import (
     CompleteCases,
     CrossTab,
     FrequencyTable,
+    InlineData,
     JoinColumns,
     LabSpec,
     LabStep,
+    LoadWooldridge,
     MapCodes,
     ModelTarget,
     MonteCarlo,
     MultiChoice,
     NoteRef,
     NumberChoice,
+    OLS,
     Outcomes,
     ReadFile,
     RegressionTable,
@@ -87,6 +90,12 @@ SAMPLE_CHOICES = {
     "konu02_deney": ("Deney", CustomChoices(
         roles={"sayisal": "Yıllık kazanç (bin TL)", "atama": "Grup", "deney_sonuc": "Yıllık kazanç (bin TL)"},
         extra=("Yaş", "Eğitim yılı", "Önceki yıllık kazanç (bin TL)"), picks={"atama": "Program"})),
+    "konu03": (None, CustomChoices(
+        roles={"sonuc": "Yıllık kazanç (bin TL)", "aciklayici": "Eğitim yılı", "gosterge": "Grup"},
+        extra=("Yaş", "Önceki yıllık kazanç (bin TL)"), picks={"gosterge": "Program"})),
+    **{topic: (None, CustomChoices(roles={"sonuc": "Yıllık kazanç (bin TL)", "aciklayici": "Eğitim yılı"},
+                                   extra=("Yaş", "Önceki yıllık kazanç (bin TL)")))
+       for topic in ("konu04", "konu05", "konu06", "konu07")},
 }
 AGG_SHOW = "ignore:FigureCanvasAgg is non-interactive:UserWarning"
 """Agg arka ucunda ``plt.show()`` bu uyarıyı basar; betiğin kendisinden değil test ortamından gelir."""
@@ -135,6 +144,12 @@ def _csv_spec(name: str) -> tuple[LabSpec, tuple[str, bytes]]:
     return VARIANTS[_topic(name)].custom.build(case), ("ornek.csv", data)
 
 
+def _read(spec: LabSpec) -> ReadFile:
+    """Dosyayı okuyan ilk işlem (çoğu konuda Adım 1'in ilk işlemi; Konu 7'de Adım 2)."""
+
+    return next(op for step in spec.steps for op in step.operations if isinstance(op, ReadFile))
+
+
 def _python_environment() -> dict[str, str]:
     warnings = ",".join(item for item in (os.environ.get("PYTHONWARNINGS", ""), AGG_SHOW) if item)
     return dict(os.environ, MPLBACKEND="Agg", PYTHONIOENCODING="cp1254", PYTHONWARNINGS=warnings)
@@ -166,8 +181,8 @@ def _reproduce(spec: LabSpec, result, path: Path, folder: Path, data: tuple[str,
 
 # --- Kayıt ve alternatif örnek ------------------------------------------------------------------------------
 
-def test_registry_covers_topics_0_to_2_with_the_approved_labels() -> None:
-    assert TOPICS == ["konu00", "konu01", "konu02"]
+def test_registry_covers_topics_0_to_7_with_the_approved_labels() -> None:
+    assert TOPICS == [f"konu{number:02d}" for number in range(8)]
     assert SOURCE_LABELS == {"notlar": "Notlardaki örnek", "alternatif": "Alternatif örnek",
                              "kendi": "Kendi verini yükle"}
     assert all(VARIANTS[topic].custom is not None and VARIANTS[topic].story for topic in TOPICS)
@@ -205,7 +220,7 @@ def test_every_alternative_step_renders(topic: str) -> None:
     assert "(uygulama: " in script and "(notlar: " not in script and "Uygulamayla karşılaştırma:" in script
     assert "wooldridge paketinden okunur" in script
     compile(script, f"{topic}.py", "exec")
-    resolved = spec.resolve({spec.controls[0].key: spec.controls[0].options[-1][0]})
+    resolved = spec.resolve(_single_changes(spec)[0])
     assert script_filename(resolved, "R") == f"ikt305_{topic}_alternatif_secim.R"
     assert "varsayılandan farklı, seçilen spesifikasyon" in render_script(resolved, "R")
 
@@ -693,6 +708,219 @@ def test_fictional_program_rows_follow_the_documented_dgp() -> None:
     assert frozen["kadin"].tolist() == kadin.tolist() and frozen["evli"].tolist() == evli.tolist()
 
 
+# --- Konu 3–7 alternatif örnekleri: bağımsız hesap ----------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def houses() -> pd.DataFrame:
+    """KIELMC'nin 1978 satışları: notlarda HPRICE1 kullanılan konut adımlarının alternatif verisi."""
+
+    kielmc = W.load("kielmc")
+    return kielmc[kielmc["year"] == 1978].reset_index(drop=True)
+
+
+def _program() -> pd.DataFrame:
+    return pd.DataFrame(list(PROGRAM_ROWS), columns=list(PROGRAM_COLUMNS))
+
+
+def test_konu03_alternative_numbers_follow_wage2_and_the_program(wage2: pd.DataFrame) -> None:
+    spec = VARIANTS["konu03"].alternative()
+    state = run_operations(_operations(spec))
+    s = state.scalars
+    means = wage2.groupby("educ")["wage"].agg(["count", "mean"])
+    np.testing.assert_allclose(state.tables["ortalamalar"][["count", "mean"]].to_numpy(float), means.to_numpy(float),
+                               rtol=0, atol=1e-9)
+    assert (s["n_x"], s["n_x1"]) == (393, 85)
+    assert s["fark"] == pytest.approx(means.loc[13, "mean"] - means.loc[12, "mean"])
+    # Adım 3: eğitime göre kararlı sıralamada 0, n/4, n/2, 3n/4 ve son konumdaki beş çalışan
+    ordered = wage2.reset_index(drop=True).sort_values("educ", kind="stable")
+    rows = ordered.iloc[[(index * (len(wage2) - 1)) // 4 for index in range(5)]]
+    small = state.frames["kucuk_ornek"]
+    assert small["gozlem"].tolist() == (rows.index + 1).tolist() == [112, 379, 907, 73, 901]
+    assert small["wage"].tolist() == rows["wage"].tolist() and spec.step(3).controls[0].default == rows["wage"].iloc[4]
+    slope, intercept = np.polyfit(rows["educ"], rows["wage"], 1)
+    assert (s["b1_kucuk"], s["b0_kucuk"]) == (pytest.approx(slope), pytest.approx(intercept))
+    assert abs(s["artik_toplami"]) < 1e-9
+    model = smf.ols("wage ~ educ", data=wage2).fit()
+    assert (s["b0"], s["b1"]) == (pytest.approx(model.params["Intercept"]), pytest.approx(model.params["educ"]))
+    assert s["tahmin_x0"] == pytest.approx(model.params["Intercept"] + 12 * model.params["educ"])
+    assert s["artik_y0"] == pytest.approx(900 - s["tahmin_x0"])
+    program = _program()
+    groups = program.groupby("program")["kazanc"].mean()
+    fit = smf.ols("kazanc ~ program", data=program).fit()
+    assert (s["ort_0"], s["ort_1"]) == (pytest.approx(groups[0]), pytest.approx(groups[1]))
+    assert (s["sabit_j"], s["egim_j"]) == (pytest.approx(fit.params["Intercept"]), pytest.approx(groups[1] - groups[0]))
+    text = spec.step(6).note_for(run_operations(spec.operations_through(6)), spec.normalize({}))
+    assert "kurayla atandığı için" in text and "27,6 bin TL" in text
+    change = {"adim6_d": "kadin"}
+    women = run_operations(spec.resolve(change).operations_through(6))
+    assert women.scalars["egim_j"] == pytest.approx(program.groupby("kadin")["kazanc"].mean().diff().iloc[1])
+    text = spec.step(6).note_for(women, spec.normalize(change))
+    assert "rastgele atanmadı" in text and "nedensel etki olarak okunamaz" in text and "27,6" not in text
+
+
+def test_konu04_alternative_numbers_follow_wage2_and_kielmc(wage2: pd.DataFrame, houses: pd.DataFrame) -> None:
+    spec = VARIANTS["konu04"].alternative()
+    state = run_operations(_operations(spec))
+    s = state.scalars
+    model = smf.ols("wage ~ educ", data=wage2).fit()
+    assert (s["b0"], s["b1"], s["n"]) == (pytest.approx(model.params["Intercept"]), pytest.approx(model.params["educ"]),
+                                         935)
+    assert s["ort_y"] == pytest.approx(wage2["wage"].mean())
+    assert s["ort_tahmin"] == pytest.approx(s["ort_y"]) and s["dogru_xbar"] == pytest.approx(s["ort_y"])
+    assert abs(s["artik_toplami"]) < 1e-6
+    # Adım 3'ün sayıları verinin kendisinden: ortalama, ilk çalışanın tahmini ve kazancı (tam sayıya yuvarlanmış)
+    defaults = {control.key: control.default for control in spec.step(3).controls}
+    assert defaults == {"adim3_ybar": round(wage2["wage"].mean()), "adim3_yhat": round(model.fittedvalues.iloc[0]),
+                        "adim3_y": wage2["wage"].iloc[0]} == {"adim3_ybar": 958, "adim3_yhat": 870, "adim3_y": 769}
+    assert (s["toplam_sapma"], s["model_sapma"], s["artik_sapma"]) == (-189, -88, -101)
+    assert (s["tkt"], s["mkt"], s["hkt"]) == (pytest.approx(model.centered_tss), pytest.approx(model.ess),
+                                              pytest.approx(model.ssr))
+    assert s["r2_yazilim"] == pytest.approx(model.rsquared)
+    assert s["r"] == pytest.approx(np.corrcoef(wage2["wage"], wage2["educ"])[0, 1])
+    level = smf.ols("price ~ area", data=houses).fit()
+    assert len(houses) == 179 and s["r2_birim"] == pytest.approx(level.rsquared)
+    assert (s["sabit_birim"], s["egim_birim"]) == (pytest.approx(level.params["Intercept"]), pytest.approx(level.params["area"]))
+    assert s["yuz_fit_bin"] == pytest.approx(100 * level.params["area"] / 1000)
+    scaled = _scalars(spec, {"adim6_y": "bin"})
+    assert scaled["egim_birim"] == pytest.approx(level.params["area"] / 1000)
+    assert scaled["sabit_birim"] == pytest.approx(level.params["Intercept"] / 1000)
+    assert _scalars(spec, {"adim6_x": "yuz"})["egim_birim"] == pytest.approx(100 * level.params["area"])
+    forms = {name: smf.ols(formula, data=houses).fit() for name, formula in (
+        ("dd", "price ~ area"), ("ld", "lprice ~ area"), ("dl", "price ~ larea"), ("ll", "lprice ~ larea"))}
+    assert s["egim_ld"] == pytest.approx(forms["ld"].params["area"])
+    assert s["egim_dl"] == pytest.approx(forms["dl"].params["larea"])
+    assert s["egim_ll"] == pytest.approx(forms["ll"].params["larea"])
+    assert s["dd_fark"] == pytest.approx(100 * forms["dd"].params["area"])  # 100 fit²lik fark, dolar
+    assert s["ld_fark"] == pytest.approx(100 * 100 * forms["ld"].params["area"])  # 100 fit², yaklaşık yüzde
+    assert (s["dl_1"], s["ll_10"]) == (pytest.approx(forms["dl"].params["larea"] / 100),
+                                       pytest.approx(10 * forms["ll"].params["larea"]))
+    table = state.tables["dort_bicim"]
+    assert table.loc["r2"].tolist() == pytest.approx([forms[name].rsquared for name in ("dd", "ld", "dl", "ll")])
+    log_model = smf.ols("lwage ~ educ", data=wage2).fit()
+    assert (s["b1_log"], s["r2_log"]) == (pytest.approx(log_model.params["educ"]), pytest.approx(log_model.rsquared))
+    assert s["yuzde_log"] == pytest.approx(100 * log_model.params["educ"])
+    assert s["makale_esneklik"] == pytest.approx(forms["ll"].params["larea"])
+
+
+def test_konu05_alternative_numbers_follow_wage2_and_kielmc(wage2: pd.DataFrame, houses: pd.DataFrame) -> None:
+    spec = VARIANTS["konu05"].alternative()
+    state = run_operations(_operations(spec))
+    s = state.scalars
+    simple = smf.ols("wage ~ educ", data=wage2).fit()
+    multi = smf.ols("wage ~ educ + exper + tenure", data=wage2).fit()
+    assert s["basit_x"] == pytest.approx(simple.params["educ"]) and s["b_sabit"] == pytest.approx(multi.params["Intercept"])
+    assert [s[f"b_{name}"] for name in ("educ", "exper", "tenure")] == pytest.approx(
+        multi.params[["educ", "exper", "tenure"]].tolist())
+    profiles = pd.DataFrame({"educ": [12, 16], "exper": [10, 10], "tenure": [5, 5]})
+    predicted = multi.predict(profiles).tolist()
+    assert [s["tahmin_A"], s["tahmin_B"]] == pytest.approx(predicted)
+    assert s["fark_BA"] == pytest.approx(4 * multi.params["educ"]) and s["x_farki"] == pytest.approx(s["fark_BA"])
+    assert s["birey_tahmin"] == pytest.approx(predicted[1]) and s["birey_artik"] == pytest.approx(1200 - predicted[1])
+    x_residual = smf.ols("educ ~ exper + tenure", data=wage2).fit().resid
+    y_residual = smf.ols("wage ~ exper + tenure", data=wage2).fit().resid
+    assert s["kismi_egim"] == pytest.approx(np.polyfit(x_residual, y_residual, 1)[0])
+    assert s["kismi_egim"] == pytest.approx(multi.params["educ"]) and abs(s["kismi_fark"]) < 1e-9
+    log_multi = smf.ols("lwage ~ educ + exper + tenure", data=wage2).fit()
+    assert (s["r2_kod"], s["r2d_kod"]) == (pytest.approx(multi.rsquared), pytest.approx(multi.rsquared_adj))
+    assert s["log_x"] == pytest.approx(log_multi.params["educ"])
+    assert s["basit_b_exper"] == pytest.approx(smf.ols("wage ~ exper", data=wage2).fit().params["exper"])
+    assert s["basit_b_tenure"] == pytest.approx(smf.ols("wage ~ tenure", data=wage2).fit().params["tenure"])
+    house = smf.ols("price ~ area + rooms + baths", data=houses).fit()
+    assert [s[f"f_{name}"] for name in ("area", "rooms", "baths")] == pytest.approx(
+        house.params[["area", "rooms", "baths"]].tolist())
+    rows = pd.DataFrame({"area": [2000, 2000, 2250], "rooms": [7, 8, 8], "baths": [2, 2, 3]})
+    assert [s["konut_A"], s["konut_B"], s["konut_C"]] == pytest.approx(house.predict(rows).tolist())
+    assert s["konut_fark"] == pytest.approx(house.params["rooms"]) and s["yuz_fit"] == pytest.approx(100 * house.params["area"])
+    wide = smf.ols("wage ~ educ + exper + tenure + IQ", data=wage2).fit()
+    n = len(wage2)
+    assert s["r2d_elle"] == pytest.approx(1 - (1 - multi.rsquared) * (n - 1) / (n - 3 - 1))
+    assert s["r2d_elle"] == pytest.approx(multi.rsquared_adj) and s["r2_genis"] == pytest.approx(wide.rsquared)
+    assert state.tables["abc"]["deger"].tolist() == pytest.approx(
+        [simple.rsquared_adj, multi.rsquared_adj, wide.rsquared_adj])
+    small = run_operations(_operations(spec.resolve({"adim8_n": 20}))).tables["abc"]["deger"]
+    assert small.tolist() == pytest.approx([1 - (1 - fit.rsquared) * 19 / (19 - k)
+                                            for fit, k in ((simple, 1), (multi, 3), (wide, 4))])
+
+
+def test_konu06_alternative_numbers_follow_wage2_and_kielmc(wage2: pd.DataFrame, houses: pd.DataFrame) -> None:
+    spec = VARIANTS["konu06"].alternative()
+    state = run_operations(_operations(spec))
+    s = state.scalars
+    short = smf.ols("wage ~ educ", data=wage2).fit()
+    long = smf.ols("wage ~ educ + IQ", data=wage2).fit()
+    auxiliary = smf.ols("IQ ~ educ", data=wage2).fit()
+    assert (s["kisa_x"], s["uzun_x"], s["uzun_z"]) == (pytest.approx(short.params["educ"]),
+                                                      pytest.approx(long.params["educ"]), pytest.approx(long.params["IQ"]))
+    assert (s["yardimci_sabit"], s["yardimci_egim"]) == (pytest.approx(auxiliary.params["Intercept"]),
+                                                        pytest.approx(auxiliary.params["educ"]))
+    assert s["katki"] == pytest.approx(long.params["IQ"] * auxiliary.params["educ"])
+    assert s["yeniden"] == pytest.approx(short.params["educ"], abs=1e-9)  # kısa = uzun + β̂ · δ̂ (örneklemde tam)
+    assert s["x_genis"] == pytest.approx(smf.ols("wage ~ educ + exper + tenure + IQ", data=wage2).fit().params["educ"])
+    kww = run_operations(spec.resolve({"adim1_z": "KWW"}).operations_through(2)).scalars
+    assert kww["katki"] == pytest.approx(kww["kisa_x"] - kww["uzun_x"])
+    assert kww["uzun_z"] == pytest.approx(smf.ols("wage ~ educ + KWW", data=wage2).fit().params["KWW"])
+    pairs = state.frames["ciftler"]
+    assert (pairs["beta1"] + 12 * pairs["beta2"]).tolist() == pytest.approx([60.0] * len(pairs))
+    # Bir değişkenle 12 katının korelasyonu 1'dir; kayan noktada 1 − 10⁻¹⁵ çıkabilir (Windows'ta 0,9999999999999991)
+    assert s["r_ay"] == pytest.approx(1.0, abs=1e-12)
+    assert "0,4153 ve 4,9833" in spec.step(4).explanation  # statsmodels'ın en küçük normlu çözümü: b/145, 12b/145
+    assert short.params["educ"] / 145 == pytest.approx(0.41527, abs=5e-6)
+    vif = state.tables["vif"]["deger"]
+    for name, label in (("area", "Konut büyüklüğü"), ("rooms", "Oda sayısı"), ("baths", "Banyo sayısı")):
+        others = " + ".join(item for item in ("area", "rooms", "baths") if item != name)
+        r2 = smf.ols(f"{name} ~ {others}", data=houses).fit().rsquared
+        assert s[f"r2_{name}"] == pytest.approx(r2) and vif[label] == pytest.approx(1 / (1 - r2))
+    assert s["r_cift"] == pytest.approx(np.corrcoef(houses["area"], houses["baths"])[0, 1])
+
+
+def test_konu07_alternative_numbers_follow_wage2_and_kielmc(wage2: pd.DataFrame, houses: pd.DataFrame) -> None:
+    from scipy import stats
+
+    spec = VARIANTS["konu07"].alternative()
+    state = run_operations(_operations(spec))
+    s = state.scalars
+    model = smf.ols("wage ~ educ + exper + tenure", data=wage2).fit()
+    # Sayısal örnekler p-değeri en büyük katsayıdan (kıdem) kurulur; değerleri yuvarlanmıştır
+    assert model.pvalues.drop("Intercept").idxmax() == "tenure"
+    controls = {control.key: control.default for control in spec.controls}
+    assert (controls["adim1_b"], controls["adim1_se"]) == (round(model.params["tenure"], 2), round(model.bse["tenure"], 1))
+    assert (s["t_ornek"], s["kritik_buyuk"]) == (pytest.approx(8.26 / 2.5), pytest.approx(stats.norm.ppf(0.975)))
+    critical = state.tables["kritik_degerler"]["deger"]
+    assert critical[["10", "20", "30", "60", "120"]].tolist() == pytest.approx(
+        [stats.t.ppf(0.975, df) for df in (10, 20, 30, 60, 120)])
+    b, se, df = model.params["educ"], model.bse["educ"], model.df_resid
+    assert (s["b2"], s["sh2"], s["sd_artik"]) == (pytest.approx(b), pytest.approx(se), 931)
+    assert (s["t0_2"], s["ta_2"]) == (pytest.approx(b / se), pytest.approx((b - 65) / se))
+    assert s["kritik_2"] == pytest.approx(stats.t.ppf(0.975, df))
+    assert (s["t3"], s["p3"]) == (pytest.approx(model.tvalues["tenure"]), pytest.approx(model.pvalues["tenure"]))
+    assert (s["alt4"], s["ust4"]) == (pytest.approx(8.26 - stats.norm.ppf(0.975) * 2.5),
+                                      pytest.approx(8.26 + stats.norm.ppf(0.975) * 2.5))
+    table = state.tables["tablo74"]
+    interval = model.conf_int()
+    np.testing.assert_allclose(table[["katsayi", "sh", "t", "p"]].to_numpy(float),
+                               np.column_stack([model.params, model.bse, model.tvalues, model.pvalues])[1:],
+                               rtol=1e-10, atol=0)
+    np.testing.assert_allclose(table[["alt", "ust"]].to_numpy(float), interval.iloc[1:].to_numpy(), rtol=1e-10, atol=0)
+    assert s["p_secilen"] == pytest.approx(stats.t.sf(model.tvalues["tenure"], df))
+    assert s["p_iki6"] == pytest.approx(model.pvalues["tenure"])
+    left = run_operations(_operations(spec.resolve({"adim6_yon": "sol"}))).scalars
+    assert left["p_secilen"] == pytest.approx(stats.t.cdf(model.tvalues["tenure"], df))
+    logged = smf.ols("lwage ~ educ + exper + tenure", data=wage2).fit()
+    article = state.tables["tablo75"]
+    assert article.loc["educ", "(2) ln(Aylık kazanç)"] == pytest.approx(logged.params["educ"])
+    assert article.loc["educ_sh", "(2) ln(Aylık kazanç)"] == pytest.approx(logged.bse["educ"])
+    assert (s["fark_tahmin"], s["fark_alt"], s["fark_ust"]) == (
+        pytest.approx(4 * b), pytest.approx(4 * interval.loc["educ", 0]), pytest.approx(4 * interval.loc["educ", 1]))
+    house = smf.ols("price ~ area + rooms + baths", data=houses).fit()
+    second = state.tables["tablo76"]
+    assert second["p"].tolist() == pytest.approx(house.pvalues[["area", "rooms", "baths"]].tolist())
+    assert house.pvalues.drop("Intercept").idxmax() == "rooms" and 0.2 < house.pvalues["rooms"] < 0.3
+    text = spec.step(9).note_for(run_operations(spec.operations_through(9)), spec.normalize({}))
+    assert "oda sayısı katsayısı" in text and "tahminin belirsiz olduğudur" in text
+    assert (s["b10"], s["alt10"], s["ust10"]) == (pytest.approx(b), pytest.approx(interval.loc["educ", 0]),
+                                                  pytest.approx(interval.loc["educ", 1]))
+
+
 # --- Kendi verin: örnek dosya ----------------------------------------------------------------------------
 
 @pytest.mark.parametrize("name", list(SAMPLE_CHOICES))
@@ -700,7 +928,10 @@ def test_the_sample_file_runs_every_step_and_passes_its_checks(name: str) -> Non
     spec = _sample_spec(name)
     assert spec.source == "kendi" and run_lab(spec).all_passed
     assert [step.number for step in spec.steps] == [step.number for step in get_lab(_topic(name)).steps]
-    assert isinstance(spec.steps[0].operations[0], ReadFile)
+    # İlk veri işlemi dosyayı okur (Konu 7'nin ilk adımı notlardaki gibi verisiz bir sayısal örnektir)
+    first = next(op for step in spec.steps for op in step.operations
+                 if isinstance(op, (ReadFile, LoadWooldridge, InlineData)))
+    assert isinstance(first, ReadFile)
     assert script_filename(spec, "Python") == f"ikt305_{_topic(name)}_kendi_verim.py"
     script = render_script(spec, "R")
     assert "kendi veriniz" in script and f'veri_dosyasi <- "{XLSX}"' in script and 'install.packages("readxl")' in script
@@ -896,6 +1127,8 @@ RESERVED = pd.DataFrame({
     ("konu00", {"sonuc": "Puan", "aciklayici": "Sapma"}, ("Gözlem", "Yüzde", "T")),
     ("konu01", {"sonuc": "Puan", "aciklayici": "Gözlem"}, ("Sapma", "Yüzde", "T")),
     ("konu02", {"sayisal": "Puan"}, ("Gözlem", "Yüzde", "Sapma")),
+    *((topic, {"sonuc": "Puan", "aciklayici": "Gözlem"}, ("Sapma", "Yüzde", "T"))
+      for topic in ("konu03", "konu04", "konu05", "konu06", "konu07")),
 ])
 def test_columns_named_like_the_apps_own_columns_keep_their_names(topic, roles, extra, tmp_path: Path, rscript: str,
                                                                  r_environment) -> None:
@@ -903,7 +1136,7 @@ def test_columns_named_like_the_apps_own_columns_keep_their_names(topic, roles, 
     karışmaz: kod adları ``gozlem_2`` gibi olur, ekranda dosyadaki ad görünür, tablolarda sütun adları tekildir."""
 
     spec, data = _own(topic, RESERVED, roles, extra)
-    read = spec.steps[0].operations[0]
+    read = _read(spec)
     codes = {original: name for name, original, _ in read.columns}
     assert codes["Gözlem"] == "gozlem_2" and codes["Sapma"] == "sapma_2" and codes["Yüzde"] == "yuzde_2"
     assert all(spec.label(name) == original for original, name in codes.items())
@@ -926,7 +1159,7 @@ def test_code_names_follow_the_file_not_the_roles() -> None:
     for roles, extra in (({"sonuc": "Gelir TL", "aciklayici": "Yaş"}, ("Gelir (TL)",)),
                          ({"sonuc": "Gelir (TL)", "aciklayici": "Yaş"}, ("Gelir TL",))):
         spec, _ = _own("konu01", frame, roles, extra)
-        codes = {original: name for name, original, _ in spec.steps[0].operations[0].columns}
+        codes = {original: name for name, original, _ in _read(spec).columns}
         assert codes == {"Gelir (TL)": "gelir_tl", "Gelir TL": "gelir_tl_2", "Yaş": "yas"}
 
 
@@ -991,6 +1224,304 @@ def test_a_zero_slope_is_written_as_zero() -> None:
     state = run_operations(spec.operations_through(9))
     text = spec.step(9).note_for(state, spec.normalize({}))
     assert "eğim dört basamakta sıfırdır" in text and "daha aynıdır" not in text
+
+
+# --- Kendi verin: Konu 3–7 -------------------------------------------------------------------------------------
+
+REGRESSION_TOPICS = ("konu03", "konu04", "konu05", "konu06", "konu07")
+EMPLOYED = {"sonuc": "Yıllık kazanç (bin TL)", "aciklayici": "Eğitim yılı"}
+
+
+def _people(topic: str, roles: dict, extra: tuple = (), picks: dict | None = None) -> LabSpec:
+    """Konu 3'ün örnek dosyası (200 kişi; işsiz kalanların kazancı 0, Grup sütunu) ile kendi veri uygulaması."""
+
+    table = K.read_upload(XLSX, K.sample_excel(VARIANTS["konu03"].custom.sample()))
+    custom = VARIANTS[topic].custom
+    case, _ = custom_case(custom, table, CustomChoices(roles=roles, extra=extra, picks=picks or {}))
+    return custom.build(case)
+
+
+def test_konu03_to_07_steps_without_their_roles_say_what_they_need() -> None:
+    """Sürekli açıklayıcı, iki kategorili sütun yok, ek değişken yok ya da sonuçta sıfır: o adımlar ne gerektiğini
+    yazar; öteki adımlar kurulur ve kontrollerini geçer."""
+
+    continuous = _people("konu03", {"sonuc": "Yıllık kazanç (bin TL)", "aciklayici": "Önceki yıllık kazanç (bin TL)"})
+    assert not continuous.step(2).operations and "en çok 25 farklı değeri" in continuous.step(2).explanation
+    assert not continuous.step(6).operations and "iki kategorili bir sütun" in continuous.step(6).explanation
+    with_zeros = _people("konu04", EMPLOYED, ("Yaş",))
+    for number in (7, 8, 9):
+        assert not with_zeros.step(number).operations, number
+    assert "bütün değerleri pozitif olmalı" in with_zeros.step(7).explanation
+    assert "sonucun bütün değerleri pozitif olmalı" in with_zeros.step(8).explanation
+    alone = _people("konu05", EMPLOYED)
+    assert not alone.step(4).operations and "en az iki açıklayıcı değişken gerekir" in alone.step(4).explanation
+    state = run_operations(alone.operations_through(5))
+    assert "log sonuç sütunu kurulmaz" in alone.step(5).note_for(state, alone.normalize({}))
+    omitted = _people("konu06", EMPLOYED)
+    for number in (1, 2, 3):
+        assert not omitted.step(number).operations and "en az bir ek sayısal değişken" in omitted.step(number).explanation
+    assert not omitted.step(5).operations and "en az iki açıklayıcı değişken" in omitted.step(5).explanation
+    testing = _people("konu07", EMPLOYED, ("Yaş",))
+    outcome = {control.key: control for control in testing.controls}["adim7_bagimli"]
+    assert [value for value, _ in outcome.options] == ["yillik_kazanc_bin_tl"]
+    assert "log sonuç sütunu kurulmaz" in testing.step(8).takeaway
+    assert "ml" not in {op.name for op in testing.step(8).operations if hasattr(op, "name")}
+    for spec in (continuous, with_zeros, alone, omitted, testing):
+        assert run_lab(spec).all_passed, spec.topic_key
+        _every_step(spec)
+
+
+def _blank_frame() -> pd.DataFrame:
+    """Çalışanlar: ek değişkende üç, sonuçta bir boş hücre (dört ayrı satır); seçilmeyen sütundaki boşluk satır
+    çıkarmaz."""
+
+    frame = VARIANTS["konu05"].custom.sample().copy()
+    frame["Önceki yıllık kazanç (bin TL)"] = frame["Önceki yıllık kazanç (bin TL)"].astype(float)
+    frame.loc[[3, 10, 20], "Önceki yıllık kazanç (bin TL)"] = np.nan
+    frame.loc[[7], "Yıllık kazanç (bin TL)"] = np.nan
+    frame["Not"] = np.where(np.arange(len(frame)) % 4 == 0, np.nan, 1.0)
+    return frame
+
+
+@pytest.mark.parametrize("topic", REGRESSION_TOPICS)
+def test_konu03_to_07_drop_rows_with_a_blank_in_any_selected_column(topic: str) -> None:
+    frame = _blank_frame()
+    roles = dict(EMPLOYED)
+    spec, _ = _own(topic, frame, roles, ("Yaş", "Önceki yıllık kazanç (bin TL)"))
+    read = _read(spec)
+    assert read.dropped == 4 and set(read.required) == {code for code, _, _ in read.columns}
+    assert len(read.rows) == len(frame) - 4 and "not" not in {code for code, _, _ in read.columns}
+    complete = frame.dropna(subset=["Yıllık kazanç (bin TL)", "Eğitim yılı", "Yaş", "Önceki yıllık kazanç (bin TL)"])
+    complete = complete.set_axis(["y", "x", "a", "o", "not"], axis=1)
+    resolved = spec.resolve({})
+    state = run_operations(_operations(resolved))
+    fitted = [op for op in _operations(resolved) if isinstance(op, OLS) and op.frame in ("veri", "ikinci")]
+    assert fitted and all(state.models[op.name].nobs == len(complete) for op in fitted)
+    # Dosyanın sütunlarıyla kurulan her model, boş satırları çıkarılmış veriyle bağımsız hesapla aynıdır
+    short = {"yillik_kazanc_bin_tl": "y", "egitim_yili": "x", "yas": "a", "onceki_yillik_kazanc_bin": "o"}
+    raw = [op for op in fitted if {op.outcome, *op.regressors} <= set(short)]
+    assert raw
+    for op in raw:
+        expected = smf.ols(f"{short[op.outcome]} ~ {' + '.join(short[name] for name in op.regressors)}",
+                           data=complete).fit()
+        np.testing.assert_allclose(state.models[op.name].params.to_numpy(), expected.params.to_numpy(), rtol=1e-9,
+                                   atol=1e-9, err_msg=op.name)
+    table = K.read_upload("veri.csv", ("﻿" + frame.to_csv(sep=";", decimal=",", index=False)).encode("utf-8"))
+    _, notes = custom_case(VARIANTS[topic].custom, table, CustomChoices(roles=roles, extra=(
+        "Yaş", "Önceki yıllık kazanç (bin TL)")))
+    assert any("Seçilen sütunlardan" in note and "4 satır çıkarıldı" in note for note in notes), notes
+
+
+@pytest.mark.parametrize("topic", ("konu05", "konu07"))
+def test_konu05_and_07_blank_rows_are_dropped_the_same_way_in_both_languages(topic: str, tmp_path: Path, rscript: str,
+                                                                            r_environment) -> None:
+    spec, data = _own(topic, _blank_frame(), dict(EMPLOYED), ("Yaş", "Önceki yıllık kazanç (bin TL)"))
+    _scripts_agree(spec, data, tmp_path, rscript, r_environment)
+
+
+SPECIAL = pd.DataFrame({
+    "Puan $": [52.0, 61, 47, 70, 58, 66, 49, 73, 55, 64, 60, 68, 51, 75, 57, 63],
+    "Not_1": [1, 2, 1, 4, 2, 3, 1, 5, 2, 3, 3, 4, 1, 5, 2, 4],
+    "Saat*": [2.5, 3.0, 1.5, 4.0, 2.0, 3.5, 3.0, 4.5, 1.0, 2.5, 4.0, 3.0, 2.0, 5.0, 1.5, 3.5],
+    "Grup|": ["B*", "A_x", "A_x", "B*", "A_x", "B*", "A_x", "B*", "B*", "A_x", "A_x", "B*", "A_x", "B*", "B*", "A_x"],
+})
+
+
+@pytest.mark.parametrize("topic", REGRESSION_TOPICS)
+def test_user_names_are_escaped_in_konu03_to_07_texts(topic: str) -> None:
+    roles = {"sonuc": "Puan $", "aciklayici": "Not_1"}
+    picks = None
+    if topic == "konu03":
+        roles["gosterge"], picks = "Grup|", {"gosterge": "B*"}
+    spec, _ = _own(topic, SPECIAL, roles, ("Saat*",), picks)
+    choices = spec.normalize({})
+    texts = [step.explanation for step in spec.steps]
+    for step in spec.steps:
+        if step.note_for is not None and step.operations:
+            texts.append(step.note_for(run_operations(spec.operations_through(step.number)), choices))
+        elif step.takeaway:
+            texts.append(step.takeaway)
+    text = " ".join(texts)
+    assert "Not\\_1" in text  # her konu temel açıklayıcıyı anar; sonucu ve ek değişkenleri anmayan konular var
+    assert ("Puan \\$" in text) == (topic != "konu06") and ("Saat\\*" in text) == (topic in ("konu05", "konu06", "konu07"))
+    for raw in ("Puan $", "Not_1", "Saat*", "Grup|", "B*", "A_x"):
+        assert raw not in text, raw
+    if topic == "konu03":
+        assert "B\\* = 1" in text and "A\\_x = 0" in text
+    _every_step(spec)
+
+
+EXACT = pd.DataFrame({"X": [1.0, 2, 3, 5, 8, 13, 21, 34, 4, 9], "Z": [3.0, 1, 4, 1, 5, 9, 2, 6, 5, 3]})
+EXACT["Y"] = 1 + 2 * EXACT["X"] + 0.5 * EXACT["Z"]
+EXACT["Basit"] = 2 * EXACT["X"] + 1
+FRAGILE_SCALARS = {"sh2", "t0_2", "ta_2", "sh3", "t3", "p3", "t6", "p_secilen", "p_iki6", "fark_alt", "fark_ust", "sh10",
+                   "t10", "p10", "alt10", "ust10"}
+
+
+def _fragile(check: Check) -> bool:
+    target = check.target
+    if isinstance(target, CoefTarget):
+        return target.quantity in ("se", "t", "p", "ci_low", "ci_high")
+    if isinstance(target, ModelTarget):
+        return target.quantity in ("f", "f_p")
+    if isinstance(target, ScalarTarget):
+        return target.name in FRAGILE_SCALARS
+    return isinstance(target, TableTarget) and (target.column in ("sh", "t", "p", "alt", "ust")
+                                                or str(target.row).endswith("_sh"))
+
+
+@pytest.mark.parametrize("topic, roles, extra, step, phrase", [
+    ("konu03", {"sonuc": "Basit", "aciklayici": "X"}, (), 4, "neredeyse tam bir doğrunun"),
+    ("konu05", {"sonuc": "Y", "aciklayici": "X"}, ("Z",), 5, "Model veriye neredeyse tam uyuyor"),
+    ("konu06", {"sonuc": "Y", "aciklayici": "X"}, ("Z",), 3, None),
+])
+def test_konu03_05_06_exact_fit_drops_the_standard_error_checks(topic, roles, extra, step, phrase, tmp_path: Path,
+                                                                 rscript: str, r_environment) -> None:
+    spec, data = _own(topic, EXACT, roles, extra)
+    assert not [check.label for item in spec.steps for check in item.checks if _fragile(check)]
+    assert any(isinstance(check.target, CoefTarget) for check in spec.step(step).checks)
+    if phrase:
+        state = run_operations(spec.operations_through(step))
+        assert phrase in spec.step(step).note_for(state, spec.normalize({}))
+    _every_step(spec)
+    _scripts_agree(spec, data, tmp_path, rscript, r_environment, warnings=True)
+
+
+def test_konu07_exact_fit_keeps_the_numeric_examples_usable_and_says_why(tmp_path: Path, rscript: str,
+                                                                        r_environment) -> None:
+    """Uyum tamken standart hata sıfıra çok yakındır: sayısal örneklerin standart hatası katsayının yarısıdır, t
+    "|t| > 10⁶" yazılır, standart hataya bağlı kontroller çıkarılır ve metinler nedenini söyler."""
+
+    spec, data = _own("konu07", EXACT, {"sonuc": "Y", "aciklayici": "X"}, ("Z",))
+    controls = {control.key: control for control in spec.controls}
+    for prefix in ("adim1", "adim4"):
+        assert controls[f"{prefix}_b"].default == pytest.approx(2) and controls[f"{prefix}_se"].default == pytest.approx(1)
+        assert controls[f"{prefix}_se"].decimals <= 3 and controls[f"{prefix}_se"].minimum > 0
+    assert controls["adim2_a"].default == pytest.approx(1) and controls["adim2_a"].decimals <= 3
+    assert controls["adim3_terim"].default == "x_2" and "uyum tam olduğu için" in spec.step(1).explanation
+    assert not [check.label for step in spec.steps for check in step.checks if _fragile(check)]
+    choices = spec.normalize({})
+    for number in (2, 3, 5, 6, 7, 9, 10):
+        text = spec.step(number).note_for(run_operations(spec.operations_through(number)), choices)
+        assert "Model veriye neredeyse tam uyuyor" in text, number
+        assert not re.search(r"\d{7,}", text), (number, text)
+    assert "|t| > 10⁶" in spec.step(2).note_for(run_operations(spec.operations_through(2)), choices)
+    _every_step(spec)
+    _scripts_agree(spec, data, tmp_path, rscript, r_environment, warnings=True)
+
+
+def _scales() -> pd.DataFrame:
+    """Ölçekleri çok farklı açıklayıcılar: sonuç bir oran (0–1), eğitim yılı, TL cinsinden gelir (eğimi 10⁻⁷ düzeyinde
+    ama gerçek), sonuçla ilişkisiz bir gürültü sütunu."""
+
+    rng = np.random.default_rng(305)
+    n = 60
+    egitim = rng.choice([5, 8, 11, 12, 14, 16], size=n)
+    gelir = np.round(rng.uniform(20_000, 500_000, size=n), 0)
+    oran = np.clip(0.1 + 0.02 * egitim + 6e-7 * gelir + rng.normal(0, 0.05, size=n), 0.01, 0.99)
+    return pd.DataFrame({"Oran": np.round(oran, 4), "Eğitim yılı": egitim, "Hane geliri (TL)": gelir,
+                         "Gürültü": np.round(rng.normal(10, 3, size=n), 2)})
+
+
+def _texts_of(spec: LabSpec, change: dict | None = None) -> dict[int, str]:
+    resolved, choices = spec.resolve(change or {}), spec.normalize(change or {})
+    return {step.number: step.note_for(run_operations(resolved.operations_through(step.number)), choices)
+            if step.note_for is not None and step.operations else step.takeaway for step in spec.steps}
+
+
+SCALE_ROLES = {"sonuc": "Oran", "aciklayici": "Eğitim yılı"}
+
+
+def test_small_unit_coefficients_keep_significant_digits_and_are_not_called_zero() -> None:
+    """TL cinsinden gelirin eğimi 10⁻⁷ düzeyindedir: metin sıfır demez, en az üç anlamlı basamak yazar."""
+
+    frame = _scales()
+    income = "hane_geliri_tl"
+    konu03, _ = _own("konu03", frame, SCALE_ROLES, ("Hane geliri (TL)", "Gürültü"))
+    text = _texts_of(konu03, {"adim4_x": income})[5]
+    assert "sıfırdır" not in text and re.search(r"yaklaşık 0,0000007\d\d birim daha yüksektir", text), text
+    texts = _texts_of(_own("konu05", frame, SCALE_ROLES, ("Hane geliri (TL)", "Gürültü"))[0])
+    assert "0,000000 birim" not in texts[1] and "daha aynıdır" not in texts[1]
+    assert re.search(r"“Hane geliri \(TL\)” değeri bir birim daha yüksek olan gözlemlerin tahmin edilen “Oran” değeri "
+                     r"yaklaşık 0,000000\d{3} birim daha yüksektir", texts[1]), texts[1]
+    konu07, _ = _own("konu07", frame, SCALE_ROLES, ("Hane geliri (TL)", "Gürültü"))
+    report = _texts_of(konu07, {"adim10_terim": income})[10]
+    assert "katsayısı 0,000 " not in report and re.search(r"katsayısı 0,000000\d{3} olarak", report), report
+    assert report.startswith("Örnek raporlama paragrafı:\n\n> ") and "rastgele atanmadıysa" in report
+
+
+def test_konu03_prediction_point_follows_the_main_regressor_and_unequal_gaps_are_explained() -> None:
+    spec, _ = _own("konu03", _scales(), SCALE_ROLES, ("Hane geliri (TL)", "Gürültü"))
+    x0 = {control.key: control for control in spec.controls}["adim7_x0"]
+    assert (x0.minimum, x0.maximum, x0.default, x0.step, x0.integer) == (2, 19, 11, 1, True)
+    assert "kaydırıcı Eğitim yılı aralığına göre" in x0.label
+    text = _texts_of(spec)[2]  # düzeyler 5, 8, 11, … : komşu iki düzey 3 birim uzakta
+    assert "uzaklık 3 birim olduğu için anakütledeki fark 3 · β₁ olur" in text and "3 birimlik uzaklıkta" in text
+    assert "her x için aynıdır ve" not in text
+    people = VARIANTS["konu03"].custom.sample()
+    x0 = {control.key: control for control in _sample_spec("konu03").controls}["adim7_x0"]
+    assert x0.integer and (x0.minimum, x0.maximum) == (2, 19) and x0.default == people["Eğitim yılı"].median()
+
+
+def test_konu07_interval_wording_follows_the_interval() -> None:
+    spec, _ = _own("konu07", _scales(), SCALE_ROLES, ("Hane geliri (TL)", "Gürültü"))
+    state = run_operations(spec.operations_through(9))
+    row = state.tables["tablo76"].loc["gurultu"]
+    assert row["p"] > 0.05 and row["alt"] < 0 < row["ust"] and max(-row["alt"], row["ust"]) < 2 * min(-row["alt"],
+                                                                                                     row["ust"])
+    text = _texts_of(spec)[9]
+    assert "hem negatif hem pozitif değerler" in text and "küçük negatif" not in text
+    gap = {control.key: control for control in spec.controls}["adim9_fark"]
+    assert (gap.minimum, gap.default, gap.maximum) == (1, 4, 11)  # bir yıldan verideki aralığa (5–16)
+
+
+def test_saturated_or_collinear_own_models_are_rejected_with_a_clear_message() -> None:
+    frame = _scales().head(5)
+    with pytest.raises(K.UploadError, match="en az 6 gözlem gerekir; analizde 5 gözlem var"):
+        _own("konu05", frame.assign(Fazla=[1.0, 4, 2, 8, 3]), SCALE_ROLES, ("Hane geliri (TL)", "Gürültü", "Fazla"))
+    twins = _scales().assign(**{"Gelir (bin TL)": lambda data: data["Hane geliri (TL)"] / 1000})
+    for topic in ("konu05", "konu06", "konu07"):
+        with pytest.raises(K.UploadError, match="tam doğrusal bağlantı"):
+            _own(topic, twins, SCALE_ROLES, ("Hane geliri (TL)", "Gelir (bin TL)"))
+
+
+def test_exact_fit_texts_draw_no_conclusions_from_rounding_noise() -> None:
+    """Y = 3 + 2X tam; Z sonuçla ilişkisiz: Z'nin katsayısı yuvarlama gürültüsüdür ve işaretine göre yorum yapılmaz."""
+
+    frame = EXACT.assign(Y=3 + 2 * EXACT["X"])
+    konu06, _ = _own("konu06", frame, {"sonuc": "Y", "aciklayici": "X"}, ("Z",))
+    texts = _texts_of(konu06)
+    assert "hesap hassasiyetinde sıfır" in texts[2] and "yönlü etkileyebilir" not in texts[2]
+    assert "değişmez" in texts[3] and "düşer" not in texts[3] and "yükselir" not in texts[3]
+    assert "Model veriye neredeyse tam uyuyor" in texts[3]
+    konu07, _ = _own("konu07", frame, {"sonuc": "Y", "aciklayici": "X"}, ("Z",))
+    texts = _texts_of(konu07)
+    for number in (5, 9):
+        assert "yuvarlama hatasına bağlıdır" in texts[number] and "reddedilir" not in texts[number], number
+        assert "sıfırdan ayrışır" not in texts[number] and "kapsayan aralık" not in texts[number], number
+
+
+def test_large_log_coefficients_say_the_percent_approximation_is_rough() -> None:
+    rng = np.random.default_rng(305)
+    share = rng.uniform(0, 1, size=50)
+    frame = pd.DataFrame({"Kazanç": np.round(np.exp(1 + 1.4 * share + rng.normal(0, 0.2, size=50)), 3),
+                          "Pay": np.round(share, 3), "Yaş": rng.integers(20, 60, size=50)})
+    roles = {"sonuc": "Kazanç", "aciklayici": "Pay"}
+    caveat = "100 · β̂ yaklaşımı kabadır; tam dönüşüm Konu 9'da"
+    assert caveat in _texts_of(_own("konu04", frame, roles, ("Yaş",))[0])[8]
+    assert caveat in _texts_of(_own("konu05", frame, roles, ("Yaş",))[0])[5]
+    assert caveat in _texts_of(_own("konu07", frame, roles, ("Yaş",))[0])[8]
+    assert caveat not in _texts_of(_sample_spec("konu05"))[5]  # örnek dosyada log katsayısı küçük
+
+
+def test_konu06_vif_text_names_the_most_correlated_pair() -> None:
+    rng = np.random.default_rng(305)
+    a = rng.normal(size=80)
+    frame = pd.DataFrame({"Y": a + rng.normal(size=80), "A": a, "B": rng.normal(size=80),
+                          "C": np.round(0.9 * a + 0.3 * rng.normal(size=80), 4), "D": rng.normal(size=80)})
+    spec, _ = _own("konu06", frame, {"sonuc": "Y", "aciklayici": "A"}, ("B", "C", "D"))
+    text = _texts_of(spec)[5]
+    assert "en güçlü ikili doğrusal ilişki “A” ile “C” arasındadır" in text and "ilişkili olmaları olağandır" in text
 
 
 def _panel_frame(rows) -> pd.DataFrame:

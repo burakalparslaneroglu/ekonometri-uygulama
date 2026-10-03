@@ -371,7 +371,8 @@ def test_konu11_and_konu12_choices_notice_and_quizzes() -> None:
 
 # --- Veri kaynağı: notlardaki örnek, alternatif örnek, kendi verin ---------------------------------------------
 
-SOURCE_STEPS = {"konu00": 9, "konu01": 6, "konu02": 6}
+SOURCE_STEPS = {"konu00": 9, "konu01": 6, "konu02": 6, "konu03": 8, "konu04": 10, "konu05": 10, "konu06": 6,
+                "konu07": 10}
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 START = "Başlamak için bir dosya yükleyin."
 
@@ -412,9 +413,9 @@ def test_source_selector_opens_on_the_notes_and_only_topics_with_variants_have_i
         assert selector.value == "notlar"
         assert selector.options == ["Notlardaki örnek", "Alternatif örnek", "Kendi verini yükle"]
         assert "ders notlarındaki çözümlü örnekleri" in _markdown(app)
-    _select(app, "konu03")
+    _select(app, "konu08")
     assert not app.exception
-    assert not [item for item in app.segmented_control if item.key == "konu03_lab_kaynak"]
+    assert not [item for item in app.segmented_control if item.key == "konu08_lab_kaynak"]
 
 
 def test_every_alternative_step_renders_in_both_languages() -> None:
@@ -486,7 +487,7 @@ def test_konu00_alternative_percent_step_keeps_both_directions_for_equal_groups(
 
 
 @pytest.mark.parametrize("topic, sheet", [("konu00", None), ("konu01", None), ("konu02", "Panel"),
-                                          ("konu02", "Deney")])
+                                          ("konu02", "Deney"), *((f"konu0{number}", None) for number in range(3, 8))])
 def test_the_sample_file_runs_every_step_in_both_languages(topic: str, sheet: str | None) -> None:
     app = _run_app()
     _select(app, topic)
