@@ -12,6 +12,7 @@ from core.labs.spec import (
     Check,
     ClassTable,
     CoefficientPlot,
+    CompleteCases,
     CopyFrame,
     CrossTab,
     Derive,
@@ -37,6 +38,7 @@ from core.labs.spec import (
     NewSample,
     Operation,
     Outcomes,
+    ReadFile,
     Rectangles,
     RowSum,
     Scalar,
@@ -46,11 +48,14 @@ from core.labs.spec import (
     ShowModel,
     SummaryTable,
     Support,
+    TakeRows,
 )
 
 LANGUAGES = ("Python", "R")
 
 COURSE = "İKT 305 Ekonometri I"
+FILE_SUFFIX = {"notlar": "uygulama", "alternatif": "alternatif", "kendi": "kendi_verim"}
+"""İndirilen betiğin adı veri kaynağına göre: ikt305_konuNN_<ek>.py."""
 STAT_NAMES = {
     "nobs": "gözlem sayısı", "r2": "R²", "adj_r2": "düzeltilmiş R²", "f": "F istatistiği",
     "f_p": "F testinin p-değeri", "ssr": "artık kareleri toplamı", "df_resid": "artık serbestlik derecesi",
@@ -163,13 +168,20 @@ def numeric_columns(spec: LabSpec) -> set[tuple[str, str]]:
                 for position, column in enumerate(op.columns):
                     if _numbers(row[position] for row in op.rows):
                         found.add((op.frame, column))
+            elif isinstance(op, ReadFile):
+                found |= {(op.frame, name) for name, _, kind in op.columns if kind in ("sayi", "sayi_metin")}
             elif isinstance(op, Outcomes):
                 found |= {(op.frame, column) for column, values in op.stages if _numbers(values)}
             elif isinstance(op, (Derive, Event, Draw, DrawDiscrete, DrawCount, MapCodes, Support, Rectangles, RowSum,
                                  Residuals)):
                 found.add((op.frame, op.name))
-            elif isinstance(op, CopyFrame):  # kopya, kaynağın o ana kadarki sayısal sütunlarını taşır
-                found |= {(op.frame, column) for frame, column in found if frame == op.source}
+            elif isinstance(op, (CopyFrame, CompleteCases)):  # kopya, kaynağın o ana kadarki sayısal sütunlarını taşır
+                found |= {(op.frame, column) for frame, column in list(found) if frame == op.source}
+            elif isinstance(op, TakeRows):
+                found |= {(op.frame, column) for frame, column in list(found)
+                          if frame == op.source and (not op.columns or column in op.columns)}
+                if op.number is not None:
+                    found.add((op.frame, op.number))
     return found
 
 
@@ -193,6 +205,11 @@ def signed_columns(spec: LabSpec) -> set[tuple[str, str]]:
                 for position, column in enumerate(op.columns):
                     values = [row[position] for row in op.rows]
                     if _numbers(values) and min(values) < 0:
+                        found.add((op.frame, column))
+            elif isinstance(op, ReadFile):
+                for position, (column, _, kind) in enumerate(op.columns):
+                    values = [row[position] for row in op.rows if row[position] is not None]
+                    if kind in ("sayi", "sayi_metin") and values and min(values) < 0:
                         found.add((op.frame, column))
     return found
 
@@ -297,12 +314,22 @@ class Generator:
         return []
 
     def closing_message(self) -> str:
-        """Betiğin son satırı; seçilen spesifikasyonda yalnız notlarla karşılaştırılan adımlar anılır."""
+        """Betiğin son satırı; seçilen spesifikasyonda yalnız karşılaştırılan adımlar anılır."""
 
+        reference = "ders notlarıyla" if self.spec.source == "notlar" else "uygulamadaki sonuçlarla"
         if self.spec.variant:
             compared = ", ".join(str(step.number) for step in self.spec.steps if step.checks)
-            return f"Karşılaştırılan adımlarda (Adım {compared}) bütün değerler ders notlarıyla uyuşuyor."
-        return "Bütün değerler ders notlarıyla uyuşuyor."
+            return f"Karşılaştırılan adımlarda (Adım {compared}) bütün değerler {reference} uyuşuyor."
+        return f"Bütün değerler {reference} uyuşuyor."
+
+    @property
+    def reference(self) -> tuple[str, str, str]:
+        """Kontrollerin karşılaştırıldığı kaynak: (başlık, kısa ad, uyuşmazlık iletisinin sonu). Notlar dışındaki
+        kaynaklarda beklenen değerler uygulamanın aynı veriyle (varsayılan seçimlerle) verdiği sonuçlardır."""
+
+        if self.spec.source == "notlar":
+            return "Notlarla karşılaştırma:", "notlar", "notlarla uyuşmuyor."
+        return "Uygulamayla karşılaştırma:", "uygulama", "uygulamayla uyuşmuyor."
 
     # --- Ortak yapı -------------------------------------------------------
     def banner(self, title: str) -> list[str]:
@@ -323,6 +350,8 @@ class Generator:
                 f"{c} sayıların aynısını verir, R aynı dağılımdan farklı çekiliş yapar.",
                 "",
             ]
+        if self.spec.source != "notlar":
+            return self.source_header()
         datasets = sorted({op.dataset for step in self.spec.steps for op in flatten(step.operations)
                            if isinstance(op, LoadWooldridge)})
         if datasets:
@@ -345,6 +374,44 @@ class Generator:
             *closing,
             "",
         ]
+
+    def source_header(self) -> list[str]:
+        """Alternatif örneğin ya da öğrencinin kendi verisinin betik başlığı."""
+
+        c = self.comment
+        topic = self.spec.topic_key[-2:]
+        title = self.spec.title.removeprefix("Uygulama: ")
+        operations = flatten(op for step in self.spec.steps for op in step.operations)
+        datasets = sorted({op.dataset for op in operations if isinstance(op, LoadWooldridge)})
+        files = sorted({op.file_name for op in operations if isinstance(op, ReadFile)})
+        if self.spec.source == "alternatif":
+            lines = [
+                f"{c} {COURSE}",
+                f"{c} Konu {topic} uygulaması, alternatif örnek: {title}",
+                f"{c} Ders notlarındaki adımlar, başka verilerle (§{self.spec.note_section}).",
+                f"{c}",
+            ]
+        else:
+            lines = [
+                f"{c} {COURSE}",
+                f"{c} Konu {topic} uygulaması, kendi veriniz: {title}",
+                f"{c} Ders notlarındaki adımlar, yüklediğiniz veri dosyasıyla (§{self.spec.note_section}).",
+                f"{c}",
+            ]
+        if datasets:
+            names = ", ".join(name.upper() for name in datasets)
+            lines.append(f"{c} Veri: Wooldridge (2020) veri setleri ({names}); wooldridge paketinden okunur.")
+        for name in files:
+            lines += [f"{c} Veri dosyası: {name}. Dosyayı bu betikle aynı klasöre koyun ya da betikteki",
+                      f"{c} dosya yolunu değiştirin."]
+        if any(isinstance(op, InlineData) for op in operations):
+            lines.append(f"{c} Satır satır yazılı küçük veriler (sayı örnekleri, kurgusal veri) bu betiğin içindedir.")
+        if self.spec.variant:
+            steps = ", ".join(str(number) for number in self.spec.variant)
+            lines.append(f"{c} Adım {steps}: varsayılandan farklı, seçilen spesifikasyon (karşılaştırılmaz).")
+        if self.has_checks:
+            lines.append(f"{c} Betik sonunda sonuçlar uygulamanın aynı veriyle verdiği değerlerle karşılaştırılır.")
+        return lines + [""]
 
     def step_title(self, step: LabStep) -> str:
         word = "Deney" if self.spec.kind == "sezgi" else "Adım"
@@ -390,7 +457,7 @@ class Generator:
         """Adım kendi verisini kurmuyorsa önceki adımların çıktısına dayanır."""
 
         sources = (InlineData, FromCounts, NewSample, Outcomes, Selections, Support, Rectangles, LoadWooldridge,
-                   CopyFrame)
+                   CopyFrame, ReadFile, CompleteCases, TakeRows)
         created = {op.frame for op in step.operations if isinstance(op, sources)}
         used: set[str] = set()
         for op in flatten(step.operations):
@@ -454,4 +521,4 @@ def render_step(spec: LabSpec, number: int, language: str) -> str:
 
 def script_filename(spec: LabSpec, language: str) -> str:
     suffix = "_secim" if spec.variant else ""
-    return f"ikt305_{spec.topic_key}_uygulama{suffix}.{LANGUAGE_INFO[language].extension}"
+    return f"ikt305_{spec.topic_key}_{FILE_SUFFIX[spec.source]}{suffix}.{LANGUAGE_INFO[language].extension}"

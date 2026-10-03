@@ -93,6 +93,9 @@ PERCENTILE_METHODS = ("ders", "yazilim")
 varsayılanı (tip 7), 1 + (n − 1)p/100 konumu."""
 TOTAL = "Toplam"
 """Frekans ve çapraz tablolarda toplam satırının/sütununun adı (iki dilde aynı)."""
+SOURCES = ("notlar", "alternatif", "kendi")
+"""Uygulama sekmesinin veri kaynakları (``LabSpec.source``): notlardaki örnek, alternatif örnek, öğrencinin kendi
+verisi."""
 
 
 # --- Veri ------------------------------------------------------------------
@@ -123,6 +126,88 @@ class FromCounts:
     columns: tuple[str, ...]
     rows: tuple[tuple[object, ...], ...]
     comment: str
+
+
+FILE_FORMATS = ("xlsx", "csv")
+FILE_COLUMN_KINDS = ("metin", "kod", "sayi", "sayi_metin")
+"""Yüklenen dosyadaki bir sütunun koddaki dönüşümü: ``metin`` metin (kategori etiketi; tam sayı hücreler "12"
+olur), ``kod`` tam sayı kodlu kategorik değişken (1, 2, 3 → "1", "2", "3"), ``sayi`` sayısal sütun, ``sayi_metin``
+metin olarak saklanmış sayı (ondalık virgül noktaya çevrilir). Eksik değerler her türde eksik kalır."""
+
+
+@dataclass(frozen=True)
+class ReadFile:
+    """Öğrencinin yüklediği Excel (.xlsx) ya da CSV dosyası.
+
+    Kod dosyayı okur, ``columns`` sütunlarını seçip koddaki (ASCII) adlarıyla yeniden adlandırır ve metin hücrelerini
+    temizler: bölünmez boşluk boşluğa çevrilir, baştaki ve sondaki boşluklar silinir, boş kalan hücre ve "NA" eksik
+    değerdir. Sonra ``required`` sütunlarından birinde eksik değer olan satırlar çıkarılır ve sütun türleri dönüştürülür
+    (``FILE_COLUMN_KINDS``). Diğer sütunlardaki eksik değerler yerinde kalır; onları kullanan adım kendi tam
+    gözlemlerini seçer (``CompleteCases``). ``rows`` bu işlemlerden sonraki değerlerdir: uygulamanın hesabı bunlardan
+    yapılır, üretilen kod aynı değerleri dosyadan elde eder (testle denetlenir). R, CSV dosyasının bütün sütunlarını
+    metin olarak okur ve sayıları açıkça dönüştürür; böylece iki dilin tür tahmini birbirinden ayrılamaz.
+    """
+
+    frame: str
+    file_name: str
+    file_format: str
+    columns: tuple[tuple[str, str, str], ...]
+    """(koddaki ad, dosyadaki sütun adı, dönüşüm türü)."""
+    rows: tuple[tuple[object, ...], ...]
+    comment: str
+    sheet: str | None = None
+    separator: str = ","
+    decimal: str = "."
+    encoding: str = "utf-8-sig"
+    dropped: int = 0
+    """Boş hücre nedeniyle çıkarılan satır sayısı."""
+    required: tuple[str, ...] = ()
+    """Eksik değeri satırı çıkaran sütunlar (koddaki adlar); boşsa bütün sütunlar."""
+    strip_names: bool = False
+    """Dosyadaki sütun adlarının baştaki ve sondaki boşlukları silinir (Excel'de sık görülen bir yazım)."""
+
+
+@dataclass(frozen=True)
+class CompleteCases:
+    """``source`` çerçevesinde ``columns`` sütunlarının hepsinde değeri olan satırlar: ``frame`` adlı yeni çerçeve.
+
+    Bir sütun eksik değer içerebilir (ör. OKUN'da ilk yılın işsizlik değişimi, kendi verindeki boş hücreler); o sütunu
+    kullanan adım yalnız tam gözlemlerle çalışır ve gözlem sayısını açıkça gösterir. Satır numaraları 1'den yeniden
+    başlar.
+    """
+
+    frame: str
+    source: str
+    columns: tuple[str, ...]
+    comment: str
+
+
+@dataclass(frozen=True)
+class TakeRows:
+    """``source`` çerçevesinden seçilen satırlar: ``frame`` adlı yeni çerçeve (kaynak değişmez).
+
+    ``rows``: seçilen gözlemlerin numaraları (1'den başlar; ör. sistematik örnekte 1., 188., 375., …) ya da ``where``:
+    ``sütun == değer`` koşulunu sağlayan satırlar (ör. bir ilçenin bütün yılları); ikisinden biri verilir. Eksik
+    değerli satır koşulu sağlamaz. ``columns`` verilirse yalnız bu sütunlar tutulur (sıra korunur). ``number``
+    verilirse (yalnız ``rows`` ile) yeni çerçevenin ilk sütunu, satırın kaynaktaki gözlem numarasıdır. Yeni çerçevenin
+    satır numaraları 1'den başlar.
+    """
+
+    frame: str
+    source: str
+    comment: str
+    rows: tuple[int, ...] = ()
+    where: tuple[str, object] | None = None
+    columns: tuple[str, ...] = ()
+    number: str | None = None
+
+    def __post_init__(self) -> None:
+        if bool(self.rows) == (self.where is not None):
+            raise ValueError("TakeRows: rows ya da where verilmelidir (yalnız biri).")
+        if self.number is not None and not self.rows:
+            raise ValueError("TakeRows: gözlem numarası sütunu yalnız rows ile kullanılır.")
+        if any(row < 1 for row in self.rows):
+            raise ValueError("TakeRows: gözlem numaraları 1'den başlar.")
 
 
 @dataclass(frozen=True)
@@ -1467,6 +1552,9 @@ class SummaryTable:
 Operation = Union[
     InlineData,
     FromCounts,
+    ReadFile,
+    CompleteCases,
+    TakeRows,
     LoadWooldridge,
     SortRows,
     Describe,
@@ -1735,9 +1823,9 @@ _READ_FIELDS = ("frame", "source", "table", "model", "models", "tables", "series
 _WRITE_FIELDS = ("result", "name", "p_value")
 _FRAME_WRITERS = ("LoadWooldridge", "InlineData", "FromCounts", "Outcomes", "Selections", "Support", "Rectangles",
                   "NewSample", "Derive", "Event", "MapCodes", "Groups", "RowSum", "Draw", "DrawCount", "DrawCategory",
-                  "DrawDiscrete", "SortRows", "Residuals", "CopyFrame")
+                  "DrawDiscrete", "SortRows", "Residuals", "CopyFrame", "ReadFile", "CompleteCases", "TakeRows")
 _FRAME_CREATORS = ("LoadWooldridge", "InlineData", "FromCounts", "Outcomes", "Selections", "Support", "Rectangles",
-                   "NewSample", "CopyFrame")
+                   "NewSample", "CopyFrame", "ReadFile", "CompleteCases", "TakeRows")
 """Çerçeveyi baştan kuran işlemler: eski çerçeveyi okumaz, yerine yenisini yazar (ör. veriyi yeniden yükleme)."""
 
 
@@ -1886,6 +1974,11 @@ class LabSpec:
     ``variant``: ``resolve`` ile üretilmiş tanımda notlardakinden farklı sonuç veren adımların numaraları
     (seçimi değişen adımlar ve onların sonucunu kullanan sonraki adımlar); bu adımlarda notlarla
     karşılaştırma yapılmaz.
+
+    ``source`` Uygulama sekmesinin veri kaynağıdır (``SOURCES``): ders notlarının çözümlü örnekleri, alternatif örnek
+    ya da öğrencinin kendi verisi. Notlar dışındaki kaynaklarda kontrollerin beklenen değerleri uygulamanın kendi
+    hesabıdır (varsayılan seçimlerle); üretilen kod bu değerleri yeniden üretmelidir. ``variant`` orada varsayılan
+    seçimlerden farklı adımları gösterir.
     """
 
     topic_key: str
@@ -1896,8 +1989,11 @@ class LabSpec:
     consistency_notes: tuple[str, ...] = field(default_factory=tuple)
     kind: str = "uygulama"
     variant: tuple[int, ...] = ()
+    source: str = "notlar"
 
     def __post_init__(self) -> None:
+        if self.source not in SOURCES:
+            raise ValueError(f"{self.topic_key}: tanımsız veri kaynağı {self.source!r}.")
         keys = [control.key for step in self.steps for control in step.controls]
         if len(set(keys)) != len(keys):
             raise ValueError(f"{self.topic_key}: denetim anahtarları tekil olmalıdır.")

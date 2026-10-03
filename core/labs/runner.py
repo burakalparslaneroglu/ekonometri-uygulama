@@ -1,7 +1,7 @@
 """Uygulama tanımını çalıştırır ve notlardaki sayılarla karşılaştırır.
 
-Veriler Wooldridge (2020) veri setleridir (``core.wooldridge_data``) ya da tanımın içinde yazılı küçük veri
-setleridir. Simülasyonlarda tek bir ``np.random.default_rng(seed)`` üreteci vardır ve bütün çekilişler işlem
+Veriler Wooldridge (2020) veri setleridir (``core.wooldridge_data``), tanımın içinde yazılı küçük veri setleridir ya
+da öğrencinin yüklediği dosyanın temizlenmiş değerleridir (``ReadFile``). Simülasyonlarda tek bir ``np.random.default_rng(seed)`` üreteci vardır ve bütün çekilişler işlem
 sırasıyla ondan yapılır. Üretilen Python kodu aynı sırayla çektiği için aynı sayıları verir.
 """
 
@@ -48,6 +48,7 @@ from core.labs.spec import (
     ClassHistogram,
     ClassTable,
     CompareBarChart,
+    CompleteCases,
     CopyFrame,
     Count,
     CrossTab,
@@ -77,6 +78,8 @@ from core.labs.spec import (
     NewSample,
     Operation,
     Outcomes,
+    ReadFile,
+    TakeRows,
     PairStatistic,
     Percentile,
     PieChart,
@@ -270,6 +273,24 @@ def draw_values(rng: np.random.Generator, op: Draw, size: int) -> np.ndarray:
     raise ValueError(f"Desteklenmeyen dağılım: {op.distribution}")
 
 
+def take_rows(frame: pd.DataFrame, op: TakeRows) -> pd.DataFrame:
+    """Seçilen satırlar (gözlem numaraları ya da ``sütun == değer`` koşulu), istenen sütunlarla; yeni çerçeve."""
+
+    if op.rows:
+        if max(op.rows) > len(frame):
+            raise ValueError(f"Gözlem numarası veri çerçevesinin satır sayısından ({len(frame)}) büyük.")
+        picked = frame.iloc[[row - 1 for row in op.rows]]
+    else:
+        column, value = op.where
+        picked = frame[frame[column] == value]
+    if op.columns:
+        picked = picked[list(op.columns)]
+    picked = picked.reset_index(drop=True).copy()
+    if op.number is not None:
+        picked.insert(0, op.number, list(op.rows))
+    return picked
+
+
 def panel_summary(frame: pd.DataFrame, unit: str, time: str) -> pd.DataFrame:
     periods = frame.groupby(unit)[time].nunique()
     values = {
@@ -322,6 +343,14 @@ def execute(op: Operation, state: LabState) -> None:
         state.frames[op.frame] = T.inline_frame(op.columns, op.rows)
     elif isinstance(op, FromCounts):
         state.frames[op.frame] = T.from_counts(op.columns, op.rows)
+    elif isinstance(op, ReadFile):
+        # Dosya uygulamada yüklenirken okunup temizlendi; tanım temizlenmiş değerleri taşır.
+        state.frames[op.frame] = T.inline_frame([name for name, _, _ in op.columns], op.rows)
+    elif isinstance(op, CompleteCases):
+        source = state.frames[op.source]
+        state.frames[op.frame] = source.dropna(subset=list(op.columns)).reset_index(drop=True)
+    elif isinstance(op, TakeRows):
+        state.frames[op.frame] = take_rows(state.frames[op.source], op)
     elif isinstance(op, Outcomes):
         state.frames[op.frame] = T.outcomes(op.stages)
     elif isinstance(op, Selections):

@@ -98,3 +98,27 @@ def r_environment() -> dict[str, str]:
     """Rscript alt süreçlerinin ortam değişkenleri (``_r_environment``)."""
 
     return _r_environment()
+
+
+@lru_cache(maxsize=1)
+def _readxl_missing() -> str | None:
+    """Excel dosyası okuyan R testlerinin engeli: Rscript, R ``wooldridge`` ya da ``readxl`` paketi yoksa nedeni."""
+
+    reason = _r_missing()
+    if reason is not None:
+        return reason
+    check = 'quit(status = if (requireNamespace("readxl", quietly = TRUE)) 0 else 1)'
+    result = subprocess.run([find_rscript(), "-e", check], capture_output=True, timeout=120, env=_r_environment())
+    if result.returncode != 0:
+        return 'R "readxl" paketi kurulu değil: install.packages("readxl") (Kendi verini yükle, Excel dosyası)'
+    return None
+
+
+@pytest.fixture(scope="session")
+def rscript_readxl() -> str:
+    """Excel dosyasını R'de okuyan testler için Rscript yolu; ``readxl`` yoksa test atlanır."""
+
+    reason = _readxl_missing()
+    if reason is not None:
+        pytest.skip(reason)
+    return find_rscript()

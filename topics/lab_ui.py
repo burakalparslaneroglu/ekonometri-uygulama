@@ -7,6 +7,11 @@ setleridir (``wooldridge`` paketi) ya da notlardaki küçük örneklerdir.
 Etkileşimli adımlarda öğrenci spesifikasyonu değiştirebilir (ör. açıklayıcı değişken). Varsayılan seçimler
 notlardaki spesifikasyondur; başka seçimde hesap, grafik ve kod seçime göre yeniden üretilir, notlarla
 karşılaştırma yalnız notlardaki spesifikasyonda yapılır.
+
+Ek kaynakları olan konularda (``core.labs.ornekler``) sekmenin en üstünde veri kaynağı seçilir: notlardaki örnek
+(varsayılan), alternatif örnek ya da öğrencinin kendi verisi ("Kendi verini yükle", ``topics.kendi_veri_ui``). Üç
+kaynak aynı adımları ve aynı kod üreticisini kullanır; notlar dışındaki kaynaklarda kontroller ekranda gösterilmez,
+indirilen kod uygulamanın sayılarıyla karşılaştırır. Öğrencinin verisi ve ondan kurulan hesap ortak önbelleğe girmez.
 """
 
 from __future__ import annotations
@@ -20,12 +25,19 @@ import streamlit as st
 from core import wooldridge_data as W
 from core.charts import CHART_TYPES, figure_for, p_text, show_figure, tr_number
 from core.codegen.base import LANGUAGE_INFO, LANGUAGES, render_script, render_step, script_filename
+from core.labs import kendi_veri as K
 from core.labs import regression as RG
+from core.labs.ornek import SOURCE_LABELS, md
+from core.labs.ornekler import get_variants
 from core.labs.registry import get_lab
 from core.labs.runner import LabRun, LabState, run_lab, run_operations, shown_frame
 from core.labs.spec import (
     REPRO_DESCRIPTIONS,
+    SOURCES,
     TOTAL,
+    CompleteCases,
+    ReadFile,
+    TakeRows,
     Choice,
     CoefficientTable,
     Control,
@@ -67,6 +79,7 @@ from core.labs.spec import (
     SummaryTable,
     VariableTypes,
 )
+from topics.kendi_veri_ui import render_custom, shadow
 
 CODE_LANGUAGE_KEY = "code_language"
 _COLUMN_LABELS = {
@@ -152,7 +165,8 @@ def _formatted(table: pd.DataFrame, formats: dict[str, Callable[[float], str]], 
         formatter = formats.get(str(column))
         values = table[column]
         shown[column] = [formatter(value) for value in values] if formatter else values
-    shown = shown.rename(columns=lambda name: _COLUMN_LABELS.get(str(name), label(str(name))))
+    shown = shown.rename(columns=_unique_labels({name: _COLUMN_LABELS.get(str(name), label(str(name)))
+                                                 for name in shown.columns}))
     shown.index = [_index_text(item) for item in shown.index]
     return shown.rename_axis(index_label).reset_index()
 
@@ -382,6 +396,19 @@ def _decimals(values: pd.Series) -> int:
     return 4
 
 
+def _unique_labels(rename: dict) -> dict:
+    """Sütun etiketleri tekil olsun: aynı etiketi alan sonraki sütunlara (2), (3), … eklenir (ör. kendi verinizdeki
+    "Gözlem" sütunu, tablonun "Gözlem" numarasının yanında). Notlardaki tablolarda etiketler zaten tekildir."""
+
+    seen: dict[str, int] = {}
+    unique = {}
+    for column, text in rename.items():
+        count = seen.get(text, 0) + 1
+        seen[text] = count
+        unique[column] = text if count == 1 else f"{text} ({count})"
+    return unique
+
+
 def frame_display(frame: pd.DataFrame, label: Callable[[str], str], decimals: int | None = None):
     """Veri çerçevesinin ekran biçimi: tam sayı değerli sütunlar tam sayı, kesirli sütunlar ondalık virgülle; negatif
     değerlerde tipografik eksi.
@@ -399,6 +426,12 @@ def frame_display(frame: pd.DataFrame, label: Callable[[str], str], decimals: in
             continue
         if shown[column].dtype.kind != "f":
             continue
+        if shown[column].isna().any():  # boş hücre (kendi verin): "—"; dolu hücreler sütunun basamağıyla
+            present = shown[column].dropna()
+            integral = len(present) == 0 or np.allclose(present, np.round(present), rtol=0, atol=1e-9)
+            digits = 0 if integral else (decimals if decimals is not None else _decimals(present))
+            formats[column] = lambda value, digits=digits: "—" if pd.isna(value) else tr_number(value, digits)
+            continue
         if np.allclose(shown[column], np.round(shown[column]), rtol=0, atol=1e-9):
             shown[column] = shown[column].round().astype(int)
             if (shown[column] < 0).any():  # tipografik eksi: −10
@@ -406,11 +439,27 @@ def frame_display(frame: pd.DataFrame, label: Callable[[str], str], decimals: in
         else:
             digits = decimals if decimals is not None else _decimals(shown[column])
             formats[column] = lambda value, digits=digits: tr_number(value, digits)
-    rename = {column: _COLUMN_LABELS.get(str(column), label(str(column))) for column in shown.columns}
+    rename = _unique_labels({column: _COLUMN_LABELS.get(str(column), label(str(column))) for column in shown.columns})
     shown = shown.rename(columns=rename)
     if not formats:
         return shown
     return shown.style.format({rename[column]: formatter for column, formatter in formats.items()})
+
+
+def frame_view(op, state: LabState, label: Callable[[str], str]):
+    """Veri çerçevesi gösteren bir işlemin ekrandaki tablosu: ``ShowFrame`` (satır seçiminde gözlem numarasıyla),
+    ``MapCodes`` (ilk sekiz satırın etiketi ve kodu), ``ReadFile`` ve ``TakeRows`` (çerçevenin tamamı)."""
+
+    if isinstance(op, ShowFrame):
+        shown = shown_frame(op, state)
+        if op.rows or op.head:  # notlardaki gibi gözlem numarası 1'den başlar
+            shown = shown.copy()
+            shown.insert(0, "Gözlem", [position + 1 for position in
+                                       (range(op.head) if op.head else [row - 1 for row in op.rows])][:len(shown)])
+        return frame_display(shown, label, op.decimals)
+    if isinstance(op, MapCodes):
+        return frame_display(state.frames[op.frame][[op.source, op.name]].head(8), label)
+    return frame_display(state.frames[op.frame], label)
 
 
 # --- Adım gezinimi -----------------------------------------------------------------
@@ -512,9 +561,20 @@ def coefficient_caption(topic_key: str) -> str:
     return "Yalnız katsayılar; standart hatalar tabloya Konu 7'de eklenir." if later else "Yalnız katsayılar."
 
 
+def _plain(text: str) -> str:
+    return text
+
+
+def _later_view(operations, index: int, frame: str) -> bool:
+    """Aynı adımda bu çerçeveyi gösteren bir ``ShowFrame`` var mı (tablo iki kez görünmesin)?"""
+
+    return any(isinstance(later, ShowFrame) and later.frame == frame for later in operations[index + 1:])
+
+
 def render_operations(operations, state: LabState, label: Callable[[str], str], key_prefix: str,
-                      topic_key: str = "") -> None:
-    """İşlemlerin sonuçlarını sırayla gösterir; art arda gelen tek sayılar tek satırda toplanır."""
+                      topic_key: str = "", escape: Callable[[str], str] = _plain) -> None:
+    """İşlemlerin sonuçlarını sırayla gösterir; art arda gelen tek sayılar tek satırda toplanır. ``escape``: başlık ve
+    açıklamalardaki kullanıcı adlarını Markdown'a güvenli yazar (kendi verin; notlardaki metinler olduğu gibi)."""
 
     pending: list[tuple[str, str]] = []
     # Yan yana birleştirilen (JoinColumns) ara skaler tabloları ayrıca gösterilmez; birleşik tablo gösterilir.
@@ -523,7 +583,7 @@ def render_operations(operations, state: LabState, label: Callable[[str], str], 
         if isinstance(op, ScalarTable) and op.result in joined:
             continue
         if isinstance(op, _METRICS):
-            pending.extend(_metrics(op, state))
+            pending.extend((escape(title), value) for title, value in _metrics(op, state))
             continue
         if pending:
             _show_metrics(pending)
@@ -540,19 +600,37 @@ def render_operations(operations, state: LabState, label: Callable[[str], str], 
             )
             continue
         if isinstance(op, SortRows):
-            st.caption(f"{op.comment} (sıralama değişkeni: {label(op.by)}).")
+            st.caption(f"{escape(op.comment)} (sıralama değişkeni: {escape(label(op.by))}).")
+            continue
+        if isinstance(op, ReadFile):
+            frame = state.frames[op.frame]
+            st.markdown(f"**{escape(op.comment)}**")
+            show_table(frame_view(op, state, label))
+            dropped = f" Temel sütunlarda boş hücre bulunan {_count(op.dropped)} satır çıkarıldı." if op.dropped else ""
+            st.caption(f"Analizde {_count(len(frame))} gözlem var.{dropped}")
+            continue
+        if isinstance(op, CompleteCases):
+            st.caption(f"{escape(op.comment)}: {_count(len(state.frames[op.frame]))} gözlem.")
+            continue
+        if isinstance(op, TakeRows):
+            frame = state.frames[op.frame]
+            if _later_view(operations, index, op.frame) or len(frame) > 20:
+                st.caption(f"{escape(op.comment)}: {_count(len(frame))} gözlem.")
+            else:
+                st.markdown(f"**{escape(op.comment)}**")
+                show_table(frame_view(op, state, label))
             continue
         if isinstance(op, ShowModel):
             result = state.models[op.model]
             covariance = RG.covariance_label(result)
             robust = "" if covariance == "nonrobust" else f" · standart hatalar: {covariance} (heteroskedastisiteye dayanıklı)"
-            st.markdown(f"**{op.comment}** · bağımlı değişken: {label(result.model.endog_names)}{robust}")
+            st.markdown(f"**{escape(op.comment)}** · bağımlı değişken: {escape(label(result.model.endog_names))}{robust}")
             show_table(coefficient_display(op, result, label))
             _show_metrics([(_MODEL_LABELS[stat], _model_stat_text(stat, RG.model_quantity(result, stat)))
                            for stat in op.stats])
             continue
         if isinstance(op, RegressionTable):
-            st.markdown(f"**{op.comment}**")
+            st.markdown(f"**{escape(op.comment)}**")
             show_table(regression_display(op, state, label))
             if op.stars:
                 st.caption(f"{standard_error_note(op, state)} *** p < 0,01; ** p < 0,05; * p < 0,10.")
@@ -565,7 +643,7 @@ def render_operations(operations, state: LabState, label: Callable[[str], str], 
             frame = state.frames[op.frame]
             if _input_only(operations, index, state):
                 frame = frame[list(op.columns)]
-            st.markdown(f"**{op.comment}**")
+            st.markdown(f"**{escape(op.comment)}**")
             if op.layout and len(op.columns) == 1 and len(frame) % op.layout == 0:
                 # Notlardaki gibi satır başına ``layout`` değer; sütun başlıkları satır içindeki sıradır.
                 values = frame[op.columns[0]].to_numpy()
@@ -584,18 +662,9 @@ def render_operations(operations, state: LabState, label: Callable[[str], str], 
             show_table(frame_display(frame, label))
             noun = "Sonuç" if isinstance(op, Outcomes) else "Seçim"
             st.caption(f"{noun} sayısı: {_count(len(frame))}.")
-        elif isinstance(op, ShowFrame):
-            st.markdown(f"**{op.comment}**")
-            shown = shown_frame(op, state)
-            if op.rows or op.head:  # notlardaki gibi gözlem numarası 1'den başlar
-                shown = shown.copy()
-                shown.insert(0, "Gözlem", [position + 1 for position in
-                                           (range(op.head) if op.head else [row - 1 for row in op.rows])][:len(shown)])
-            show_table(frame_display(shown, label, op.decimals))
-        elif isinstance(op, MapCodes):
-            frame = state.frames[op.frame][[op.source, op.name]].head(8)
-            st.markdown(f"**{op.comment}**")
-            show_table(frame_display(frame, label))
+        elif isinstance(op, (ShowFrame, MapCodes)):
+            st.markdown(f"**{escape(op.comment)}**")
+            show_table(frame_view(op, state, label))
         elif isinstance(op, CrossTab):
             st.markdown(crosstab_caption(op, label))
             show_table(display_table(op, state.tables[op.result], label))
@@ -603,9 +672,9 @@ def render_operations(operations, state: LabState, label: Callable[[str], str], 
                              JoinColumns, BoxSummary, Describe, GroupStats, PanelSummary, SummaryTable,
                              CoefficientTable)):
             if isinstance(op, (Describe, GroupStats, PanelSummary, SummaryTable, CoefficientTable)):
-                st.markdown(f"**{op.comment}**")
+                st.markdown(f"**{escape(op.comment)}**")
             elif getattr(op, "title", ""):  # ScalarTable, GroupSummary, JoinColumns: notlardaki tablo başlığı
-                st.markdown(f"**{op.title}**")
+                st.markdown(f"**{escape(op.title)}**")
             show_table(display_table(op, state.tables[op.result], label))
         if isinstance(op, PieChart):
             show_figure(figure_for(op, state, label), key=f"{key_prefix}_grafik_{index}")
@@ -653,6 +722,7 @@ def _render_code(spec: LabSpec, step: LabStep, variant: bool) -> None:
 
 
 def _download_row(spec: LabSpec, suffix: str) -> None:
+    middle = "" if spec.source == "notlar" else f"_{spec.source}"
     for column, language in zip(st.columns(len(LANGUAGES)), LANGUAGES):
         info = LANGUAGE_INFO[language]
         column.download_button(
@@ -660,30 +730,44 @@ def _download_row(spec: LabSpec, suffix: str) -> None:
             data=render_script(spec, language),
             file_name=script_filename(spec, language),
             mime=info.mime,
-            key=f"{spec.topic_key}_lab_download{suffix}_{language}",
+            key=f"{spec.topic_key}_lab_download{middle}{suffix}_{language}",
             icon=":material/download:",
             width="stretch",
         )
 
 
-def _render_downloads(notes: LabSpec, chosen: LabSpec) -> None:
+def _render_downloads(base: LabSpec, chosen: LabSpec) -> None:
     st.markdown("**Bütün uygulamayı indirin**")
-    st.caption(
-        "Her dosya bütün adımları çalıştırır ve sonunda sonuçları ders notlarındaki sayılarla karşılaştırır. "
-        "Bir sayı tutmazsa hangisinin tutmadığını söyleyerek durur."
-    )
-    _download_row(notes, "")
+    if base.source == "notlar":
+        st.caption(
+            "Her dosya bütün adımları çalıştırır ve sonunda sonuçları ders notlarındaki sayılarla karşılaştırır. "
+            "Bir sayı tutmazsa hangisinin tutmadığını söyleyerek durur."
+        )
+    else:
+        files = " Veri dosyanızı betikle aynı klasöre koyun." if base.source == "kendi" else ""
+        st.caption(
+            "Her dosya bütün adımları çalıştırır ve sonunda sonuçları uygulamanın aynı veriyle (varsayılan seçimlerle) "
+            f"verdiği sayılarla karşılaştırır. Bir sayı tutmazsa hangisinin tutmadığını söyleyerek durur.{files}"
+        )
+    _download_row(base, "")
     if chosen.variant:
         steps = ", ".join(str(number) for number in chosen.variant)
         which = "bu adımlar" if len(chosen.variant) > 1 else "bu adım"
-        st.caption(f"Seçtiğiniz spesifikasyonla (Adım {steps} notlardan farklı; {which} notlarla karşılaştırılmaz):")
+        reference = "notlardan" if base.source == "notlar" else "varsayılandan"
+        compared = "notlarla" if base.source == "notlar" else "uygulamayla"
+        st.caption(f"Seçtiğiniz spesifikasyonla (Adım {steps} {reference} farklı; {which} {compared} "
+                   "karşılaştırılmaz):")
         _download_row(chosen, "_secim")
 
 
 # --- Etkileşimli spesifikasyon -----------------------------------------------------
 
 def _choice_key(spec: LabSpec, control: Control) -> str:
-    return f"{spec.topic_key}_secim_{control.key}"
+    """Denetimin oturum anahtarı. Notlardaki örneğin anahtarları önceki sürümlerdeki gibidir; ek kaynakların
+    denetimleri ayrı anahtarlardadır (aynı adlı denetim kaynaklar arasında karışmaz)."""
+
+    middle = "" if spec.source == "notlar" else f"{spec.source}_"
+    return f"{spec.topic_key}_{middle}secim_{control.key}"
 
 
 def _stored(control: Control, value):
@@ -692,19 +776,64 @@ def _stored(control: Control, value):
     return list(value) if isinstance(control, MultiChoice) else value
 
 
+def _variant_value(control: Control, key: str) -> object:
+    """Ek kaynakta denetimin değeri: widget'ın değeri, yoksa gölge anahtardaki son seçim, o da yoksa varsayılan.
+
+    Seçeneklerde olmayan değer (kendi verinde seçenekler dosyaya bağlıdır) varsayılana döner. Burada Session State'e
+    yazılmaz: widget'ı henüz hiç çizilmemiş bir anahtara yazılan değer Streamlit'te kullanıcı anahtarı olarak kalır;
+    widget sonra çizilip değiştirilse ve ardından çizilmese o eski değer geri gelir. Widget'ın değeri widget'tan hemen
+    önce yazılır (``_prepare_widget``).
+    """
+
+    if key in st.session_state:
+        value = st.session_state[key]
+    else:
+        value = st.session_state.get(shadow(key), _stored(control, control.default))
+    default = _stored(control, control.default)
+    if isinstance(control, MultiChoice):
+        known = {option for option, _ in control.options}
+        return [option for option in value if option in known] if isinstance(value, (list, tuple)) else default
+    if isinstance(control, NumberChoice):
+        valid = isinstance(value, (int, float)) and control.minimum <= value <= control.maximum
+        return value if valid else default
+    return value if value in {option for option, _ in control.options} else default
+
+
+def _prepare_widget(spec: LabSpec, control: Control) -> str:
+    """Ek kaynakta widget çizilmeden hemen önce son seçim Session State'e yazılır (aynı çalıştırmada çizildiği için
+    Streamlit değeri widget'a bağlar)."""
+
+    key = _choice_key(spec, control)
+    value = _variant_value(control, key)
+    if key not in st.session_state or st.session_state[key] != value:
+        st.session_state[key] = value
+    return key
+
+
 def _current_choices(spec: LabSpec) -> tuple[dict[str, object], list[str]]:
-    """Oturumdaki seçimler; geçersiz seçim (ör. boş değişken listesi) varsayılanla değiştirilir ve bildirilir."""
+    """Oturumdaki seçimler; geçersiz seçim (ör. boş değişken listesi) varsayılanla değiştirilir ve bildirilir.
+
+    Ek kaynakların denetimleri gölge anahtarlarda saklanır: widget çizilmediği (başka adım, başka kaynak ya da konu)
+    çalıştırmalarda Streamlit değeri silse de seçim geri gelir (``_variant_value``).
+    """
 
     chosen: dict[str, object] = {}
     problems: list[str] = []
+    notes = spec.source == "notlar"
+    fallback = "Notlardaki seçim kullanılıyor." if notes else "Varsayılan seçim kullanılıyor."
     for control in spec.controls:
         key = _choice_key(spec, control)
-        if key not in st.session_state:
-            st.session_state[key] = _stored(control, control.default)
+        if notes:
+            if key not in st.session_state:
+                st.session_state[key] = _stored(control, control.default)
+            value = st.session_state[key]
+        else:
+            value = _variant_value(control, key)
+            st.session_state[shadow(key)] = value
         try:
-            chosen[control.key] = control.normalize(st.session_state[key])
+            chosen[control.key] = control.normalize(value)
         except ValueError as error:
-            problems.append(f"{error} Notlardaki seçim kullanılıyor.")
+            problems.append(f"{error} {fallback}")
             chosen[control.key] = control.normalize(control.default)
     return chosen, problems
 
@@ -715,36 +844,50 @@ def _token(choices: dict[str, object]) -> tuple:
 
 def _reset(spec: LabSpec, controls: tuple[Control, ...]) -> None:
     for control in controls:
-        st.session_state[_choice_key(spec, control)] = _stored(control, control.default)
+        key = _choice_key(spec, control)
+        if spec.source == "notlar":
+            st.session_state[key] = _stored(control, control.default)
+        else:  # widget çizilince varsayılan gölge anahtardan yazılır (``_prepare_widget``)
+            st.session_state.pop(key, None)
+            st.session_state[shadow(key)] = _stored(control, control.default)
 
 
 def _render_controls(spec: LabSpec, step: LabStep, problems: list[str]) -> None:
     with st.container(border=True):
         st.markdown("**Spesifikasyon**")
-        st.caption("Varsayılan seçimler notlardaki spesifikasyondur. Seçimi değiştirdiğinizde sonuçlar, grafikler ve "
-                   "kod seçiminize göre yeniden üretilir.")
+        if spec.source == "notlar":
+            st.caption("Varsayılan seçimler notlardaki spesifikasyondur. Seçimi değiştirdiğinizde sonuçlar, grafikler "
+                       "ve kod seçiminize göre yeniden üretilir.")
+        else:
+            st.caption("Varsayılan seçimler bu örneğin temel spesifikasyonudur. Seçimi değiştirdiğinizde sonuçlar, "
+                       "grafikler ve kod seçiminize göre yeniden üretilir.")
+        # Kendi verinde etiket, yardım metni ve düğme seçenekleri öğrencinin sütun adlarını taşır; Streamlit bunları
+        # Markdown olarak yazar, bu yüzden biçim işaretleri kaçırılır. Açılır liste seçenekleri düz metindir.
+        marked = md if spec.source == "kendi" else _plain
         for control in step.controls:
-            key = _choice_key(spec, control)
+            key = _choice_key(spec, control) if spec.source == "notlar" else _prepare_widget(spec, control)
+            label, help_text = marked(control.label), marked(control.help) if control.help else None
             if isinstance(control, Choice):
                 if len(control.options) <= 3:
-                    st.segmented_control(control.label, options=[value for value, _ in control.options],
-                                         format_func=control.option_label, key=key, help=control.help or None,
-                                         required=True)
+                    st.segmented_control(label, options=[value for value, _ in control.options],
+                                         format_func=lambda value, control=control: marked(control.option_label(value)),
+                                         key=key, help=help_text, required=True)
                 else:
-                    st.selectbox(control.label, options=[value for value, _ in control.options],
-                                 format_func=control.option_label, key=key, help=control.help or None)
+                    st.selectbox(label, options=[value for value, _ in control.options],
+                                 format_func=control.option_label, key=key, help=help_text)
             elif isinstance(control, MultiChoice):
-                st.multiselect(control.label, options=[value for value, _ in control.options],
-                               format_func=control.option_label, key=key, help=control.help or None,
+                st.multiselect(label, options=[value for value, _ in control.options],
+                               format_func=control.option_label, key=key, help=help_text,
                                max_selections=control.maximum)
             elif isinstance(control, NumberChoice):
                 if control.integer:
-                    st.slider(control.label, min_value=int(control.minimum), max_value=int(control.maximum),
-                              step=int(control.step), key=key, help=control.help or None)
+                    st.slider(label, min_value=int(control.minimum), max_value=int(control.maximum),
+                              step=int(control.step), key=key, help=help_text)
                 else:
-                    decimal_slider(st, control.label, minimum=float(control.minimum), maximum=float(control.maximum),
-                                   step=float(control.step), decimals=control.decimals, key=key,
-                                   help=control.help or None)
+                    decimal_slider(st, label, minimum=float(control.minimum), maximum=float(control.maximum),
+                                   step=float(control.step), decimals=control.decimals, key=key, help=help_text)
+            if spec.source != "notlar":
+                st.session_state[shadow(key)] = st.session_state[key]
         for problem in problems:
             st.warning(problem, icon=":material/warning:")
 
@@ -762,9 +905,9 @@ def decimal_slider(container, label: str, *, minimum: float, maximum: float, ste
 
 
 def upstream_steps(spec: LabSpec, step: LabStep, choices: dict[str, object]) -> list[LabStep]:
-    """Seçimi notlardan farklı olan ve bu adımın sonucunu gerçekten değiştiren önceki adımlar.
+    """Seçimi varsayılandan farklı olan ve bu adımın sonucunu gerçekten değiştiren önceki adımlar.
 
-    Her önceki adımın seçimi tek başına uygulanır; ``LabSpec.resolve`` bu adımı notlardan farklı sayıyorsa o adım
+    Her önceki adımın seçimi tek başına uygulanır; ``LabSpec.resolve`` bu adımı varsayılandan farklı sayıyorsa o adım
     listelenir (ör. Adım 3 yalnız Adım 2'nin seçimine bağlıysa Adım 1'deki seçim sayılmaz).
     """
 
@@ -784,53 +927,151 @@ def upstream_steps(spec: LabSpec, step: LabStep, choices: dict[str, object]) -> 
 
 
 def _render_variant_notice(spec: LabSpec, step: LabStep, choices: dict[str, object]) -> None:
+    notes = spec.source == "notlar"
+    button = "Notlara dön" if notes else "Varsayılana dön"
     own_changed = any(choices[control.key] != control.normalize(control.default) for control in step.controls)
     if own_changed:
         left, right = st.columns([4, 1], vertical_alignment="center")
-        left.info("Bu adımda notlardan farklı bir spesifikasyon seçili.", icon=":material/tune:")
-        right.button("Notlara dön", key=f"{spec.topic_key}_notlara_don_{step.number}", on_click=_reset,
-                     args=(spec, step.controls), width="stretch")
+        left.info("Bu adımda notlardan farklı bir spesifikasyon seçili." if notes
+                  else "Bu adımda varsayılandan farklı bir spesifikasyon seçili.", icon=":material/tune:")
+        right.button(button, key=f"{spec.topic_key}_{'' if notes else spec.source + '_'}notlara_don_{step.number}",
+                     on_click=_reset, args=(spec, step.controls), width="stretch")
         return
     upstream = upstream_steps(spec, step, choices)
     numbers = ", ".join(str(item.number) for item in upstream)
     left, right = st.columns([4, 1], vertical_alignment="center")
-    left.info(f"Bu adım, önceki bir adımdaki seçiminize göre hesaplandı (Adım {numbers}); notlardaki sayılardan "
-              "farklı olabilir.", icon=":material/tune:")
-    right.button("Notlara dön", key=f"{spec.topic_key}_notlara_don_{step.number}", on_click=_reset,
-                 args=(spec, tuple(control for item in upstream for control in item.controls)), width="stretch")
+    differs = "notlardaki sayılardan" if notes else "varsayılan seçimlerin sayılarından"
+    left.info(f"Bu adım, önceki bir adımdaki seçiminize göre hesaplandı (Adım {numbers}); {differs} farklı olabilir.",
+              icon=":material/tune:")
+    right.button(button, key=f"{spec.topic_key}_{'' if notes else spec.source + '_'}notlara_don_{step.number}",
+                 on_click=_reset, args=(spec, tuple(control for item in upstream for control in item.controls)),
+                 width="stretch")
 
 
 # --- Hesap önbelleği -----------------------------------------------------------------
 
+def _base(topic_key: str, source: str) -> LabSpec:
+    """Notlardaki ya da alternatif örneğin tanımı (öğrenci verisi içermez; ortak önbellekte tutulabilir)."""
+
+    return get_lab(topic_key) if source == "notlar" else get_variants(topic_key).alternative()
+
+
 @st.cache_resource(show_spinner=False, max_entries=64)
-def _resolved(topic_key: str, token: tuple) -> LabSpec:
-    spec = get_lab(topic_key)
+def _resolved(topic_key: str, token: tuple, source: str = "notlar") -> LabSpec:
+    spec = _base(topic_key, source)
     return spec.resolve(dict(token)) if spec.controls else spec
 
 
 @st.cache_resource(show_spinner=False, max_entries=64)
-def _run(topic_key: str, token: tuple) -> LabRun:
-    return run_lab(_resolved(topic_key, token))
+def _run(topic_key: str, token: tuple, source: str = "notlar") -> LabRun:
+    return run_lab(_resolved(topic_key, token, source))
 
 
 @st.cache_resource(show_spinner=False, max_entries=256)
-def _state_through(topic_key: str, token: tuple, number: int) -> LabState:
+def _state_through(topic_key: str, token: tuple, number: int, source: str = "notlar") -> LabState:
     """Adımın sonundaki durum: sonraki adımların eklediği sütunlar bu adımda görünmez."""
 
-    return run_operations(_resolved(topic_key, token).operations_through(number))
+    return run_operations(_resolved(topic_key, token, source).operations_through(number))
+
+
+def _own_resolved(base: LabSpec, token: tuple) -> LabSpec:
+    """Kendi verinin seçimlerle kurulan tanımı; yalnız bu oturumda saklanır (ortak önbelleğe girmez)."""
+
+    key = f"{base.topic_key}_kendi_hesap"
+    stored = st.session_state.get(key)
+    if isinstance(stored, tuple) and len(stored) == 3 and stored[0] is base and stored[1] == token:
+        return stored[2]
+    chosen = base.resolve(dict(token)) if base.controls else base
+    st.session_state[key] = (base, token, chosen)
+    return chosen
+
+
+def _own_state(topic_key: str, chosen: LabSpec, number: int) -> LabState:
+    """Kendi verinde adımın sonundaki durum; yalnız bu oturumda, aynı tanım ve adım için saklanır."""
+
+    key = f"{topic_key}_kendi_adim"
+    stored = st.session_state.get(key)
+    if isinstance(stored, tuple) and len(stored) == 3 and stored[0] is chosen and stored[1] == number:
+        return stored[2]
+    state = run_operations(chosen.operations_through(number))
+    st.session_state[key] = (chosen, number, state)
+    return state
+
+
+def _source_key(topic_key: str) -> str:
+    return f"{topic_key}_lab_kaynak"
 
 
 def widget_keys(spec: LabSpec) -> set[str]:
-    """Adım seçimi ve spesifikasyon denetimlerinin oturum anahtarları (``topics.shared.keep_widget_state``)."""
+    """Adım seçimi, veri kaynağı ve notlardaki spesifikasyon denetimlerinin oturum anahtarları
+    (``topics.shared.keep_widget_state``). Ek kaynakların denetimleri gölge anahtarlarla korunur."""
 
-    return {_step_key(spec), *(_choice_key(spec, control) for control in spec.controls)}
+    keys = {_step_key(spec), *(_choice_key(spec, control) for control in spec.controls)}
+    if get_variants(spec.topic_key) is not None:
+        keys.add(_source_key(spec.topic_key))
+    return keys
+
+
+_SOURCE_ICONS = {
+    "notlar": ":material/menu_book:",
+    "alternatif": ":material/shuffle:",
+    "kendi": ":material/upload_file:",
+}
+
+
+def _render_source(topic_key: str) -> str:
+    """Sekmenin en üstünde veri kaynağı seçimi; varsayılan notlardaki örnektir."""
+
+    key = _source_key(topic_key)
+    if st.session_state.get(key) not in SOURCES:
+        st.session_state[key] = SOURCES[0]
+    st.segmented_control(
+        "Veri kaynağı", options=list(SOURCES), key=key, required=True, width="stretch",
+        format_func=lambda source: f"{_SOURCE_ICONS[source]} {SOURCE_LABELS[source]}",
+        help="Notlardaki örnek: ders notlarındaki çözümlü örnekler. Alternatif örnek: aynı adımlar başka verilerle. "
+             "Kendi verini yükle: aynı adımlar sizin Excel ya da CSV dosyanızla.",
+    )
+    return st.session_state[key]
 
 
 def render_lab(spec: LabSpec) -> None:
-    st.markdown(
-        f"Bu sekme ders notlarındaki çözümlü örnekleri (**{spec.title}**) adım adım yeniden üretir. "
-        "Tablolar notlardaki sayıların aynısını verir; kod dilini kenar çubuğundan seçin."
-    )
+    variants = get_variants(spec.topic_key)
+    source = _render_source(spec.topic_key) if variants is not None else "notlar"
+    if source == "notlar":
+        st.markdown(
+            f"Bu sekme ders notlarındaki çözümlü örnekleri (**{spec.title}**) adım adım yeniden üretir. "
+            "Tablolar notlardaki sayıların aynısını verir; kod dilini kenar çubuğundan seçin."
+        )
+        _render_steps(spec)
+        return
+    if source == "alternatif":
+        st.markdown(
+            f"Bu sekme notlardaki adımları (**{spec.title.removeprefix('Uygulama: ')}**) başka verilerle yeniden yapar. "
+            f"{variants.story} Sayılar notlardakinden farklıdır; yöntem, adımlar ve kod aynıdır. Kod dilini kenar "
+            "çubuğundan seçin."
+        )
+        try:
+            base = variants.alternative()
+        except Exception as error:  # veri paketi eksik ya da bozuk: anlaşılır ileti
+            st.error(f"Alternatif örnek kurulamadı ({type(error).__name__}: {error}).", icon=":material/error:")
+            return
+        _render_steps(base)
+        return
+    base = render_custom(spec.topic_key, variants.custom)
+    if base is not None:
+        _render_steps(base)
+
+
+def _render_steps(spec: LabSpec) -> None:
+    """Adım gezinimi, denetimler, sonuçlar, kod ve indirme; ``spec`` notlardaki, alternatif ya da kendi veri tanımıdır.
+
+    Kendi verinde beklenmeyen her hata öğrenciye anlaşılır bir iletiyle gösterilir (hata türüyle); notlarda ve
+    alternatif örnekte yalnız hesap hataları (``ValueError``) yakalanır, diğerleri testlerde görünür kalır.
+    """
+
+    source = spec.source
+    escape = md if source == "kendi" else _plain
+    guard: tuple[type[BaseException], ...] = (Exception,) if source == "kendi" else (ValueError,)
     choices, problems = _current_choices(spec)
     token = _token(choices)
     step = _render_navigation(spec)
@@ -838,12 +1079,16 @@ def render_lab(spec: LabSpec) -> None:
     st.caption(step.note.label())
     st.markdown(step.explanation)
     try:
-        chosen = _resolved(spec.topic_key, token)
-        run = _run(spec.topic_key, token)
-    except ValueError as error:  # ör. tam doğrusal bağlantı: katsayılar tek biçimde tahmin edilemez
+        if source == "kendi":
+            chosen = _own_resolved(spec, token)
+            run = None
+        else:
+            chosen = _resolved(spec.topic_key, token, source)
+            run = _run(spec.topic_key, token, source) if source == "notlar" else None
+    except guard as error:  # ör. tam doğrusal bağlantı: katsayılar tek biçimde tahmin edilemez
         if step.controls:
             _render_controls(spec, step, problems)
-        st.error(f"Bu spesifikasyon tahmin edilemiyor: {error}", icon=":material/error:")
+        st.error(f"Bu spesifikasyon tahmin edilemiyor: {_error_text(error, escape)}", icon=":material/error:")
         return
     variant = step.number in chosen.variant
     current = chosen.step(step.number)
@@ -853,13 +1098,33 @@ def render_lab(spec: LabSpec) -> None:
         _render_variant_notice(spec, step, choices)
     state = None
     if current.operations:
-        state = _state_through(spec.topic_key, token, step.number)
-        render_operations(current.operations, state, spec.label, f"{spec.topic_key}_adim{step.number}",
-                          spec.topic_key)
-        _render_checks(current, run, variant)
-    note = step.note_for(state, choices) if (step.note_for is not None and state is not None) else step.takeaway
+        try:
+            if source == "kendi":
+                state = _own_state(spec.topic_key, chosen, step.number)
+            else:
+                state = _state_through(spec.topic_key, token, step.number, source)
+            prefix = f"{spec.topic_key}_adim{step.number}" if source == "notlar" else \
+                f"{spec.topic_key}_{source}_adim{step.number}"
+            render_operations(current.operations, state, spec.label, prefix, spec.topic_key, escape)
+        except guard as error:
+            st.error(f"Bu adım hesaplanamadı: {_error_text(error, escape)}", icon=":material/error:")
+            return
+        if run is not None:
+            _render_checks(current, run, variant)
+    try:
+        note = step.note_for(state, choices) if (step.note_for is not None and state is not None) else step.takeaway
+    except guard:  # kendi verin: yorum metni bu veriyle yazılamadı; sonuçlar yukarıda gösterildi
+        note = ""
     if note:
         st.info(note, icon=":material/lightbulb:")
     _render_code(chosen, current, variant)
     if step.number == spec.steps[-1].number:
         _render_downloads(spec, chosen)
+
+
+def _error_text(error: BaseException, escape: Callable[[str], str]) -> str:
+    """Hata iletisi; hesap hatası (``ValueError``) olduğu gibi, beklenmeyen bir hata türüyle birlikte yazılır."""
+
+    if type(error) is ValueError or isinstance(error, K.UploadError):
+        return escape(str(error))
+    return escape(f"{type(error).__name__}: {error}") + ". Seçimleri değiştirin ya da dosyayı kontrol edin."

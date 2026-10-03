@@ -118,6 +118,52 @@ bağımsız tanımlardan gelir; arayüz yalnız bu tanımları gösterir.
   kuramsal değerleri ve metinlerin kaydırıcı uçlarında doğruluğu, soru yazım çeşitleri), `tests/test_all_quizzes.py`,
   `tests/test_topic_contracts.py` (`MIGRATED_TOPICS`), `tests/test_app_smoke.py`.
 
+## Uygulama sekmesinin ek veri kaynakları (Konu 0–2)
+
+Uygulama sekmesinin üstündeki veri kaynağı seçimi (`lab_ui._render_source`, anahtar `{konu}_lab_kaynak`) üç
+kaynaktan birini gösterir: **Notlardaki örnek** (varsayılan; `core/labs/konuNN.py`, değişmez), **Alternatif örnek** ve
+**Kendi verini yükle**. `LabSpec.source` (`SOURCES`: `notlar`, `alternatif`, `kendi`) tanımın kaynağıdır.
+
+- `core/labs/ornek.py`: ortak altyapı. Her konu için bir **genel uygulama** (`core/labs/ornek_konu00.py` …
+  `ornek_konu02.py`) aynı adım numaralarını ve aynı işlemleri bir `Case`'ten (veri, roller, etiketler, metinler) kurar.
+  Alternatif örnek genel uygulamanın Wooldridge verileriyle (WAGE2, OKUN, KIELMC, CRIME4) kurulmuş hâlidir; kendi
+  veride aynı genel uygulama öğrencinin dosyasıyla kurulur. `with_app_values` kontrollerin beklenen değerlerini
+  uygulamanın kendi hesabıyla doldurur (kendi verinde boş bir tablo hücresinin kontrolü atlanır); alternatif örneklerin
+  sayıları testlerde bağımsız bir hesapla (pandas, statsmodels) doğrulanır. `usable_pair` sabit ya da az gözlemli
+  sütun çiftlerini seçeneklerden çıkarır; `exact_fit` ve `stable_checks` neredeyse tam uyumda (artık kareler toplamı
+  toplamın 10⁻⁹'undan küçük) standart hataya bağlı kontrolleri (standart hata, t, p, güven aralığı, F) çıkarır, çünkü
+  bunlar yuvarlama gürültüsüdür. `ornekler.py` kayıttır (`VARIANTS`).
+- `core/labs/kurgusal_veri.py`: Konu 2'nin deney adımındaki kurgusal iş arama programı: 200 satır modülde dondurulmuş,
+  veri üretim süreci (tohum 305) belgede; programın gerçek ortalama etkisi (parametre) DGP'den bilinir
+  (`PROGRAM_EFFECT` ≈ 27,6 bin TL) ve metinde bu kuradaki tahminle (53,3 bin TL) karşılaştırılır.
+- `core/labs/kendi_veri.py` (İKT 217'den): dosya okuma (Excel `openpyxl`; CSV'de karakter kodlaması, ayırıcı ve
+  ondalık işareti algılanır), sütun adlarının ve metin hücrelerinin iki dilde aynı temizlenmesi, kod adları
+  (`code_name`: dosyadaki bütün sütunlar dosya sırasıyla adlandırılır, böylece bir sütunun adı rol seçimine bağlı
+  değildir; uygulamanın iç adları `RESERVED_CODES` kullanılmaz, ör. "Gözlem" → `gozlem_2`), sınırlar (5 MB,
+  10.000 satır) ve iki dilin aynı okuyamayacağı hücrelerin reddi. Noktalı virgülle ayrılmış dosyada noktadan sonra
+  üçten farklı basamaklı bir sayı (12.5) binlik ayırıcı olamayacağı için ondalık sayılır.
+- Kod üretimi: `ReadFile` (dosyayı okur, sütunları temizler, zorunlu rollerde boş satırları çıkarır), `CompleteCases`
+  (adımın kullandığı sütunlarda tam gözlemler), `TakeRows` (satır seçimi). Betik adı kaynağa göredir
+  (`ikt305_konuNN_alternatif.py`, `ikt305_konuNN_kendi_verim.R`; seçilen spesifikasyonda `_secim`). Başlık veri
+  kaynağını ve dosyanın betikle aynı klasöre konacağını yazar; karşılaştırma "Uygulamayla karşılaştırma" başlığıyla,
+  `max(0,5·10⁻ᵈ, 10⁻⁹·|beklenen|)` toleransıyla yapılır (uygulamanın değeri yuvarlanmamıştır; büyük sayılarda iki
+  yazılımın son basamak farkı göreli payla karşılanır). R'de sayısal grup adları `grup_adi` ile bilimsel gösterimsiz
+  yazılır (R 100000'i 1e+05 diye adlandırırdı). Excel dosyası R'de `readxl` ile okunur; R'nin tek ek paketi budur.
+  Notlardaki kaynakta üretilen kod bayt düzeyinde değişmez.
+- Arayüz: `topics/kendi_veri_ui.py` dosya yükleme, sayfa ve rol seçimi, öneriler (konuya özgü `CustomLab.suggest`,
+  ör. Konu 2'de dönem ve panel birimi) ve örnek dosya. Yüklenen dosya ve ondan kurulan tanım yalnız
+  `st.session_state`'te tutulur (`session_cache`); ortak önbelleğe, diske ya da günlüğe yazılmaz. Ek kaynakların adım
+  denetimleri ayrı anahtarlardadır (`{konu}_{kaynak}_secim_…`) ve gölge anahtarlarda (`_kalici_…`) saklanır; değer
+  widget'tan hemen önce yazılır (`_prepare_widget`), çünkü widget'ı hiç çizilmemiş bir anahtara yazılan değer
+  Streamlit'te kullanıcı anahtarı olarak kalır ve widget sonra çizilmeyince eski değer geri gelir. Kendi verinde
+  etiket, yardım ve düğme seçenekleri Markdown'a kaçırılır (`md`); tablolarda aynı etiketi alan sütunlar
+  (ör. dosyadaki "Gözlem" ile gözlem numarası) `_unique_labels` ile ayrılır; beklenmeyen bir hata anlaşılır bir
+  iletiyle gösterilir.
+- Testler: `tests/test_lab_variants.py` (kayıt, alternatiflerin bağımsız hesabı, uygulama–Python eşitliği her tek
+  seçimde, her denetimin son seçeneğinde R'nin uygulamanın bütün sayılarını vermesi, örnek dosya ve dağınık dosyalar
+  iki dilde, DGP'nin gerçek etkisi, İKT 217'den taşınan okuma testleri) ve `tests/test_app_smoke.py`'nin veri kaynağı
+  testleri (her adım iki dilde, yükleme, kaynak ve konu geçişinde seçimlerin korunması, dosyayı kaldırma, kaçış).
+
 Bütün konular bu yapıdadır. Taşınan her konunun eski modülleri ve testleri aynı blokta kaldırıldı (Konu 1–2 için
 `core/research_question_utils.py`,
 `core/scenario_registry.py`, `core/data_structure_utils.py`, `core/group_comparison_utils.py` ve testleri; Konu 3–4

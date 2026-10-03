@@ -6,6 +6,8 @@ Uygulama çalışma zamanında bir büyük dil modeli veya dış API kullanmaz. 
 
 Her konu **Uygulama**, **Sezgi** ve **Kendini sına** sekmelerinden oluşur. Uygulama sekmesi notlardaki laboratuvarın adımlarını izler ve notlarda basılı her sayıyı gerçek veriyle yeniden üretir; öğrenci bir adımda farklı bir spesifikasyon seçebilir (ör. açıklayıcı değişken), seçim yalnız ona bağlı sonraki adımlara geçer ve notlardaki modelle yan yana gösterilir. Her adımın ve her Sezgi deneyinin Python ve R kodu aynı tanımdan üretilir.
 
+Konu 0–2'de Uygulama sekmesinin üstünde bir **veri kaynağı** seçimi vardır. Varsayılan **Notlardaki örnek**tir (yukarıdaki gibi). **Alternatif örnek** aynı adımları başka Wooldridge verileriyle yapar (WAGE2, OKUN, KIELMC, CRIME4; Konu 2'nin deney adımında veri üretim süreci belgelenmiş kurgusal bir iş arama programı). **Kendi verini yükle** aynı adımları öğrencinin Excel (.xlsx) ya da CSV dosyasıyla yapar: öğrenci sütunları rollere seçer (ör. sonuç ve açıklayıcı değişken), rolü seçilmeyen adım neye ihtiyacı olduğunu yazar. İki ek kaynakta kontrollerin beklenen değerleri uygulamanın kendi hesabıdır; indirilen Python ve R kodu bu değerleri yeniden üretir ve kendi verinde dosyayı betikle aynı klasörden okur. Yüklenen dosya yalnız oturumun belleğinde işlenir; diske, ortak önbelleğe ya da günlüğe yazılmaz.
+
 ## Kapsam
 
 0. Başlangıç Araç Kutusu: Veri, Notasyon ve Temel İstatistik
@@ -27,6 +29,9 @@ Her konu **Uygulama**, **Sezgi** ve **Kendini sına** sekmelerinden oluşur. Uyg
 | 0 | Uygulama · Sezgi · Kendini sına | Tablo 0.1–0.3 (küçük örnekler), WAGE1 | 3 deney | 24 soru |
 | 1 | Uygulama · Sezgi · Kendini sına | WAGE1 (§1.6) | 3 deney | 24 soru |
 | 2 | Uygulama · Sezgi · Kendini sına | WAGE1, PHILLIPS, CPS78_85, WAGEPAN, JTRAIN2 | 3 deney | 24 soru |
+
+Konu 0–2'nin alternatif örnekleri: Konu 0 ve 1 WAGE2 (Konu 0'da ayrıca OKUN), Konu 2 WAGE2, OKUN, KIELMC, CRIME4 ve kurgusal deney verisi.
+
 | 3 | Uygulama · Sezgi · Kendini sına | WAGE1, Tablo 3.2 (küçük örnek), JTRAIN2 | 3 deney | 24 soru |
 | 4 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | 3 deney | 24 soru |
 | 5 | Uygulama · Sezgi · Kendini sına | WAGE1, HPRICE1 | 3 deney | 24 soru |
@@ -41,13 +46,16 @@ Her konu **Uygulama**, **Sezgi** ve **Kendini sına** sekmelerinden oluşur. Uyg
 ## Teknik yapı
 
 - Python 3.12
-- Streamlit
+- Streamlit 1.56 veya üstü (`st.segmented_control(required=...)`, `st.file_uploader(max_upload_size=...)`)
 - pandas, NumPy, SciPy
 - statsmodels
 - Plotly
 - Wooldridge veri paketi
+- openpyxl (yüklenen Excel dosyalarını okumak için)
 - pytest ve Streamlit AppTest
-- Üretilen kod: Python (`wooldridge`, pandas, statsmodels, matplotlib) ve temel R (tek paket: `wooldridge`)
+- Üretilen kod: Python (`wooldridge`, pandas, statsmodels, matplotlib) ve temel R (tek paket: `wooldridge`). Kendi
+  verinde Excel dosyası Python'da `openpyxl` ile, R'de `readxl` ile okunur; R'nin tek ek paketi budur ve yalnız Excel
+  dosyası yüklendiğinde gerekir (CSV temel R ile okunur).
 
 İki dilde aynı sayı sözleşmesi: veri üzerindeki deterministik hesaplar (betimsel özet, EKK) iki dilde basılı basamakta aynı sayıyı verir; Sezgi deneylerinde Python kodu uygulamanın sayılarını birebir üretir, R farklı rastgele sayı üreteci kullandığı için yalnız dağılımda aynıdır.
 
@@ -85,13 +93,13 @@ Yalnız uygulamayı çalıştırmak için geliştirme bağımlılıkları yerine
 git diff --check
 ```
 
-`requirements-dev.txt` testlerin ihtiyaç duyduğu paketleri de kurar (üretilen Python kodu için matplotlib). Üretilen R kodunu çalıştıran testler `Rscript` ve `wooldridge` R paketini ister (`install.packages("wooldridge")`). `Rscript` önce `RSCRIPT` ortam değişkeninde, sonra PATH'te, Windows'ta sonra standart R kurulum klasörlerinde (`Program Files\R`, `AppData\Local\Programs\R`; en yeni sürüm) aranır. İkisinden biri yoksa R testleri atlanır; nedeni `pytest -rs` ile görülür. R testleri R'yi İngilizce iletilerle çalıştırır (`LANGUAGE=en`; uyarı denetimi çeviriye bağlı kalmaz). Yerel ayar Linux'ta `C.UTF-8`, macOS'ta `en_US.UTF-8`, Windows'ta sistemin yerel ayarıdır (Windows'ta `C.UTF-8` yoktur). Üretilen R kodunun çıktısı C, Türkçe ve İngilizce yerel ayarda aynıdır.
+`requirements-dev.txt` testlerin ihtiyaç duyduğu paketleri de kurar (üretilen Python kodu için matplotlib). Üretilen R kodunu çalıştıran testler `Rscript` ve `wooldridge` R paketini ister (`install.packages("wooldridge")`). `Rscript` önce `RSCRIPT` ortam değişkeninde, sonra PATH'te, Windows'ta sonra standart R kurulum klasörlerinde (`Program Files\R`, `AppData\Local\Programs\R`; en yeni sürüm) aranır. İkisinden biri yoksa R testleri atlanır; nedeni `pytest -rs` ile görülür. R testleri R'yi İngilizce iletilerle çalıştırır (`LANGUAGE=en`; uyarı denetimi çeviriye bağlı kalmaz). Yerel ayar Linux'ta `C.UTF-8`, macOS'ta `en_US.UTF-8`, Windows'ta sistemin yerel ayarıdır (Windows'ta `C.UTF-8` yoktur). Üretilen R kodunun çıktısı C, Türkçe ve İngilizce yerel ayarda aynıdır. Kendi verinin Excel dosyasını R'de okuyan testler `readxl` paketini de ister (`install.packages("readxl")`); paket yoksa yalnız bu testler atlanır.
 
 Sürüm adayı öncesinde otomatik testlere ek olarak Konu 00–12, metin ölçeği seçenekleri, adım ve deney düğmeleri, tablolar, metric kartları ve grafik eksenleri canlı Streamlit oturumunda kontrol edilmelidir.
 
 ## Veri kaynakları
 
-Uygulama Wooldridge veri paketindeki başlıca `WAGE1`, `HPRICE1`, `PHILLIPS`, `CPS78_85`, `WAGEPAN` ve `JTRAIN2` veri setlerini kullanır (kitabın 7. baskısının verisi). Konular veriyi ve Türkçe değişken etiketlerini `core/wooldridge_data.py` üzerinden yükler. Veri dosyası depoda tutulmaz: uygulama ve üretilen Python kodu `wooldridge` Python paketinden, üretilen R kodu `wooldridge` R paketinden okur; iki paketin aynı veriyi verdiği testle denetlenir.
+Uygulama Wooldridge veri paketindeki başlıca `WAGE1`, `HPRICE1`, `PHILLIPS`, `CPS78_85`, `WAGEPAN` ve `JTRAIN2` veri setlerini, Konu 0–2'nin alternatif örneklerinde ayrıca `WAGE2`, `OKUN`, `KIELMC` ve `CRIME4` veri setlerini kullanır (kitabın 7. baskısının verisi). Konu 2'nin alternatif deney adımındaki iş arama programı kurgusaldır (`core/labs/kurgusal_veri.py`; veri üretim süreci modül belgesinde yazılıdır, tohum 305). Kendi veri seçeneğinin örnek dosyası da bu kurgusal veriden üretilir. Konular veriyi ve Türkçe değişken etiketlerini `core/wooldridge_data.py` üzerinden yükler. Veri dosyası depoda tutulmaz: uygulama ve üretilen Python kodu `wooldridge` Python paketinden, üretilen R kodu `wooldridge` R paketinden okur; iki paketin aynı veriyi verdiği testle denetlenir.
 
 ## Dağıtım
 

@@ -54,7 +54,7 @@ from core.labs.spec import (
     interactive_step,
 )
 from core.labs.sezgi import plain
-from core.labs.wording import signed_difference, tr_lower
+from core.labs.wording import directions, signed_difference, tr_lower
 
 DATA = "wage1"
 WORKERS = "calisanlar"
@@ -451,6 +451,7 @@ def _log_change(start, end) -> E.Expr:
 def _percent(choices) -> tuple:
     x0, x1 = int(choices["adim6_x0"]), int(choices["adim6_x1"])
     r0, r1 = int(choices["adim6_oran0"]), int(choices["adim6_oran1"])
+    forward, back = directions(str(x0), str(x1))
     return (
         Scalar("yuzde_degisim", _percent_change(x0, x1), f"Yüzde değişim: {x0} → {x1}", decimals=2, percent=True),
         Scalar("geri_donus", _percent_change(x1, x0), f"Geri dönüş: {x1} → {x0}", decimals=2,
@@ -464,10 +465,10 @@ def _percent(choices) -> tuple:
                percent=True),
         ScalarTable(
             (
-                (f"Yüzde değişim, {x0} → {x1}", E.ref("yuzde_degisim")),
-                (f"Log farkı ×100, {x0} → {x1}", E.ref("log_farki")),
-                (f"Yüzde değişim, {x1} → {x0}", E.ref("geri_donus")),
-                (f"Log farkı ×100, {x1} → {x0}", E.ref("log_geri")),
+                (f"Yüzde değişim, {forward}", E.ref("yuzde_degisim")),
+                (f"Log farkı ×100, {forward}", E.ref("log_farki")),
+                (f"Yüzde değişim, {back}", E.ref("geri_donus")),
+                (f"Log farkı ×100, {back}", E.ref("log_geri")),
                 (f"Yüzde puan, %{r0} → %{r1}", E.ref("yuzde_puan")),
                 (f"Göreli yüzde değişim, %{r0} → %{r1}", E.ref("goreli_degisim")),
             ),

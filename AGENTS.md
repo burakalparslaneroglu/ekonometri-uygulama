@@ -42,6 +42,18 @@ Approach* (7. baskı). Cengage.
     seçilen model yan yana gösterilir.
 19. Bütün konular (0–12) yeni yapıdadır ve `tests/test_topic_contracts.py` içindeki `MIGRATED_TOPICS` kümesindedir;
     kaldırılan eski modüller ve testler (aynı dosyadaki liste) geri eklenmez. Yeni bir konu aynı sözleşmeyle eklenir.
+20. Konu 0–2'nin Uygulama sekmesinde veri kaynağı seçimi vardır: **Notlardaki örnek** (varsayılan), **Alternatif
+    örnek**, **Kendi verini yükle**. Notlardaki uygulama ve onun üretilen kodu ek kaynaklar yüzünden değişmez. İki ek
+    kaynak aynı adım numaralarını ve aynı işlemleri genel uygulamadan (`core/labs/ornek_konuNN.py`) kurar; kontrollerin
+    beklenen değerleri uygulamanın hesabıdır, alternatif örneklerin sayıları testlerde bağımsız bir hesapla doğrulanır.
+    Alternatif örnekler gerçek Wooldridge verisidir; kurgusal veri yalnız veri üretim süreci modül belgesinde yazılıyken
+    ve metinde kurgusal olduğu söylenerek kullanılır (Konu 2'nin deney adımı).
+21. Yüklenen dosya yalnız oturumun belleğinde işlenir: ortak önbelleğe (`st.cache_data`, `st.cache_resource`), diske
+    ya da günlüğe yazılmaz. Öğrencinin sütun ve kategori adları Markdown metnine ve widget etiketlerine `md` ile
+    kaçırılarak girer; matematik ifadesinin içine yazılmaz. Okuma ve temizleme kuralları İKT 217 uygulamasıyla aynıdır
+    (`core/labs/kendi_veri.py`); iki dilin aynı okuyamayacağı dosya ve hücreler açık bir iletiyle reddedilir.
+22. Üretilen R kodunun `wooldridge` dışındaki tek paketi `readxl`'dir ve yalnız yüklenen Excel dosyasını okumak için
+    kullanılır; CSV temel R ile okunur.
 
 ## Teknik çerçeve
 
