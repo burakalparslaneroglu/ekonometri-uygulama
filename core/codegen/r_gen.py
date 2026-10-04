@@ -2127,6 +2127,20 @@ class RGenerator(Generator):
         ]
         return lines
 
+    def _quiet_arrows(self, first: str, second: str, indent: str = "") -> list[str]:
+        """Güven aralığı çizgileri. Ek kaynaklarda (alternatif, kendi veri) eksene göre çok dar bir aralık sıfır
+        uzunlukta çizilir ve R uyarı verir; uyarı orada gizlenir. Notlardaki kod bayt düzeyinde aynı kalır."""
+
+        if self.spec.source == "notlar":
+            return [f"{indent}arrows({first}", f"{indent}       {second})"]
+        return [
+            f"{indent}# Eksene göre çok dar aralık sıfır uzunlukta çizilir; R'nin bu uyarısı gizlenir (nokta yine görünür)",
+            f"{indent}suppressWarnings(",
+            f"{indent}  arrows({first}",
+            f"{indent}         {second})",
+            f"{indent})",
+        ]
+
     def _coefficient_plot(self, op: CoefficientPlot) -> list[str]:
         labels = [op.term_label(term, self.spec.label) for term in op.terms]
         left = max(5, min(16, round(0.55 * max(len(item) for item in labels)) + 3))  # sol kenar: en uzun ad sığsın
@@ -2158,8 +2172,9 @@ class RGenerator(Generator):
                 "for (sira in seq_along(sonuc)) {",
                 "  kayma <- 0.25 * ((length(sonuc) - 1) / 2 - (sira - 1))",
                 "  points(sonuc[[sira]]$tahmin, konum + kayma, pch = 19, col = renkler[sira])",
-                "  arrows(sonuc[[sira]]$aralik[, 1], konum + kayma, sonuc[[sira]]$aralik[, 2], konum + kayma, angle = 90,",
-                "         code = 3, length = 0.05, col = renkler[sira], lwd = 2)",
+                *(self._quiet_arrows(
+                    "sonuc[[sira]]$aralik[, 1], konum + kayma, sonuc[[sira]]$aralik[, 2], konum + kayma, angle = 90,",
+                    "code = 3, length = 0.05, col = renkler[sira], lwd = 2", indent="  ")),
                 "}",
                 f'mtext("{_quote(op.y_label)}", side = 2, line = {left - 1.5:g})',
                 f"axis(2, at = konum, labels = {_vector(labels)}, las = 1)",
@@ -2181,8 +2196,9 @@ class RGenerator(Generator):
             f'     col = "{PALETTE[0]}", yaxt = "n", xlab = "{_quote(op.x_label)}", ylab = "",',
             f'     main = "{title}")',
             f'mtext("{_quote(op.y_label)}", side = 2, line = {left - 1.5:g})',
-            f'arrows(aralik[, 1], konum, aralik[, 2], konum, angle = 90, code = 3, length = 0.05, col = "{PALETTE[0]}",',
-            "       lwd = 2)",
+            *self._quiet_arrows(
+                f'aralik[, 1], konum, aralik[, 2], konum, angle = 90, code = 3, length = 0.05, col = "{PALETTE[0]}",',
+                "lwd = 2"),
             f"axis(2, at = konum, labels = {_vector(labels)}, las = 1)",
             f'abline(v = 0, lty = 2, col = "{REFERENCE_COLORS[0]}", lwd = 2)',
             "par(eski_par)",

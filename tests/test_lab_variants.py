@@ -95,7 +95,16 @@ SAMPLE_CHOICES = {
         extra=("Yaş", "Önceki yıllık kazanç (bin TL)"), picks={"gosterge": "Program"})),
     **{topic: (None, CustomChoices(roles={"sonuc": "Yıllık kazanç (bin TL)", "aciklayici": "Eğitim yılı"},
                                    extra=("Yaş", "Önceki yıllık kazanç (bin TL)")))
-       for topic in ("konu04", "konu05", "konu06", "konu07")},
+       for topic in ("konu04", "konu05", "konu06", "konu07", "konu08", "konu09")},
+    "konu10": (None, CustomChoices(
+        roles={"sonuc": "Yıllık kazanç (bin TL)", "aciklayici": "Eğitim yılı", "gosterge": "Cinsiyet",
+               "kategori": "Yaş grubu", "kategori2": "Grup"},
+        extra=("Önceki yıllık kazanç (bin TL)",), picks={"gosterge": "Kadın"})),
+    "konu11": (None, CustomChoices(
+        roles={"sonuc": "Yıllık kazanç (bin TL)", "aciklayici": "Eğitim yılı", "gosterge": "Cinsiyet"},
+        extra=("Yaş", "Önceki yıllık kazanç (bin TL)"), picks={"gosterge": "Kadın"})),
+    "konu12": (None, CustomChoices(roles={"sonuc": "Yıllık kazanç (bin TL)", "aciklayici": "Eğitim yılı"},
+                                   extra=("Yaş", "Önceki yıllık kazanç (bin TL)"))),
 }
 AGG_SHOW = "ignore:FigureCanvasAgg is non-interactive:UserWarning"
 """Agg arka ucunda ``plt.show()`` bu uyarıyı basar; betiğin kendisinden değil test ortamından gelir."""
@@ -181,8 +190,8 @@ def _reproduce(spec: LabSpec, result, path: Path, folder: Path, data: tuple[str,
 
 # --- Kayıt ve alternatif örnek ------------------------------------------------------------------------------
 
-def test_registry_covers_topics_0_to_7_with_the_approved_labels() -> None:
-    assert TOPICS == [f"konu{number:02d}" for number in range(8)]
+def test_registry_covers_topics_0_to_12_with_the_approved_labels() -> None:
+    assert TOPICS == [f"konu{number:02d}" for number in range(13)] == sorted(LABS)
     assert SOURCE_LABELS == {"notlar": "Notlardaki örnek", "alternatif": "Alternatif örnek",
                              "kendi": "Kendi verini yükle"}
     assert all(VARIANTS[topic].custom is not None and VARIANTS[topic].story for topic in TOPICS)
@@ -921,6 +930,201 @@ def test_konu07_alternative_numbers_follow_wage2_and_kielmc(wage2: pd.DataFrame,
                                                   pytest.approx(interval.loc["educ", 1]))
 
 
+# --- Konu 8–12 alternatif örnekleri: bağımsız hesap ---------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def beauty() -> pd.DataFrame:
+    return W.load("beauty")
+
+
+def _house_units(houses: pd.DataFrame) -> pd.DataFrame:
+    """KIELMC (1978) notlardaki HPRICE1 birimleriyle: fiyat bin dolar, arsa bin fit², konut büyüklüğü yüz fit² ve
+    2.000 fit² merkezli."""
+
+    return houses.assign(price1000=houses["price"] / 1000, land1000=houses["land"] / 1000, area100=houses["area"] / 100,
+                         area2k=(houses["area"] - 2000) / 100)
+
+
+def _white(result) -> tuple[float, float]:
+    """White testi bağımsız hesapla: kareli artıklar düzeylere, karelere ve çapraz çarpımlara (yinelenen sütun rankla
+    ayıklanır)."""
+
+    from scipy import stats
+
+    exog = result.model.exog[:, 1:]
+    columns = [np.ones(len(exog)), *exog.T]
+    for first in range(exog.shape[1]):
+        for second_ in range(first, exog.shape[1]):
+            columns.append(exog[:, first] * exog[:, second_])
+    design = np.column_stack(columns)
+    squared = result.resid.to_numpy() ** 2
+    fitted = design @ np.linalg.lstsq(design, squared, rcond=None)[0]
+    r2 = 1 - ((squared - fitted) ** 2).sum() / ((squared - squared.mean()) ** 2).sum()
+    rank = np.linalg.matrix_rank(design)
+    return len(squared) * r2, float(stats.chi2.sf(len(squared) * r2, rank - 1))
+
+
+def test_konu08_alternative_numbers_follow_wage2_and_kielmc(wage2: pd.DataFrame, houses: pd.DataFrame) -> None:
+    from scipy import stats
+
+    spec = VARIANTS["konu08"].alternative()
+    s = run_operations(_operations(spec)).scalars
+    model = smf.ols("wage ~ educ + exper + tenure", data=wage2).fit()
+    joint = model.f_test("exper = 0, tenure = 0")
+    assert s["F_ortak"] == pytest.approx(float(joint.fvalue)) and s["p_ortak"] == pytest.approx(float(joint.pvalue))
+    assert s["kritik_F"] == pytest.approx(stats.f.ppf(0.95, 2, model.df_resid))
+    assert (s["genel_F"], s["F_cikti"]) == (pytest.approx(model.fvalue), pytest.approx(float(joint.fvalue)))
+    restricted = smf.ols("wage ~ educ", data=wage2).fit()
+    assert (s["ssr_k"], s["ssr_s"]) == (pytest.approx(restricted.ssr), pytest.approx(model.ssr))
+    assert s["F_ssr"] == pytest.approx((restricted.ssr - model.ssr) / 2 / (model.ssr / model.df_resid))
+    assert s["F_r2"] == pytest.approx((model.rsquared - restricted.rsquared) / 2 / ((1 - model.rsquared) / model.df_resid))
+    assert s["F_genel_r2"] == pytest.approx(model.rsquared / 3 / ((1 - model.rsquared) / model.df_resid))
+    assert s["t_kare"] == pytest.approx(model.tvalues["educ"] ** 2) == s["F_tek"]
+    house = smf.ols("price1000 ~ area + rooms + baths", data=_house_units(houses)).fit()
+    rooms_baths = house.f_test("rooms = 0, baths = 0")
+    assert s["F_h"] == pytest.approx(float(rooms_baths.fvalue)) and s["p_h"] == pytest.approx(float(rooms_baths.pvalue))
+    # notlardaki HPRICE1 gibi: oda sayısı tek başına anlamlı değil, oda ve banyo birlikte anlamlı
+    assert s["p_ayri"] == pytest.approx(house.pvalues["rooms"]) and s["p_ayri"] > 0.2 and s["p_h"] < 0.001
+    logged = smf.ols("lwage ~ educ + exper + tenure", data=wage2).fit()
+    assert s["ortak_F2"] == pytest.approx(float(logged.f_test("exper = 0, tenure = 0").fvalue))
+    assert s["genel_F2"] == pytest.approx(logged.fvalue)
+
+
+def test_konu09_alternative_numbers_follow_wage2(wage2: pd.DataFrame) -> None:
+    spec = VARIANTS["konu09"].alternative()
+    s = run_operations(_operations(spec)).scalars
+    level = smf.ols("wage ~ educ + exper + tenure", data=wage2).fit()
+    assert s["b_1"] == pytest.approx(level.params["educ"]) and s["a_1"] == pytest.approx(level.params["Intercept"])
+    assert (s["b_2"], s["b_3"]) == (pytest.approx(12 * level.params["educ"]), pytest.approx(10 * level.params["educ"]))
+    assert s["t_1"] == pytest.approx(s["t_2"]) == pytest.approx(s["t_3"]) and s["r2_1"] == pytest.approx(s["r2_3"])
+    logged = smf.ols("lwage ~ educ + exper + tenure", data=wage2).fit()
+    assert s["bz_educ"] == pytest.approx(logged.params["educ"] * wage2["educ"].std() / wage2["lwage"].std())
+    squares = wage2.assign(expersq=wage2["exper"] ** 2, tenursq=wage2["tenure"] ** 2)
+    full = smf.ols("lwage ~ educ + exper + expersq + tenure + tenursq", data=squares).fit()
+    test = full.f_test("expersq = 0, tenursq = 0")
+    assert (s["F_kare"], s["p_kare"]) == (pytest.approx(float(test.fvalue)), pytest.approx(float(test.pvalue)))
+    assert s["F_98"] == pytest.approx(s["F_kare"]) and s["b_egitim"] == pytest.approx(full.params["educ"])
+    assert s["donum_d"] == pytest.approx(-full.params["exper"] / (2 * full.params["expersq"]))
+    turning = -full.params["tenure"] / (2 * full.params["tenursq"])
+    assert s["donum_k"] == pytest.approx(turning) and s["sayi_k"] == (wage2["tenure"] > turning).sum()
+    assert s["egim_x0"] == pytest.approx(full.params["exper"] + 2 * full.params["expersq"] * 10)
+    assert (s["r_ham"], s["r_mer"]) == (pytest.approx(np.corrcoef(wage2["exper"], wage2["exper"] ** 2)[0, 1]),
+                                        pytest.approx(np.corrcoef(wage2["exper"] - 10, (wage2["exper"] - 10) ** 2)[0, 1]))
+    assert s["r2_ham"] == pytest.approx(s["r2_mer"]) == pytest.approx(full.rsquared)
+    for name, formula in (("m1", "lwage ~ educ + exper + tenure"), ("m2", "lwage ~ educ + exper + expersq + tenure"),
+                          ("m3", "lwage ~ educ + exper + tenure + tenursq"), ("m4", "lwage ~ educ + exper + expersq + "
+                                                                                 "tenure + tenursq")):
+        fit = smf.ols(formula, data=squares).fit()
+        assert (s[f"r2_{name}"], s[f"r2d_{name}"]) == (pytest.approx(fit.rsquared), pytest.approx(fit.rsquared_adj))
+
+
+def test_konu10_alternative_numbers_follow_beauty(beauty: pd.DataFrame) -> None:
+    spec = VARIANTS["konu10"].alternative()
+    state = run_operations(_operations(spec))
+    s = state.scalars
+    means = beauty.groupby("female")["wage"].mean()
+    assert (s["b0"], s["delta"]) == (pytest.approx(means[0]), pytest.approx(means[1] - means[0]))
+    controlled = smf.ols("wage ~ female + educ + exper", data=beauty).fit()
+    logged = smf.ols("lwage ~ female + educ + exper", data=beauty).fit()
+    assert (s["k2_2"], s["k2_3"]) == (pytest.approx(controlled.params["female"]), pytest.approx(logged.params["female"]))
+    assert (s["d_log"], s["b_educ"]) == (pytest.approx(logged.params["female"]), pytest.approx(logged.params["educ"]))
+    assert s["tam_d"] == pytest.approx(100 * (np.exp(logged.params["female"]) - 1))
+    looks = smf.ols("lwage ~ educ + exper + expersq + female + belavg + abvavg", data=beauty).fit()
+    assert (s["k_belavg"], s["k_abvavg"]) == (pytest.approx(looks.params["belavg"]), pytest.approx(looks.params["abvavg"]))
+    assert s["tam_belavg"] == pytest.approx(100 * (np.exp(looks.params["belavg"]) - 1))
+    test = looks.f_test("belavg = 0, abvavg = 0")
+    assert (s["F_bolge"], s["p_bolge"]) == (pytest.approx(float(test.fvalue)), pytest.approx(float(test.pvalue)))
+    assert (s["sayi_belavg"], s["sayi_avglooks"], s["sayi_abvavg"]) == (155, 722, 383)
+    assert (s["toplam_min"], s["toplam_max"]) == (1, 1)
+    city = smf.ols("lwage ~ educ + exper + expersq + female + bigcity + smllcity", data=beauty).fit()
+    test = city.f_test("bigcity = 0, smllcity = 0")
+    assert s["F_end"] == pytest.approx(float(test.fvalue)) and s["k_bigcity"] == pytest.approx(city.params["bigcity"])
+
+
+def test_konu11_alternative_numbers_follow_beauty_and_kielmc(beauty: pd.DataFrame, houses: pd.DataFrame) -> None:
+    spec = VARIANTS["konu11"].alternative()
+    state = run_operations(_operations(spec))
+    s = state.scalars
+    data = beauty.assign(educ12=beauty["educ"] - 12)
+    additive = smf.ols("lwage ~ female + educ12 + exper", data=data).fit()
+    assert s["fark1_min"] == pytest.approx(additive.params["female"]) == pytest.approx(s["fark1_max"])
+    model = smf.ols("lwage ~ female * educ12 + exper", data=data).fit()
+    b1, g0, g1 = model.params["educ12"], model.params["female"], model.params["female:educ12"]
+    assert (s["e2_b1"], s["e2_g0"], s["e2_g1"]) == (pytest.approx(b1), pytest.approx(g0), pytest.approx(g1))
+    assert s["e2_egim1"] == pytest.approx(b1 + g1) and s["e2_sabit1"] == pytest.approx(model.params["Intercept"] + g0)
+    assert s["n_c"] == (beauty["educ"] == 12).sum() == 468 and s["tam_c"] == pytest.approx(100 * (np.exp(g0) - 1))
+    assert (s["w_tam0"], s["w_tam1"]) == (pytest.approx(100 * (np.exp(b1) - 1)), pytest.approx(100 * (np.exp(b1 + g1) - 1)))
+    for index, level in enumerate((8, 12, 16, 17)):
+        assert s[f"fark{index}_log"] == pytest.approx(g0 + g1 * (level - 12))
+    assert (s["r2_add6"], s["r2_int6"]) == (pytest.approx(additive.rsquared), pytest.approx(model.rsquared))
+    structures = state.tables["tablo_yapi"]
+    restricted = smf.ols("lwage ~ female:educ12 + educ12 + exper", data=data).fit()
+    assert structures.loc["r2", "(3) Aynı sabit, farklı eğim"] == pytest.approx(restricted.rsquared)
+    # İkinci uygulama: KIELMC (1978), tesise yakınlık × konut büyüklüğü (2.000 fit² merkezli)
+    house = _house_units(houses)
+    fit = smf.ols("price1000 ~ nearinc * area2k + rooms + baths", data=house).fit()
+    assert (s["h_b1"], s["h_g0"], s["h_g1"]) == (pytest.approx(fit.params["area2k"]), pytest.approx(fit.params["nearinc"]),
+                                                 pytest.approx(fit.params["nearinc:area2k"]))
+    cooks = fit.get_influence().cooks_distance[0]
+    row = int(np.argmax(cooks))
+    assert house.loc[row, ["price", "area", "nearinc"]].tolist() == [300000, 3770, 1]
+    without = smf.ols("price1000 ~ nearinc * area2k + rooms + baths", data=house.drop(index=row)).fit()
+    assert (s["loo_g1"], s["loo_p"]) == (pytest.approx(without.params["nearinc:area2k"]),
+                                         pytest.approx(without.pvalues["nearinc:area2k"]))
+    assert fit.pvalues["nearinc:area2k"] < 0.05 < s["loo_p"]  # tek konut çıkarılınca anlamlılık kaybolur
+    text = spec.step(7).note_for(run_operations(spec.operations_through(7)), spec.normalize({}))
+    assert f"{row + 1}. gözlem" in text and "yüzde 5 düzeyinde anlamlı olmaz" in text
+    for index, value in enumerate((-10, -5, 0, 5, 10, 15)):
+        assert s[f"hfark_{index}"] == pytest.approx(fit.params["nearinc"] + fit.params["nearinc:area2k"] * value)
+    inside = house["area"].between(1000, 4000)
+    assert (s["n_aralik"], s["n_alti"], s["n_ustu"]) == (inside.sum(), (house["area"] < 1000).sum(),
+                                                         (house["area"] > 4000).sum()) == (172, 6, 1)
+    slopes = model.f_test("female:educ12 = 0")
+    both = model.f_test("female = 0, female:educ12 = 0")
+    assert s["F_egim_w"] == pytest.approx(float(slopes.fvalue)) == pytest.approx(s["t2_egim_w"])
+    assert s["F_ortak_w"] == pytest.approx(float(both.fvalue))
+    assert s["F_ortak_h"] == pytest.approx(float(fit.f_test("nearinc = 0, nearinc:area2k = 0").fvalue))
+
+
+def test_konu12_alternative_numbers_follow_kielmc_and_wage2(wage2: pd.DataFrame, houses: pd.DataFrame) -> None:
+    from statsmodels.stats.diagnostic import het_breuschpagan
+
+    spec = VARIANTS["konu12"].alternative()
+    s = run_operations(_operations(spec)).scalars
+    house = _house_units(houses)
+    level = smf.ols("price1000 ~ land1000 + area100 + rooms + baths", data=house).fit()
+    log = smf.ols("lprice ~ lland + larea + rooms + baths", data=house).fit()
+    for key, fit in (("duzey", level), ("log", log)):
+        bp = het_breuschpagan(fit.resid, fit.model.exog)
+        assert (s[f"lm_bp_{key}"], s[f"p_bp_{key}"]) == (pytest.approx(bp[0]), pytest.approx(bp[1]))
+        lm, p = _white(fit)
+        assert (s[f"lm_white_{key}"], s[f"p_white_{key}"]) == (pytest.approx(lm), pytest.approx(p))
+    assert s["lm_elle"] == pytest.approx(s["lm_bp_duzey"]) and s["p_bp_duzey"] < 0.001 < 0.05 < s["p_bp_log"]
+    for cov in ("HC0", "HC1", "HC2", "HC3"):
+        robust = smf.ols("price1000 ~ land1000 + area100 + rooms + baths", data=house).fit(cov_type=cov, use_t=True)
+        assert s[f"sh3_{cov.lower()}"] == pytest.approx(robust.bse["land1000"])
+    hc1 = smf.ols("price1000 ~ land1000 + area100 + rooms + baths", data=house).fit(cov_type="HC1", use_t=True)
+    assert (s["sh4_rob"], s["p4_rob"]) == (pytest.approx(hc1.bse["land1000"]), pytest.approx(hc1.pvalues["land1000"]))
+    assert s["p4_gel"] < 0.001 and s["p4_rob"] > 0.05  # dayanıklı hesapla arsa katsayısı anlamlılığını yitirir
+    log_hc1 = smf.ols("lprice ~ lland + larea + rooms + baths", data=house).fit(cov_type="HC1", use_t=True)
+    assert (s["sh5_rob"], s["e5"]) == (pytest.approx(log_hc1.bse["lland"]), pytest.approx(log.params["lland"]))
+    conventional = level.f_test("land1000 = 0, rooms = 0")
+    robust = hc1.f_test("land1000 = 0, rooms = 0")
+    assert (s["F_gel"], s["F_rob"]) == (pytest.approx(float(conventional.fvalue)), pytest.approx(float(robust.fvalue)))
+    assert s["p_gel"] < 0.05 < s["p_rob"]  # notlardaki Tablo 12.5 gibi: dayanıklı ortak test yüzde 5'te reddetmez
+    leverage = level.get_influence().hat_matrix_diag
+    row = int(np.argmax(leverage))
+    assert house.loc[row, "land"] == 544500 and leverage[row] == pytest.approx(0.618, abs=5e-4)
+    text = spec.step(3).note_for(run_operations(spec.operations_through(3)), spec.normalize({}))
+    assert f"{row + 1}. gözlemin (arsa büyüklüğü 544.500 fit²) kaldıracı yaklaşık 0,62" in text
+    for key, formula in (("wd", "wage ~ educ + exper + tenure + married"), ("wl", "lwage ~ educ + exper + tenure + married")):
+        fit = smf.ols(formula, data=wage2).fit()
+        bp = het_breuschpagan(fit.resid, fit.model.exog)
+        assert (s[f"bp_{key}"], s[f"wh_{key}"]) == (pytest.approx(bp[0]), pytest.approx(_white(fit)[0]))
+        robust = smf.ols(formula, data=wage2).fit(cov_type="HC1", use_t=True)
+        assert (s[f"sh_x_{key}"], s[f"sh_x_{key}_hc1"]) == (pytest.approx(fit.bse["educ"]), pytest.approx(robust.bse["educ"]))
+
+
 # --- Kendi verin: örnek dosya ----------------------------------------------------------------------------
 
 @pytest.mark.parametrize("name", list(SAMPLE_CHOICES))
@@ -1230,6 +1434,17 @@ def test_a_zero_slope_is_written_as_zero() -> None:
 
 REGRESSION_TOPICS = ("konu03", "konu04", "konu05", "konu06", "konu07")
 EMPLOYED = {"sonuc": "Yıllık kazanç (bin TL)", "aciklayici": "Eğitim yılı"}
+B2_TOPICS = ("konu08", "konu09", "konu10", "konu11", "konu12")
+GROUPED = {"konu10", "konu11"}
+"""İki kategorili değişken isteyen konular (Konu 11'de zorunlu, Konu 10'da çok kategorili değişkenle seçenekli)."""
+
+
+def _b2_roles(topic: str, roles: dict, dummy: str | None, pick: str | None):
+    roles = dict(roles)
+    if topic in GROUPED and dummy is not None:
+        roles["gosterge"] = dummy
+        return roles, {"gosterge": pick}
+    return roles, None
 
 
 def _people(topic: str, roles: dict, extra: tuple = (), picks: dict | None = None) -> LabSpec:
@@ -1283,16 +1498,22 @@ def _blank_frame() -> pd.DataFrame:
     return frame
 
 
-@pytest.mark.parametrize("topic", REGRESSION_TOPICS)
-def test_konu03_to_07_drop_rows_with_a_blank_in_any_selected_column(topic: str) -> None:
+@pytest.mark.parametrize("topic", (*REGRESSION_TOPICS, *B2_TOPICS))
+def test_regression_topics_drop_rows_with_a_blank_in_any_selected_column(topic: str) -> None:
     frame = _blank_frame()
-    roles = dict(EMPLOYED)
-    spec, _ = _own(topic, frame, roles, ("Yaş", "Önceki yıllık kazanç (bin TL)"))
+    roles, picks = _b2_roles(topic, EMPLOYED, "Cinsiyet", "Kadın")
+    if picks:  # her gözlemde dolu iki kategorili sütun
+        frame["Cinsiyet"] = np.where(np.arange(len(frame)) % 3 == 0, "Kadın", "Erkek")
+    spec, _ = _own(topic, frame, roles, ("Yaş", "Önceki yıllık kazanç (bin TL)"), picks)
     read = _read(spec)
-    assert read.dropped == 4 and set(read.required) == {code for code, _, _ in read.columns}
+    numeric = {"yillik_kazanc_bin_tl", "egitim_yili", "yas", "onceki_yillik_kazanc_bin"}
+    # Konu 10'da iki kategorili değişken isteğe bağlıdır ama boş hücre kabul etmez (``Role.complete``)
+    assert read.dropped == 4 and set(read.required) == {code for code, _, _ in read.columns} - (
+        set() if topic != "konu10" else {"cinsiyet"}) and numeric <= set(read.required)
     assert len(read.rows) == len(frame) - 4 and "not" not in {code for code, _, _ in read.columns}
     complete = frame.dropna(subset=["Yıllık kazanç (bin TL)", "Eğitim yılı", "Yaş", "Önceki yıllık kazanç (bin TL)"])
-    complete = complete.set_axis(["y", "x", "a", "o", "not"], axis=1)
+    complete = complete.rename(columns={"Yıllık kazanç (bin TL)": "y", "Eğitim yılı": "x", "Yaş": "a",
+                                        "Önceki yıllık kazanç (bin TL)": "o"})
     resolved = spec.resolve({})
     state = run_operations(_operations(resolved))
     fitted = [op for op in _operations(resolved) if isinstance(op, OLS) and op.frame in ("veri", "ikinci")]
@@ -1300,7 +1521,7 @@ def test_konu03_to_07_drop_rows_with_a_blank_in_any_selected_column(topic: str) 
     # Dosyanın sütunlarıyla kurulan her model, boş satırları çıkarılmış veriyle bağımsız hesapla aynıdır
     short = {"yillik_kazanc_bin_tl": "y", "egitim_yili": "x", "yas": "a", "onceki_yillik_kazanc_bin": "o"}
     raw = [op for op in fitted if {op.outcome, *op.regressors} <= set(short)]
-    assert raw
+    assert raw or topic in GROUPED  # Konu 10–11'in bütün modellerinde kukla ya da log sonuç vardır
     for op in raw:
         expected = smf.ols(f"{short[op.outcome]} ~ {' + '.join(short[name] for name in op.regressors)}",
                            data=complete).fit()
@@ -1308,8 +1529,9 @@ def test_konu03_to_07_drop_rows_with_a_blank_in_any_selected_column(topic: str) 
                                    atol=1e-9, err_msg=op.name)
     table = K.read_upload("veri.csv", ("﻿" + frame.to_csv(sep=";", decimal=",", index=False)).encode("utf-8"))
     _, notes = custom_case(VARIANTS[topic].custom, table, CustomChoices(roles=roles, extra=(
-        "Yaş", "Önceki yıllık kazanç (bin TL)")))
-    assert any("Seçilen sütunlardan" in note and "4 satır çıkarıldı" in note for note in notes), notes
+        "Yaş", "Önceki yıllık kazanç (bin TL)"), picks=picks or {}))
+    lead = "Temel sütunlarda" if topic == "konu10" else "Seçilen sütunlardan"  # Konu 10: kukla rolü isteğe bağlı
+    assert any(lead in note and "4 satır çıkarıldı" in note for note in notes), notes
 
 
 @pytest.mark.parametrize("topic", ("konu05", "konu07"))
@@ -1522,6 +1744,220 @@ def test_konu06_vif_text_names_the_most_correlated_pair() -> None:
     spec, _ = _own("konu06", frame, {"sonuc": "Y", "aciklayici": "A"}, ("B", "C", "D"))
     text = _texts_of(spec)[5]
     assert "en güçlü ikili doğrusal ilişki “A” ile “C” arasındadır" in text and "ilişkili olmaları olağandır" in text
+
+
+# --- Kendi verin: Konu 8–12 -------------------------------------------------------------------------------------
+
+def test_konu08_to_12_steps_without_their_roles_say_what_they_need() -> None:
+    """Ek değişken yok, kategorik sütun yok ya da sonuçta sıfır: o adımlar ne gerektiğini yazar; öteki adımlar kurulur
+    ve kontrollerini geçer."""
+
+    alone = _people("konu08", EMPLOYED)
+    for number in (3, 6):
+        assert not alone.step(number).operations, number
+        assert "en az iki açıklayıcı" in alone.step(number).explanation, number
+    no_groups, _ = _own("konu10", VARIANTS["konu10"].custom.sample(), {**EMPLOYED, "gosterge": "Cinsiyet"},
+                        ("Önceki yıllık kazanç (bin TL)",), {"gosterge": "Kadın"})
+    for number in (5, 6, 7, 9):
+        assert not no_groups.step(number).operations and "çok kategorili bir sütun" in no_groups.step(number).explanation
+    assert not no_groups.step(10).operations and "ikinci bir kategorik sütun" in no_groups.step(10).explanation
+    zeros = _people("konu12", EMPLOYED, ("Yaş",))  # işsiz kalanların kazancı 0: log modeli kurulmaz
+    assert not zeros.step(5).operations and "bütün değerleri pozitif olmalı" in zeros.step(5).explanation
+    assert not zeros.step(8).operations and "sonucun bütün değerleri pozitif olmalı" in zeros.step(8).explanation
+    assert "adim1_model" not in {control.key for control in zeros.controls}
+    assert "yalnız düzey modeli kurulur" in zeros.step(1).explanation
+    employed = K.read_upload(XLSX, K.sample_excel(VARIANTS["konu11"].custom.sample()))
+    case, _ = custom_case(VARIANTS["konu11"].custom, employed, CustomChoices(
+        roles={**EMPLOYED, "gosterge": "Cinsiyet"}, picks={"gosterge": "Kadın"}))
+    interaction = VARIANTS["konu11"].custom.build(case)  # ek değişken yok: etkileşen değişken seçimi gösterilmez
+    keys = {control.key for control in interaction.controls}
+    assert {"adim1_kukla", "adim2_x", "adim5_kukla", "adim7_x"}.isdisjoint(keys) and "adim3_yapi" in keys
+    for spec in (alone, no_groups, zeros, interaction):
+        assert run_lab(spec).all_passed, spec.topic_key
+        _every_step(spec)
+
+
+@pytest.mark.parametrize("topic", ("konu09", "konu10", "konu11"))
+def test_konu09_to_11_require_a_positive_outcome(topic: str) -> None:
+    roles, picks = _b2_roles(topic, EMPLOYED, "Grup", "Program")
+    with pytest.raises(K.UploadError, match="sıfır ya da negatif değerler var.*log sonuçla kurulur"):
+        _people(topic, roles, ("Yaş",), picks)
+
+
+def test_konu09_rejects_squares_that_lose_precision() -> None:
+    rng = np.random.default_rng(305)
+    frame = pd.DataFrame({"Kazanç": np.round(rng.uniform(10, 50, 30), 2), "Gelir (TL)": rng.uniform(20_000, 90_000, 30)})
+    with pytest.raises(K.UploadError, match="daha büyük bir birimle"):
+        _own("konu09", frame, {"sonuc": "Kazanç", "aciklayici": "Gelir (TL)"})
+    _own("konu09", frame.assign(**{"Gelir (TL)": frame["Gelir (TL)"] / 1000}), {"sonuc": "Kazanç",
+                                                                                "aciklayici": "Gelir (TL)"})
+
+
+def test_konu10_and_11_role_rules() -> None:
+    frame = VARIANTS["konu10"].custom.sample()
+    with pytest.raises(K.UploadError, match="en az birini seçin"):
+        _own("konu10", frame, dict(EMPLOYED))
+    single = frame.assign(**{"Yaş grubu": np.where(np.arange(len(frame)) == 0, "Tek", frame["Yaş grubu"])})
+    with pytest.raises(K.UploadError, match="her kategorisinde en az iki gözlem"):
+        _own("konu10", single, {**EMPLOYED, "kategori": "Yaş grubu"})
+    with pytest.raises(K.UploadError, match="İki kategorili değişken"):
+        _own("konu11", frame, dict(EMPLOYED))
+    flat = frame.assign(**{"Eğitim yılı": np.where(frame["Cinsiyet"] == "Kadın", 12, frame["Eğitim yılı"])})
+    with pytest.raises(K.UploadError, match="etkileşimli model kurulamıyor"):
+        _own("konu11", flat, {**EMPLOYED, "gosterge": "Cinsiyet"}, picks={"gosterge": "Kadın"})
+
+
+def test_konu12_rejects_unit_leverage_and_too_few_observations_for_white() -> None:
+    rng = np.random.default_rng(305)
+    frame = pd.DataFrame({"Y": rng.normal(50, 5, 20).round(2), "X": rng.uniform(1, 9, 20).round(2),
+                          "D": np.where(np.arange(20) == 3, 1.0, 0.0), "Z": rng.normal(size=20).round(3),
+                          "W": rng.normal(size=20).round(3)})
+    with pytest.raises(K.UploadError, match="kaldıracı 1"):
+        _own("konu12", frame, {"sonuc": "Y", "aciklayici": "X"}, ("D",))
+    frame["V"] = rng.normal(size=20).round(3)
+    with pytest.raises(K.UploadError, match="White testi için en az 16 gözlem gerekir"):
+        _own("konu12", frame.head(12), {"sonuc": "Y", "aciklayici": "X"}, ("Z", "W", "V"))
+    _own("konu12", frame.head(12), {"sonuc": "Y", "aciklayici": "X"}, ("Z",))
+
+
+@pytest.mark.parametrize("topic", B2_TOPICS)
+def test_user_names_are_escaped_in_konu08_to_12_texts(topic: str) -> None:
+    roles, picks = _b2_roles(topic, {"sonuc": "Puan $", "aciklayici": "Not_1"}, "Grup|", "B*")
+    spec, _ = _own(topic, SPECIAL, roles, ("Saat*",), picks)
+    text = " ".join(_text for _text in _texts_of(spec).values() if _text) + " ".join(step.explanation
+                                                                                    for step in spec.steps)
+    assert any(escaped in text for escaped in ("Not\\_1", "Puan \\$", "Saat\\*")), text[:300]
+    for raw in ("Puan $", "Not_1", "Saat*", "Grup|", "B*", "A_x"):
+        assert raw not in text, raw
+    if topic in GROUPED:
+        assert "“B\\*”" in text and "“A\\_x”" in text
+    _every_step(spec)
+
+
+RESERVED_B2 = pd.DataFrame({
+    "Puan": [55.0, 61.5, 48.0, 72.5, 58.0, 69.0, 63.5, 75.0, 52.5, 66.0, 59.5, 71.0, 50.0, 64.5, 57.0, 68.5],
+    "Gözlem": [3.5, 1.2, 4.8, 2.2, 5.1, 3.3, 2.9, 4.4, 1.8, 3.9, 2.6, 4.1, 1.5, 3.1, 2.4, 4.6],
+    "Yüzde": [0.2, 0.5, 0.1, 0.9, 0.4, 0.8, 0.6, 0.7, 0.3, 0.55, 0.45, 0.85, 0.15, 0.65, 0.35, 0.75],
+    "Grup0": [10.0, 12, 9, 15, 11, 14, 13, 16, 10, 12, 11, 15, 9, 13, 12, 14],
+    "Kukla X": [1.5, 0.5, 1.0, 2.5, 0.0, 3.0, 1.0, 2.0, 0.5, 1.5, 2.0, 2.5, 0.0, 1.0, 1.5, 3.0],
+    "Cinsiyet": ["A", "B", "A", "B", "B", "A", "A", "B", "B", "A", "B", "A", "A", "B", "A", "B"],
+})
+"""Konu 8–12'nin türettiği sütunlarla (grup0, kukla_x) ve sabit etiketli sütunlarla aynı adlı sütunlar."""
+
+
+@pytest.mark.parametrize("topic", B2_TOPICS)
+def test_konu08_to_12_columns_named_like_the_apps_own_columns_keep_their_names(topic: str, tmp_path: Path,
+                                                                              rscript: str, r_environment) -> None:
+    roles, picks = _b2_roles(topic, {"sonuc": "Puan", "aciklayici": "Gözlem"}, "Cinsiyet", "B")
+    spec, data = _own(topic, RESERVED_B2, roles, ("Yüzde", "Grup0", "Kukla X"), picks)
+    codes = {original: name for name, original, _ in _read(spec).columns}
+    assert (codes["Gözlem"], codes["Yüzde"], codes["Grup0"], codes["Kukla X"]) == ("gozlem_2", "yuzde_2", "grup0_2",
+                                                                                   "kukla_x_2")
+    assert all(spec.label(name) == original for original, name in codes.items())
+    _every_step(spec)
+    _scripts_agree(spec, data, tmp_path, rscript, r_environment)
+
+
+def test_konu08_to_12_derived_names_are_reserved() -> None:
+    derived = {"beta", "dx", "yaklasik", "etki", "otesi_d", "otesi_k", "u_ham", "u_mer", "u_fark", "u_kd", "u_ref",
+               "toplam", "grup0", "grup1", "kukla_x", "duzey0", "duzey1", "grup_farki", "tam_fark", "sira_no", "dahil",
+               "artik2", "mutlak", "ceyrek", "ss", "ort_mutlak"}
+    assert derived <= K.RESERVED_CODES
+
+
+def _exact_frame(topic: str) -> pd.DataFrame:
+    """Ana model tam uyar: Konu 8 ve 12'de Y doğrusaldır, Konu 9–11'de ln(Y) doğrusaldır (log sonuç modelleri)."""
+
+    frame = EXACT[["X", "Z"]].assign(G=["A", "B", "A", "B", "B", "A", "A", "B", "A", "B"])
+    if topic in ("konu08", "konu12"):
+        return frame.assign(Y=1 + 2 * frame["X"] + 0.5 * frame["Z"])
+    shift = 0.3 * (frame["G"] == "B") if topic in GROUPED else 0.0
+    return frame.assign(Y=np.round(np.exp(0.1 + 0.05 * frame["X"] + 0.04 * frame["Z"] + shift), 12))
+
+
+@pytest.mark.parametrize("topic", B2_TOPICS)
+def test_konu08_to_12_exact_fit_drops_fragile_checks_and_both_languages_agree(topic: str, tmp_path: Path, rscript: str,
+                                                                              r_environment) -> None:
+    roles, picks = _b2_roles(topic, {"sonuc": "Y", "aciklayici": "X"}, "G", "B")
+    spec, data = _own(topic, _exact_frame(topic), roles, ("Z",), picks)
+    texts = _texts_of(spec)
+    assert any(text and "Model veriye neredeyse tam uyuyor" in text for text in texts.values()), texts
+    _every_step(spec)
+    _scripts_agree(spec, data, tmp_path, rscript, r_environment, warnings=True)
+
+
+def test_konu11_influential_observation_is_dropped_the_same_way_in_both_languages(tmp_path: Path, rscript: str,
+                                                                                  r_environment) -> None:
+    """Etkileşimin anlamlılığı tek bir gözleme bağlı: Adım 7 o gözlem olmadan da modeli kurar (iki dilde aynı)."""
+
+    rng = np.random.default_rng(11)
+    n = 40
+    x = rng.integers(6, 18, n).astype(float)
+    group = np.where(np.arange(n) % 3 == 0, "B", "A")
+    y = np.exp(1 + 0.05 * x + rng.normal(0, 0.2, n))
+    level = 10 + 0.5 * x + (group == "B") + rng.normal(0, 1.0, n)
+    x[0], group[0], level[0] = 30.0, "B", 60.0
+    frame = pd.DataFrame({"Gelir": np.round(np.where(np.arange(n) == 0, level, y + level - level.mean() + 20), 4),
+                          "Eğitim": x, "Grup": group})
+    spec, data = _own("konu11", frame, {"sonuc": "Gelir", "aciklayici": "Eğitim", "gosterge": "Grup"},
+                      picks={"gosterge": "B"})
+    operations = spec.step(7).operations
+    assert any(isinstance(op, TakeRows) for op in operations)
+    text = _texts_of(spec)[7]
+    assert "tahminleri en çok değiştiren gözlem (1. gözlem" in text and "yüzde 5 düzeyinde anlamlı olmaz" in text
+    _every_step(spec)
+    _scripts_agree(spec, data, tmp_path, rscript, r_environment)
+
+
+def test_konu09_to_12_texts_follow_the_scale_of_the_data_and_ignore_rounding_noise() -> None:
+    """Dar ve geniş aralıklı açıklayıcılar, yalnız ilk harfi farklı kategoriler ve tam uyumdaki gürültü katsayıları:
+    tablolar sonlu kalır, sayılar ölçeğe uygun basamakla yazılır, gürültüden yön çıkarılmaz."""
+
+    rng = np.random.default_rng(9)
+    n = 120
+    z = np.round(rng.uniform(1, 10, n), 1)
+    share = np.round(rng.uniform(0.001, 0.009, n), 5)
+    narrow = pd.DataFrame({"Y": np.round(np.exp(1 + 120 * share - 12000 * share ** 2 + 0.02 * z
+                                                 + rng.normal(0, 0.01, n)), 5), "Pay": share, "Z": z})
+    spec, _ = _own("konu09", narrow, {"sonuc": "Y", "aciklayici": "Pay"}, ("Z",))
+    state = run_operations(spec.operations_through(5))
+    assert np.isfinite(state.frames["tablo95"][["yaklasik", "tam"]].to_numpy()).all()
+    text = _texts_of(spec)[5]
+    assert "Δ = 0,001 birimlik" in text and re.search(r"dönüm noktası 0,00\d{3} \(tepe noktası\)", text), text
+    income = np.round(rng.uniform(1000, 9000, n), 0)
+    wide = pd.DataFrame({"Y": np.round(np.exp(1 + 8e-6 * income - 2e-10 * income ** 2 + 0.02 * z
+                                              + rng.normal(0, 0.05, n)), 4), "Gelir": income, "Z": z})
+    text = _texts_of(_own("konu09", wide, {"sonuc": "Y", "aciklayici": "Gelir"}, ("Z",))[0])[5]
+    assert "Δ = 1000 birimlik ek artış" in text and "yaklaşık sıfırdır" not in text, text
+    # yalnız ilk harfi farklı iki kategori aynı etikete inmez
+    cased = pd.DataFrame({"Y": np.round(np.exp(rng.normal(3, 0.3, 40)), 3), "X": rng.integers(5, 15, 40).astype(float),
+                          "G": np.where(np.arange(40) % 2, "evet", "Evet")})
+    for topic in ("konu10", "konu11"):
+        _every_step(_own(topic, cased, {"sonuc": "Y", "aciklayici": "X", "gosterge": "G"}, (), {"gosterge": "evet"})[0])
+    # tam uyumda gerçek değeri sıfır olan eğim farkı ve kare katsayısı yorumlanmaz
+    roles, picks = _b2_roles("konu11", {"sonuc": "Y", "aciklayici": "X"}, "G", "B")
+    texts = _texts_of(_own("konu11", _exact_frame("konu11"), roles, ("Z",), picks)[0])
+    assert "γ̂₁ hesap hassasiyetinde sıfırdır" in texts[6] and "arttıkça" not in texts[6]
+    assert "ayırt edilemez" in texts[3]
+    texts = _texts_of(_own("konu09", _exact_frame("konu09"), {"sonuc": "Y", "aciklayici": "X"}, ("Z",))[0])
+    assert "katsayısı hesap hassasiyetinde sıfırdır" in texts[4] and "modelleri ayırt etmez" in texts[7]
+    # Konu 11: dar aralıkta işaret değiştirme noktası ve yıllar gibi dar yayılımlı değerlerde tablo düzeyleri
+    x = np.round(rng.uniform(0.1, 0.9, 80), 4)
+    group = np.arange(80) % 2 == 0
+    other = np.round(rng.normal(5, 1, 80), 3)
+    level = 10 + 5 * x + group * (-2 + 6 * x) + 0.3 * other + rng.normal(0, 0.3, 80)
+    frame = pd.DataFrame({"Y": np.round(level, 4), "Pay": x, "Grup": np.where(group, "B", "A"), "Z": other})
+    spec, _ = _own("konu11", frame, {"sonuc": "Y", "aciklayici": "Pay", "gosterge": "Grup"}, ("Z",), {"gosterge": "B"})
+    assert re.search(r"yaklaşık 0,3\d* düzeyinde işaret değiştirir", _texts_of(spec)[8]), _texts_of(spec)[8]
+    years = frame.assign(Pay=rng.integers(1990, 2021, 80).astype(float))
+    spec, _ = _own("konu11", years, {"sonuc": "Y", "aciklayici": "Pay", "gosterge": "Grup"}, ("Z",), {"gosterge": "B"})
+    table = run_operations(spec.operations_through(6)).tables["tablo114"]
+    assert len(table) >= 3 and table.index.is_unique, table.index.tolist()
+    # Konu 12: tahmin edilen değerle genişleyen yayılım huni olarak yazılır
+    x = rng.uniform(1, 20, 200)
+    funnel = pd.DataFrame({"Y": np.round(5 + 2 * x + rng.normal(0, 1, 200) * (0.2 + 0.3 * x), 4), "X": np.round(x, 3)})
+    assert "huni biçimi heteroskedastisite şüphesini" in _texts_of(_own("konu12", funnel, {"sonuc": "Y",
+                                                                                           "aciklayici": "X"})[0])[1]
 
 
 def _panel_frame(rows) -> pd.DataFrame:

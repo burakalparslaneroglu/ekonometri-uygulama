@@ -9,6 +9,7 @@ from streamlit.testing.v1 import AppTest
 
 from core.labs import kendi_veri as K
 from core.labs.ornekler import VARIANTS
+from core.labs.registry import LABS
 from core.topic_registry import get_topic
 
 APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
@@ -372,7 +373,7 @@ def test_konu11_and_konu12_choices_notice_and_quizzes() -> None:
 # --- Veri kaynağı: notlardaki örnek, alternatif örnek, kendi verin ---------------------------------------------
 
 SOURCE_STEPS = {"konu00": 9, "konu01": 6, "konu02": 6, "konu03": 8, "konu04": 10, "konu05": 10, "konu06": 6,
-                "konu07": 10}
+                "konu07": 10, "konu08": 7, "konu09": 8, "konu10": 11, "konu11": 10, "konu12": 8}
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 START = "Başlamak için bir dosya yükleyin."
 
@@ -405,7 +406,8 @@ def _all_steps(app: AppTest, topic: str, label: str) -> None:
             assert any(item.value.startswith(f"Adım {number}:") for item in app.subheader), (label, number)
 
 
-def test_source_selector_opens_on_the_notes_and_only_topics_with_variants_have_it() -> None:
+def test_source_selector_opens_on_the_notes_in_every_topic() -> None:
+    assert sorted(SOURCE_STEPS) == sorted(LABS) == sorted(VARIANTS)  # Konu 0–12'nin hepsinde üç veri kaynağı
     app = _run_app()
     for topic in SOURCE_STEPS:
         _select(app, topic)
@@ -413,9 +415,7 @@ def test_source_selector_opens_on_the_notes_and_only_topics_with_variants_have_i
         assert selector.value == "notlar"
         assert selector.options == ["Notlardaki örnek", "Alternatif örnek", "Kendi verini yükle"]
         assert "ders notlarındaki çözümlü örnekleri" in _markdown(app)
-    _select(app, "konu08")
-    assert not app.exception
-    assert not [item for item in app.segmented_control if item.key == "konu08_lab_kaynak"]
+        assert not app.exception
 
 
 def test_every_alternative_step_renders_in_both_languages() -> None:
@@ -487,7 +487,7 @@ def test_konu00_alternative_percent_step_keeps_both_directions_for_equal_groups(
 
 
 @pytest.mark.parametrize("topic, sheet", [("konu00", None), ("konu01", None), ("konu02", "Panel"),
-                                          ("konu02", "Deney"), *((f"konu0{number}", None) for number in range(3, 8))])
+                                          ("konu02", "Deney"), *((f"konu{number:02d}", None) for number in range(3, 13))])
 def test_the_sample_file_runs_every_step_in_both_languages(topic: str, sheet: str | None) -> None:
     app = _run_app()
     _select(app, topic)
@@ -558,8 +558,8 @@ def test_own_column_names_are_escaped_and_unusable_files_are_explained() -> None
 def test_own_columns_named_like_the_apps_columns_open_cleanly() -> None:
     """Dosyada "Gözlem" ve "Yüzde" adlı sütunlar: tablolarda uygulamanın "Gözlem" numarasıyla karışmaz."""
 
-    rows = ["Gelir;Gözlem;Yüzde"] + [f"{20 + 3 * index % 11};{index % 7 + 0.5};{(index * 13) % 10}"
-                                      for index in range(10)]
+    rows = ["Gelir;Gözlem;Yüzde;Grup"] + [f"{20 + 3 * index % 11};{index % 7 + 0.5};{(index * 13) % 10};"
+                                           f"{'A' if index % 2 else 'B'}" for index in range(10)]
     app = _run_app()
     for topic in SOURCE_STEPS:
         _select(app, topic)

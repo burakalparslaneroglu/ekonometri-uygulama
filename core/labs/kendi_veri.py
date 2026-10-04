@@ -58,6 +58,10 @@ RESERVED_CODES = frozenset((
     "sabit", "egim", "tahmin", "artik", "artik_kare", "x_sapma", "y_sapma", "carpim", "x_kare", "toplam_kare",
     "model_kare", "y_artik", "x_artik", "fiyat_tahmin", "y_olcekli", "x_olcekli", "x_ay", "calisan", "konut", "beta1",
     "beta2", "birlesim", "tahmin_d1", "tahmin_d2", "tahmin_d3",
+    # Konu 8–12: türetilen sütunlar (verinin kopyası olan çerçevelerde de) ve tablo sütunları
+    "beta", "dx", "yaklasik", "etki", "otesi_d", "otesi_k", "u_ham", "u_mer", "u_fark", "u_kd", "u_ref", "toplam",
+    "grup0", "grup1", "kukla_x", "duzey0", "duzey1", "grup_farki", "tam_fark", "sira_no", "dahil", "aralik_ici",
+    "aralik_alti", "aralik_ustu", "artik2", "mutlak", "ceyrek", "ss", "ort_mutlak",
     # ekranda Türkçe etiketi sabit olan sonuç sütunları (``topics.lab_ui``)
     "frekans", "goreli", "yuzde", "aci", "sayi", "alt", "ust", "orta_nokta", "kumulatif_frekans", "kumulatif_goreli",
     "kumulatif_yuzde", "yapraklar", "yaprak_sayisi", "nicelik", "count", "mean", "std", "min", "max", "sum", "birim",

@@ -237,6 +237,30 @@ DATASETS: dict[str, Dataset] = {
             "lrprice": Variable("1978 fiyatlarıyla satış fiyatının logaritması", "log"),
         },
     ),
+    # Konu 10–11 alternatif örnekleri (``core.labs.ornek_konu10``, ``ornek_konu11``)
+    "beauty": Dataset(
+        "beauty", "BEAUTY: görünüş ve kazanç (Hamermesh ve Biddle, 1994)", "çalışan", "yatay kesit verisi",
+        "gözlemsel",
+        {
+            "wage": Variable("Saatlik ücret", "ABD doları/saat"),
+            "lwage": Variable("Saatlik ücretin logaritması", "log"),
+            "belavg": Variable("Görünüşü ortalamanın altında (puan ≤ 2)", _INDICATOR),
+            "abvavg": Variable("Görünüşü ortalamanın üstünde (puan ≥ 4)", _INDICATOR),
+            "exper": Variable("İş deneyimi", "yıl"),
+            "looks": Variable("Görünüş puanı", "1–5"),
+            "union": Variable("Sendika üyesi", _INDICATOR),
+            "goodhlth": Variable("Sağlığı iyi", _INDICATOR),
+            "black": Variable("Siyah", _INDICATOR),
+            "female": Variable("Kadın", _INDICATOR),
+            "married": Variable("Evli", _INDICATOR),
+            "south": Variable("Güneyde yaşıyor", _INDICATOR),
+            "bigcity": Variable("Büyük şehirde yaşıyor", _INDICATOR),
+            "smllcity": Variable("Küçük şehirde yaşıyor", _INDICATOR),
+            "service": Variable("Hizmet sektöründe çalışıyor", _INDICATOR),
+            "expersq": Variable("Deneyimin karesi", "yıl²"),
+            "educ": Variable("Eğitim", "yıl"),
+        },
+    ),
     "crime4": Dataset(
         "crime4", "CRIME4: Kuzey Karolina ilçelerinde suç, 1981–1987", "ilçe–yıl", "panel veri", "gözlemsel",
         {

@@ -132,10 +132,16 @@ def _guess(role, table: K.UploadedTable, used: set[str]) -> str:
         if role.required and numeric:  # ör. 1, 2, …, 8 saat: numara gibi görünse de tek sayısal seçenek odur
             return numeric[0]
     elif role.use == "kategorik":
+        # Çok kategorili isteğe bağlı rolde sayısal sütun önerilmez (ör. 0,5, 1,5, … değerli bir ölçüm kategori
+        # sanılmasın); her kategoride en az iki gözlem olmalı (tek gözlemli kategori modeli kurulamaz).
+        numeric_ok = role.required or role.levels[1] <= 2
         for column in candidates:
             series = table.frame[column]
-            levels = series.map(K.clean_text).dropna().nunique()
-            if role.levels[0] <= levels <= role.levels[1] and K.usable(table, column, "kategorik"):
+            if _numeric(series) and not numeric_ok:
+                continue
+            counts = series.map(K.clean_text).dropna().value_counts()
+            if role.levels[0] <= len(counts) <= role.levels[1] and counts.min() >= 2 \
+                    and K.usable(table, column, "kategorik"):
                 return column
     else:
         for numeric in (False, True):  # önce metin, sonra 1, 2, 3, … biçiminde numara sütunu

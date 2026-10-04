@@ -42,15 +42,21 @@ Approach* (7. baskı). Cengage.
     seçilen model yan yana gösterilir.
 19. Bütün konular (0–12) yeni yapıdadır ve `tests/test_topic_contracts.py` içindeki `MIGRATED_TOPICS` kümesindedir;
     kaldırılan eski modüller ve testler (aynı dosyadaki liste) geri eklenmez. Yeni bir konu aynı sözleşmeyle eklenir.
-20. Konu 0–7'nin Uygulama sekmesinde veri kaynağı seçimi vardır: **Notlardaki örnek** (varsayılan), **Alternatif
-    örnek**, **Kendi verini yükle**. Notlardaki uygulama ve onun üretilen kodu ek kaynaklar yüzünden değişmez. İki ek
-    kaynak aynı adım numaralarını ve aynı işlemleri genel uygulamadan (`core/labs/ornek_konuNN.py`) kurar; kontrollerin
-    beklenen değerleri uygulamanın hesabıdır, alternatif örneklerin sayıları testlerde bağımsız bir hesapla doğrulanır.
-    Alternatif örnekler gerçek Wooldridge verisidir; kurgusal veri yalnız veri üretim süreci modül belgesinde yazılıyken
-    ve metinde kurgusal olduğu söylenerek kullanılır (Konu 2'nin deney adımı, Konu 3'ün sıfır–bir değişken adımı).
-    Konu 3–7'de kendi verinin seçilen bütün sütunlarında (sonuç, temel açıklayıcı, ek değişkenler) boş hücresi olan
-    satırlar çıkarılır: bütün modeller aynı gözlemlerle kurulur. Uyum tamsa (R² ≈ 1) standart hataya bağlı kontroller
-    çıkarılır ve metin nedenini söyler.
+20. Bütün konuların (0–12) Uygulama sekmesinde veri kaynağı seçimi vardır: **Notlardaki örnek** (varsayılan),
+    **Alternatif örnek**, **Kendi verini yükle**. Notlardaki uygulama ve onun üretilen kodu ek kaynaklar yüzünden
+    değişmez. İki ek kaynak aynı adım numaralarını ve aynı işlemleri genel uygulamadan (`core/labs/ornek_konuNN.py`)
+    kurar; kontrollerin beklenen değerleri uygulamanın hesabıdır, alternatif örneklerin sayıları testlerde bağımsız bir
+    hesapla doğrulanır. Alternatif örnekler gerçek Wooldridge verisidir; kurgusal veri yalnız veri üretim süreci modül
+    belgesinde yazılıyken ve metinde kurgusal olduğu söylenerek kullanılır (Konu 2'nin deney adımı, Konu 3'ün sıfır–bir
+    değişken adımı).
+    Konu 3–12'de kendi verinin seçilen sayısal sütunlarında (sonuç, temel açıklayıcı, ek değişkenler) ve zorunlu
+    kategorik sütununda (Konu 11) boş hücresi olan satırlar çıkarılır: bütün modeller aynı gözlemlerle kurulur.
+    İsteğe bağlı kategorik sütunda (Konu 3, 10) boş hücre kabul edilmez. Notlardaki model log sonuçluysa (Konu 9–11)
+    kendi veri de log sonuçla kurulur ve sonucun bütün değerleri pozitif olmalıdır; Konu 12'nin log modeli yalnız sonuç
+    ve temel açıklayıcı pozitifse kurulur, değilse adım neye ihtiyacı olduğunu yazar. Notlarda basılı, veriye özgü
+    sayılar (kaldıraç, HC3 payı, dönüm noktası, etkili gözlem) kendi veride veriden hesaplanır. Uyum tamsa (R² ≈ 1)
+    standart hataya bağlı kontroller çıkarılır ve metin nedenini söyler; yuvarlama gürültüsü düzeyindeki bir katsayının
+    işareti yorumlanmaz.
 21. Yüklenen dosya yalnız oturumun belleğinde işlenir: ortak önbelleğe (`st.cache_data`, `st.cache_resource`), diske
     ya da günlüğe yazılmaz. Öğrencinin sütun ve kategori adları Markdown metnine ve widget etiketlerine `md` ile
     kaçırılarak girer; matematik ifadesinin içine yazılmaz. Okuma ve temizleme kuralları İKT 217 uygulamasıyla aynıdır

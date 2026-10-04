@@ -118,40 +118,61 @@ bağımsız tanımlardan gelir; arayüz yalnız bu tanımları gösterir.
   kuramsal değerleri ve metinlerin kaydırıcı uçlarında doğruluğu, soru yazım çeşitleri), `tests/test_all_quizzes.py`,
   `tests/test_topic_contracts.py` (`MIGRATED_TOPICS`), `tests/test_app_smoke.py`.
 
-## Uygulama sekmesinin ek veri kaynakları (Konu 0–7)
+## Uygulama sekmesinin ek veri kaynakları (Konu 0–12)
 
 Uygulama sekmesinin üstündeki veri kaynağı seçimi (`lab_ui._render_source`, anahtar `{konu}_lab_kaynak`) üç
 kaynaktan birini gösterir: **Notlardaki örnek** (varsayılan; `core/labs/konuNN.py`, değişmez), **Alternatif örnek** ve
 **Kendi verini yükle**. `LabSpec.source` (`SOURCES`: `notlar`, `alternatif`, `kendi`) tanımın kaynağıdır.
 
 - `core/labs/ornek.py`: ortak altyapı. Her konu için bir **genel uygulama** (`core/labs/ornek_konu00.py` …
-  `ornek_konu07.py`) aynı adım numaralarını ve aynı işlemleri bir `Case`'ten (veri, roller, etiketler, metinler) kurar.
-  Alternatif örnek genel uygulamanın Wooldridge verileriyle (WAGE2, OKUN, KIELMC, CRIME4) kurulmuş hâlidir; kendi
+  `ornek_konu12.py`) aynı adım numaralarını ve aynı işlemleri bir `Case`'ten (veri, roller, etiketler, metinler) kurar.
+  Alternatif örnek genel uygulamanın Wooldridge verileriyle (WAGE2, OKUN, KIELMC, CRIME4, BEAUTY) kurulmuş hâlidir; kendi
   veride aynı genel uygulama öğrencinin dosyasıyla kurulur. `with_app_values` kontrollerin beklenen değerlerini
   uygulamanın kendi hesabıyla doldurur (kendi verinde boş bir tablo hücresinin kontrolü atlanır); alternatif örneklerin
   sayıları testlerde bağımsız bir hesapla (pandas, statsmodels) doğrulanır. `usable_pair` sabit ya da az gözlemli
   sütun çiftlerini seçeneklerden çıkarır; `exact_fit` ve `stable_checks` neredeyse tam uyumda (artık kareler toplamı
   toplamın 10⁻⁹'undan küçük) standart hataya bağlı kontrolleri (standart hata, t, p, güven aralığı, F) çıkarır, çünkü
   bunlar yuvarlama gürültüsüdür. `ornekler.py` kayıttır (`VARIANTS`).
-- `core/labs/ornek_regresyon.py`: Konu 3–7'nin ortak parçaları. Alternatif verinin kurulması (`wage2_case`; notlarda
+- `core/labs/ornek_regresyon.py`: Konu 3–12'nin ortak parçaları. Alternatif verinin kurulması (`wage2_case`; notlarda
   HPRICE1 kullanılan konut adımları için `house_case`: KIELMC'nin 1978 satışları, 179 konut, `TakeRows` ile; Konu 3'ün
-  sıfır–bir değişken adımı için `program_case`), adlar (`phrase`: alternatifte küçük harfli Türkçe ad, kendi verinde
-  tırnaklı ve `md` ile kaçırılmış dosya adı), roller (`SONUC`, `ACIKLAYICI`, Konu 3'te `GOSTERGE`; en çok üç ek sayısal
-  değişken, `CustomLab.extra_required` ile ek sütunlar da zorunludur), `second` (notlarda ikinci bir veri setiyle
-  yapılan adımlar: alternatifte KIELMC, kendi verinde aynı dosya ayrı bir çerçeveye, `ikinci`, okunur; bu adımların
-  türettiği sütunlar ana çerçeveyi değiştirmez), `reload` (notlardaki "yeniden yüklenir"), `log_column` ve
-  `log_operations` (kendi verinde `ln_…`, adı dosyanın sütunlarıyla çakışmaz), `exact_multi` ve `EXACT_MULTI_NOTE`
-  (çoklu modelde tam uyum), `number_control` (verinin ölçeğine uyan kaydırıcı: adım 10'un kuvveti; adım 1 ya da daha
-  büyükse tam sayı) ve `noise_decimals` (artık toplamı gibi sıfır olması gereken değerlerin gösterim basamağı, n ·
-  max|Y| ile tahmin edilen değerin terimlerinin büyüklüğünden). Metinlerdeki sayılar ölçekten bağımsız yazılır:
-  `digits_for` (çok küçük katsayıda en az üç anlamlı basamak; ör. TL cinsinden bir açıklayıcının eğimi 0,000000644),
-  `negligible` (eğim yalnız |β̂| · s_X ≤ 10⁻⁹ · s_Y ise sıfır sayılır), `change` ("daha aynıdır" yazılmaz), `rough` (|Δ
-  ln Y| > 0,1'de 100 · β̂ yaklaşımının kaba olduğu, tam dönüşüm Konu 9). `validate` en büyük model için n ≥ k + 2 gözlem
-  ve ek değişkenlerde tam doğrusal bağlantı olmamasını ister (açık bir iletiyle reddeder). Tam uyumda test kararları ve
-  işaret yorumları yazılmaz, metin nedenini söyler (`EXACT_MULTI_NOTE`). Notlarda verisiz olan sayısal adımlar (ör. Konu
-  4 Adım 3, Konu 7 Adım 1 ve 4) alternatif verinin kendi sayılarından kurulur. Bir adımın gerektirdiği rol ya da değer
-  yoksa (iki kategorili sütun, ek değişken, pozitif değerler, en çok 25 farklı değer) adım işlemsiz kurulur ve
-  açıklaması neye ihtiyaç olduğunu yazar.
+  sıfır–bir değişken adımı için `program_case`; Konu 10–11'in kukla adımları için `beauty_case`: BEAUTY, 1260
+  çalışan), adlar (`phrase`: alternatifte küçük harfli Türkçe ad, kendi verinde tırnaklı ve `md` ile kaçırılmış dosya
+  adı), roller (`roles`: `SONUC`, `ACIKLAYICI`, Konu 3, 10 ve 11'de `GOSTERGE`; en çok üç ek sayısal değişken,
+  `CustomLab.extra_required` ile ek sütunlar da zorunludur; `custom_lab`, `ROW_RULE`, log sonuçlu konularda
+  `POSITIVE_RULE` ve `validate_positive`), `second` (notlarda ikinci bir veri setiyle yapılan adımlar: alternatifte
+  KIELMC, kendi verinde aynı dosya ayrı bir çerçeveye, `ikinci`, okunur; bu adımların türettiği sütunlar ana çerçeveyi
+  değiştirmez), `reload` (notlardaki "yeniden yüklenir"), `log_column` ve `log_operations` (kendi verinde `ln_…`, adı
+  dosyanın sütunlarıyla çakışmaz), `exact_multi` ve `EXACT_MULTI_NOTE` (çoklu modelde tam uyum), `number_control`
+  (verinin ölçeğine uyan kaydırıcı: adım 10'un kuvveti; adım 1 ya da daha büyükse tam sayı) ve `noise_decimals` (artık
+  toplamı gibi sıfır olması gereken değerlerin gösterim basamağı, n · max|Y| ile tahmin edilen değerin terimlerinin
+  büyüklüğünden). Metinlerdeki sayılar ölçekten bağımsız yazılır: `digits_for` (çok küçük katsayıda en az üç anlamlı
+  basamak; ör. TL cinsinden bir açıklayıcının eğimi 0,000000644), `negligible` (eğim yalnız |β̂| · s_X ≤ 10⁻⁹ · s_Y
+  ise sıfır sayılır), `change` ("daha aynıdır" yazılmaz), `rough` (|Δ ln Y| > 0,1'de 100 · β̂ yaklaşımının kaba
+  olduğu, tam dönüşüm Konu 9). `validate` en büyük model için n ≥ k + 2 gözlem ve ek değişkenlerde tam doğrusal
+  bağlantı olmamasını ister (açık bir iletiyle reddeder). Tam uyumda test kararları ve işaret yorumları yazılmaz,
+  metin nedenini söyler (`EXACT_MULTI_NOTE`). Notlarda verisiz olan sayısal adımlar (ör. Konu 4 Adım 3, Konu 7 Adım 1
+  ve 4) alternatif verinin kendi sayılarından kurulur. Bir adımın gerektirdiği rol ya da değer yoksa (iki kategorili
+  sütun, ek değişken, pozitif değerler, en çok 25 farklı değer) adım işlemsiz kurulur ve açıklaması neye ihtiyaç
+  olduğunu yazar.
+- Konu 8–12'nin genel uygulamalarına özgü kurallar (modül belgeleri ayrıntılıdır):
+  - Konu 8: ortak testin varsayılanı ek değişkenlerdir (temel açıklayıcı modelde kalır); ikinci veri adımı aynı
+    dosyanın ayrı bir çerçevesidir.
+  - Konu 9: karesel terim ve merkezleme temel açıklayıcı ile ilk ek değişken içindir; yüzde yorumundaki ΔX ve dönüm
+    noktası yakınındaki değişim verinin aralığından (`_delta`: aralığın beşte birini aşmayan en büyük 10 kuvveti; tam
+    sayılı değişkende en az 1) seçilir. Yuvarlama gürültüsü düzeyindeki bir katsayının (`_noise`) işareti
+    yorumlanmaz; tam uyumda dönüm noktası kontrolleri çıkarılır.
+  - Konu 10: iki kategorili (`GOSTERGE`) ve çok kategorili (`KATEGORI`, 3–15 kategori) değişkenden en az biri, isteğe
+    bağlı ikinci kategorik değişken (`KATEGORI2`); her kategoride en az iki gözlem. Kategori adları metinde `_cap` ile
+    büyük harfle başlar (adın kendisi değişmez). Tam uyum her tablo satırında ayrı denetlenir.
+  - Konu 11: kukla temel açıklayıcıyla ya da bir ek değişkenle etkileşir; merkez noktası ortancanın yakınındaki
+    yuvarlak değerdir (`_spread_round`). Etkileşim katsayısının işareti ya da yüzde 5 düzeyindeki anlamlılığı tek bir
+    gözleme bağlıysa (tahminleri en çok değiştiren gözlem çıkarılınca değişiyorsa) Adım 7 modeli o gözlem olmadan da
+    kurar (`CopyFrame`, `Derive` ile sıra numarası, `TakeRows`); kesişme noktası metni de gürültü sınamasından geçer.
+  - Konu 12: düzey modeli her zaman, log modeli sonuç ve temel açıklayıcı pozitifse kurulur. Kaldıracı 1 olan bir
+    gözlem (model o gözlemi tam uydurur, HC2–HC3 tanımsız) ve White testi için yetersiz veri (gözlem sayısı yardımcı
+    regresyonun terim sayısı artı ikiden az; q açıklayıcıda q + q(q + 1)/2 terim, iki değerli bir değişkenin karesi
+    sayılmaz) açık bir iletiyle reddedilir. Artık yayılımının yönü (genişleyen, daralan, düzensiz) ve kaldıraç ile HC3
+    payı metinleri veriden hesaplanır. Tek seçenekli denetimler gösterilmez (`_step`).
 - `core/labs/kurgusal_veri.py`: Konu 2'nin deney adımındaki (ve Konu 3'ün sıfır–bir değişken adımındaki) kurgusal iş
   arama programı: 200 satır modülde dondurulmuş,
   veri üretim süreci (tohum 305) belgede; programın gerçek ortalama etkisi (parametre) DGP'den bilinir
@@ -159,33 +180,37 @@ kaynaktan birini gösterir: **Notlardaki örnek** (varsayılan; `core/labs/konuN
 - `core/labs/kendi_veri.py` (İKT 217'den): dosya okuma (Excel `openpyxl`; CSV'de karakter kodlaması, ayırıcı ve
   ondalık işareti algılanır), sütun adlarının ve metin hücrelerinin iki dilde aynı temizlenmesi, kod adları
   (`code_name`: dosyadaki bütün sütunlar dosya sırasıyla adlandırılır, böylece bir sütunun adı rol seçimine bağlı
-  değildir; uygulamanın iç adları `RESERVED_CODES` kullanılmaz, ör. "Gözlem" → `gozlem_2`; Konu 3–7'nin türettiği
+  değildir; uygulamanın iç adları `RESERVED_CODES` kullanılmaz, ör. "Gözlem" → `gozlem_2`; Konu 3–12'nin türettiği
   sütunlar ve adı sütun adından kurulan skalerlerin sabit parçaları da bu kümededir, ör. `b_sabit` ile `b_<sütun>`
   karışmasın), sınırlar (5 MB,
   10.000 satır) ve iki dilin aynı okuyamayacağı hücrelerin reddi. Noktalı virgülle ayrılmış dosyada noktadan sonra
   üçten farklı basamaklı bir sayı (12.5) binlik ayırıcı olamayacağı için ondalık sayılır.
-- Kod üretimi: `ReadFile` (dosyayı okur, sütunları temizler, zorunlu rollerde boş satırları çıkarır; Konu 3–7'de
-  bütün seçilen sütunlar zorunludur), `CompleteCases`
-  (adımın kullandığı sütunlarda tam gözlemler), `TakeRows` (satır seçimi). Betik adı kaynağa göredir
-  (`ikt305_konuNN_alternatif.py`, `ikt305_konuNN_kendi_verim.R`; seçilen spesifikasyonda `_secim`). Başlık veri
-  kaynağını ve dosyanın betikle aynı klasöre konacağını yazar; karşılaştırma "Uygulamayla karşılaştırma" başlığıyla,
-  `max(0,5·10⁻ᵈ, 10⁻⁹·|beklenen|)` toleransıyla yapılır (uygulamanın değeri yuvarlanmamıştır; büyük sayılarda iki
-  yazılımın son basamak farkı göreli payla karşılanır). R'de sayısal grup adları `grup_adi` ile bilimsel gösterimsiz
-  yazılır (R 100000'i 1e+05 diye adlandırırdı). Excel dosyası R'de `readxl` ile okunur; R'nin tek ek paketi budur.
-  Notlardaki kaynakta üretilen kod bayt düzeyinde değişmez.
-- Arayüz: `topics/kendi_veri_ui.py` dosya yükleme, sayfa ve rol seçimi, öneriler (konuya özgü `CustomLab.suggest`,
-  ör. Konu 2'de dönem ve panel birimi) ve örnek dosya. Yüklenen dosya ve ondan kurulan tanım yalnız
-  `st.session_state`'te tutulur (`session_cache`); ortak önbelleğe, diske ya da günlüğe yazılmaz. Ek kaynakların adım
-  denetimleri ayrı anahtarlardadır (`{konu}_{kaynak}_secim_…`) ve gölge anahtarlarda (`_kalici_…`) saklanır; değer
-  widget'tan hemen önce yazılır (`_prepare_widget`), çünkü widget'ı hiç çizilmemiş bir anahtara yazılan değer
-  Streamlit'te kullanıcı anahtarı olarak kalır ve widget sonra çizilmeyince eski değer geri gelir. Kendi verinde
-  etiket, yardım ve düğme seçenekleri Markdown'a kaçırılır (`md`); tablolarda aynı etiketi alan sütunlar
-  (ör. dosyadaki "Gözlem" ile gözlem numarası) `_unique_labels` ile ayrılır; beklenmeyen bir hata anlaşılır bir
-  iletiyle gösterilir.
+- Kod üretimi: `ReadFile` (dosyayı okur, sütunları temizler, zorunlu rollerde boş satırları çıkarır; Konu 3–12'de
+  seçilen sayısal sütunlar ve Konu 11'in iki kategorili sütunu zorunludur), `CompleteCases` (adımın kullandığı
+  sütunlarda tam gözlemler), `TakeRows` (satır seçimi). Betik adı kaynağa göredir (`ikt305_konuNN_alternatif.py`,
+  `ikt305_konuNN_kendi_verim.R`; seçilen spesifikasyonda `_secim`). Başlık veri kaynağını ve dosyanın betikle aynı
+  klasöre konacağını yazar; karşılaştırma "Uygulamayla karşılaştırma" başlığıyla, `max(0,5·10⁻ᵈ, 10⁻⁹·|beklenen|)`
+  toleransıyla yapılır (uygulamanın değeri yuvarlanmamıştır; büyük sayılarda iki yazılımın son basamak farkı göreli
+  payla karşılanır). R'de sayısal grup adları `grup_adi` ile bilimsel gösterimsiz yazılır (R 100000'i 1e+05 diye
+  adlandırırdı). Ek kaynaklarda katsayı grafiğinin aralık çizgileri `suppressWarnings` içindedir (`_quiet_arrows`:
+  eksene göre çok dar aralık sıfır uzunlukta çizilir ve R uyarı verir). Excel dosyası R'de `readxl` ile okunur; R'nin
+  tek ek paketi budur. Notlardaki kaynakta üretilen kod bayt düzeyinde değişmez.
+- Arayüz: `topics/kendi_veri_ui.py` dosya yükleme, sayfa ve rol seçimi, öneriler (konuya özgü `CustomLab.suggest`, ör.
+  Konu 2'de dönem ve panel birimi; kategorik rolde her kategoride en az iki gözlem, isteğe bağlı çok kategorili rolde
+  sayısal sütun önerilmez) ve örnek dosya. Yüklenen dosya ve ondan kurulan tanım yalnız `st.session_state`'te tutulur
+  (`session_cache`); ortak önbelleğe, diske ya da günlüğe yazılmaz. Ek kaynakların adım denetimleri ayrı
+  anahtarlardadır (`{konu}_{kaynak}_secim_…`) ve gölge anahtarlarda (`_kalici_…`) saklanır; değer widget'tan hemen
+  önce yazılır (`_prepare_widget`), çünkü widget'ı hiç çizilmemiş bir anahtara yazılan değer Streamlit'te kullanıcı
+  anahtarı olarak kalır ve widget sonra çizilmeyince eski değer geri gelir. Kendi verinde etiket, yardım ve düğme
+  seçenekleri Markdown'a kaçırılır (`md`); tablolarda aynı etiketi alan sütunlar (ör. dosyadaki "Gözlem" ile gözlem
+  numarası) `_unique_labels` ile ayrılır; beklenmeyen bir hata anlaşılır bir iletiyle gösterilir.
 - Testler: `tests/test_lab_variants.py` (kayıt, alternatiflerin bağımsız hesabı, uygulama–Python eşitliği her tek
   seçimde, her denetimin son seçeneğinde R'nin uygulamanın bütün sayılarını vermesi, örnek dosya ve dağınık dosyalar
-  iki dilde, DGP'nin gerçek etkisi, İKT 217'den taşınan okuma testleri) ve `tests/test_app_smoke.py`'nin veri kaynağı
-  testleri (her adım iki dilde, yükleme, kaynak ve konu geçişinde seçimlerin korunması, dosyayı kaldırma, kaçış).
+  iki dilde, DGP'nin gerçek etkisi, İKT 217'den taşınan okuma testleri; Konu 8–12'de ayrıca rolü olmayan adımlar,
+  pozitif sonuç ve kategorik rol kuralları, kaldıracı 1 olan gözlem ve White için yetersiz veri, karesel terimde
+  basamak kaybı, kaçış, uygulamanın adlarıyla çakışan sütun adları, tam uyum ve etkili gözlem iki dilde, verinin
+  ölçeğine uyan metinler) ve `tests/test_app_smoke.py`'nin veri kaynağı testleri (her adım iki dilde, yükleme, kaynak
+  ve konu geçişinde seçimlerin korunması, dosyayı kaldırma, kaçış).
 
 Bütün konular bu yapıdadır. Taşınan her konunun eski modülleri ve testleri aynı blokta kaldırıldı (Konu 1–2 için
 `core/research_question_utils.py`,

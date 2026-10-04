@@ -1,17 +1,24 @@
-"""Konu 3–7 genel uygulamalarının ortak parçaları: veri, roller, adlar ve sayı denetimleri.
+"""Konu 3–12 genel uygulamalarının ortak parçaları: veri, roller, adlar ve sayı denetimleri.
 
 Alternatif örneklerin verisi:
 
 * ücret adımları: WAGE2 (Wooldridge, 2020; 935 erkek çalışan, 1980; ``wage`` aylık kazançtır, ABD doları);
 * notlarda HPRICE1 kullanılan konut adımları: KIELMC'nin 1978 satışları (179 konut, fiyat 1978 dolarıyla). 1978 tek
-  dönemlik bir yatay kesittir; 1981 satışları çöp yakma tesisinden etkilenir (Konu 2'deki havuzlanmış yatay kesit);
+  dönemlik bir yatay kesittir; 1981 satışları çöp yakma tesisinden etkilenir (Konu 2'deki havuzlanmış yatay kesit).
+  Konu 8, 11 ve 12'de fiyat notlardaki HPRICE1 gibi bin dolar biriminde, arsa ve konut büyüklüğü notlardaki gibi bin
+  ve yüz fit² biriminde türetilir (``HOUSE_DERIVED``); ``nearinc`` konutun sonradan kurulan çöp yakma tesisine 3 mil ya
+  da daha yakın olduğunu gösterir (1978'de tesis yoktu: kukla konumu gösterir);
+* Konu 10–11'in kukla değişken adımları: BEAUTY (Wooldridge, 2020; Hamermesh ve Biddle, 1994, *American Economic
+  Review* 84, 1174–1194; 1260 çalışan, saatlik ücret). Kadın kuklası, görünüş (ortalamanın altı, ortalama, üstü) ve
+  şehir büyüklüğü (büyük şehir, küçük şehir, diğer) kategorileri;
 * Konu 3'ün sıfır–bir değişken adımı: Konu 2'nin kurgusal iş arama programı (``core.labs.kurgusal_veri``; kurayla
   atama, veri üretim süreci modül belgesinde). Wooldridge paketinde JTRAIN2 dışında rastgele atamalı veri yoktur.
 
 "Kendi verini yükle" seçeneğinde bütün adımlar öğrencinin dosyasıyla kurulur: notlarda ikinci bir veri setiyle yapılan
 adımlar (konut adımları) aynı dosyanın sonuç ve açıklayıcı değişkenini kullanır. Seçilen bütün sütunlarda (sonuç,
 temel açıklayıcı ve ek değişkenler) boş hücresi olan satırlar çıkarılır: bütün modeller aynı gözlemlerle kurulur
-(kısmi regresyon, eksik değişken ayrıştırması ve R² karşılaştırması aynı örneklemi ister).
+(kısmi regresyon, eksik değişken ayrıştırması ve R² karşılaştırması aynı örneklemi ister). Log sonuçla kurulan
+konularda (Konu 9–11) sonucun bütün değerleri pozitif olmalıdır (``validate_positive``).
 """
 
 from __future__ import annotations
@@ -46,10 +53,19 @@ MAX_EXTRA = 3
 MAX_LEVELS = 25
 """Düzey ortalamaları ve koşullu ortalama için açıklayıcı değişkenin en çok farklı değer sayısı."""
 
-WAGE2, KIELMC, KONUT, PROGRAM = "wage2", "kielmc", "konut", "program"
+WAGE2, KIELMC, KONUT, PROGRAM, BEAUTY = "wage2", "kielmc", "konut", "program", "beauty"
 HOUSE_YEAR = 1978
 HOUSE_COLUMNS = ("price", "lprice", "area", "larea", "rooms", "baths", "land")
 """KIELMC'den 1978 konutlarında tutulan sütunlar (yaş WAGE2'deki yaşla aynı adı taşıdığı için alınmaz)."""
+HOUSE_DERIVED = {
+    "price1000": (E.div(E.var("price"), 1000), "Satış fiyatı bin dolar biriminde: price/1000"),
+    "area100": (E.div(E.var("area"), 100), "Konut büyüklüğü 100 fit² biriminde: area/100"),
+    "land1000": (E.div(E.var("land"), 1000), "Arsa büyüklüğü 1.000 fit² biriminde: land/1000"),
+    "area2k": (E.div(E.sub(E.var("area"), 2000), 100),
+               "Konut büyüklüğü 2.000 fit² etrafında merkezlenir, 100 fit² biriminde: (area − 2000)/100"),
+}
+"""KIELMC'nin 1978 konutlarında türetilen sütunlar: (ifade, açıklama). Notlardaki HPRICE1 birimleri gibi (fiyat bin
+dolar, ``lotsize1000``, ``sqrft100``, ``lotsize10k``)."""
 
 # --- WAGE2 ve KIELMC'nin cümle içindeki adları ------------------------------------------------------------
 
@@ -76,20 +92,52 @@ WAGE2_LABELS = {
 
 HOUSE_PHRASES = {
     "price": "satış fiyatı", "lprice": "log satış fiyatı", "area": "konut büyüklüğü", "larea": "log konut büyüklüğü",
-    "rooms": "oda sayısı", "baths": "banyo sayısı", "land": "arsa büyüklüğü",
+    "rooms": "oda sayısı", "baths": "banyo sayısı", "land": "arsa büyüklüğü", "lland": "log arsa büyüklüğü",
+    "price1000": "satış fiyatı", "area100": "konut büyüklüğü", "land1000": "arsa büyüklüğü",
+    "area2k": "konut büyüklüğü", "nearinc": "tesise yakınlık",
 }
 HOUSE_STEPS = {
     "area": "büyüklüğü bir fit² daha fazla olan",
     "rooms": "bir odası daha fazla olan",
     "baths": "bir banyosu daha fazla olan",
     "land": "arsası bir fit² daha büyük olan",
+    "area100": "büyüklüğü 100 fit² daha fazla olan",
+    "area2k": "büyüklüğü 100 fit² daha fazla olan",
+    "land1000": "arsası 1.000 fit² daha büyük olan",
 }
-HOUSE_UNITS = {"price": "dolar", "area": "fit²", "rooms": "oda", "baths": "banyo", "land": "fit²"}
+HOUSE_UNITS = {"price": "dolar", "area": "fit²", "rooms": "oda", "baths": "banyo", "land": "fit²",
+               "price1000": "bin dolar", "area100": "yüz fit²", "land1000": "bin fit²", "area2k": "yüz fit²"}
 HOUSE_LABELS = {
     "price": ("Satış fiyatı", "ABD doları, 1978"), "lprice": ("Satış fiyatının logaritması", "log"),
     "area": ("Konut büyüklüğü", "fit²"), "larea": ("Konut büyüklüğünün logaritması", "log"),
     "rooms": ("Oda sayısı", "adet"), "baths": ("Banyo sayısı", "adet"), "land": ("Arsa büyüklüğü", "fit²"),
+    "lland": ("Arsa büyüklüğünün logaritması", "log"),
+    "nearinc": ("Sonradan kurulan tesise 3 mil ya da daha yakın", "0/1 gösterge"),
+    "price1000": ("Satış fiyatı", "bin ABD doları, 1978"), "area100": ("Konut büyüklüğü", "yüz fit²"),
+    "land1000": ("Arsa büyüklüğü", "bin fit²"), "area2k": ("(Konut büyüklüğü − 2.000)/100", "yüz fit²"),
 }
+
+# --- BEAUTY'nin adları (Konu 10–11) ----------------------------------------------------------------------
+
+_DUMMY = "0/1 gösterge"
+BEAUTY_LABELS = {
+    "wage": ("Saatlik ücret", "ABD doları/saat"), "lwage": ("Saatlik ücretin logaritması", "log"),
+    "educ": ("Eğitim", "yıl"), "exper": ("İş deneyimi", "yıl"), "expersq": ("Deneyimin karesi", "yıl²"),
+    "female": ("Kadın", _DUMMY), "married": ("Evli", _DUMMY), "black": ("Siyah", _DUMMY),
+    "union": ("Sendika üyesi", _DUMMY), "goodhlth": ("Sağlığı iyi", _DUMMY), "south": ("Güneyde yaşıyor", _DUMMY),
+    "belavg": ("Görünüşü ortalamanın altında", _DUMMY), "abvavg": ("Görünüşü ortalamanın üstünde", _DUMMY),
+    "looks": ("Görünüş puanı", "1–5"), "bigcity": ("Büyük şehirde yaşıyor", _DUMMY),
+    "smllcity": ("Küçük şehirde yaşıyor", _DUMMY), "service": ("Hizmet sektöründe çalışıyor", _DUMMY),
+}
+BEAUTY_PHRASES = {
+    "wage": "saatlik ücret", "lwage": "log saatlik ücret", "educ": "eğitim", "exper": "iş deneyimi",
+    "expersq": "deneyimin karesi",
+}
+BEAUTY_STEPS = {
+    "educ": "eğitim süresi bir yıl daha uzun olan",
+    "exper": "iş deneyimi bir yıl daha fazla olan",
+}
+BEAUTY_UNITS = {"wage": "dolar", "educ": "yıl", "exper": "yıl"}
 
 
 # --- Adlar ----------------------------------------------------------------------------------------------
@@ -304,12 +352,14 @@ SECOND = "ikinci"
 
 
 def second(case: Case) -> Case:
-    """Notlarda ikinci bir veri setiyle yapılan adımların verisi. Alternatif örnekte ``case.extra["house"]``; kendi
-    verinde aynı dosya, ayrı bir çerçeveye okunur: bu adımların türettiği sütunlar ana çerçeveyi değiştirmez (notlarda
-    da ikinci veri ayrı bir çerçevedir)."""
+    """Notlarda ikinci bir veri setiyle yapılan adımların verisi. Alternatif örnekte ``case.extra["house"]`` (konut
+    adımları) ya da ``case.extra["second"]`` (ör. Konu 12'de konut verisi ana veridir, ücret adımı ikinci veridir);
+    kendi verinde aynı dosya, ayrı bir çerçeveye okunur: bu adımların türettiği sütunlar ana çerçeveyi değiştirmez
+    (notlarda da ikinci veri ayrı bir çerçevedir)."""
 
-    if "house" in case.extra:
-        return case.extra["house"]
+    for key in ("second", "house"):
+        if key in case.extra:
+            return case.extra[key]
     read = case.load[0]
     assert isinstance(read, ReadFile)
     return replace(case, frame=SECOND, load=(replace(read, frame=SECOND,
@@ -466,35 +516,75 @@ def wage2_case(regressors: tuple[str, ...], extras: tuple[str, ...] = (), **extr
     )
 
 
-def house_frame() -> pd.DataFrame:
+def house_frame(columns: tuple[str, ...] = HOUSE_COLUMNS, derived: tuple[str, ...] = ()) -> pd.DataFrame:
+    """KIELMC'nin 1978 satışları; ``derived``: ``HOUSE_DERIVED``'daki türetilen sütunlar (uygulamadaki işlemlerle aynı
+    formül)."""
+
     data = W.load(KIELMC)
-    return data[data["year"] == HOUSE_YEAR][list(HOUSE_COLUMNS)].reset_index(drop=True)
+    frame = data[data["year"] == HOUSE_YEAR][list(columns)].reset_index(drop=True)
+    for name in derived:
+        expression, _ = HOUSE_DERIVED[name]
+        frame[name] = E.evaluate(expression, frame)
+    return frame
 
 
-def house_case(regressors: tuple[str, ...] = ("area", "rooms", "baths", "land"), **extra) -> Case:
-    """KIELMC'nin 1978 satışları: sonuç satış fiyatı, temel açıklayıcı konut büyüklüğü."""
+def house_case(regressors: tuple[str, ...] = ("area", "rooms", "baths", "land"), *, outcome: str = "price",
+               base: str = "area", columns: tuple[str, ...] = HOUSE_COLUMNS, derived: tuple[str, ...] = (),
+               **extra) -> Case:
+    """KIELMC'nin 1978 satışları: sonuç satış fiyatı, temel açıklayıcı konut büyüklüğü. ``columns``: tutulan sütunlar
+    (ör. ``nearinc``, ``lland``); ``derived``: türetilen sütunlar (``HOUSE_DERIVED``; ör. bin dolar biriminde fiyat),
+    ``outcome`` ve ``base`` onlardan biri olabilir."""
 
-    labels, units = _labels(HOUSE_LABELS)
+    data = house_frame(columns, derived)
+    table = {name: item for name, item in HOUSE_LABELS.items() if name in data.columns}
+    labels, units = _labels(table)
     settings = {
         "phrases": HOUSE_PHRASES, "steps": HOUSE_STEPS, "short_units": HOUSE_UNITS, "plural": "konutların",
-        "possessive": {"price": "satış fiyatı"}, "data_name": "KIELMC (1978)", "regressors": regressors,
-        "logs": {"price": "lprice", "area": "larea"},
+        "possessive": {"price": "satış fiyatı", "price1000": "satış fiyatı"}, "data_name": "KIELMC (1978)",
+        "regressors": regressors, "logs": {"price": "lprice", "area": "larea"},
     }
     settings.update(extra)
+    price = (f" (fiyat {HOUSE_YEAR} dolarıyla)" if outcome == "price"
+             else f" (fiyat {HOUSE_YEAR} dolarıyla, bin dolar)")
     return Case(
         source="alternatif",
         load=(
             LoadWooldridge(KIELMC, "KIELMC veri seti (Wooldridge, 2020): 1978 ve 1981'de satılan konutlar"),
-            TakeRows(KONUT, KIELMC, f"Yalnız {HOUSE_YEAR}'de satılan 179 konut: tek dönemlik yatay kesit (fiyat "
-                                    f"{HOUSE_YEAR} dolarıyla)", where=("year", HOUSE_YEAR), columns=HOUSE_COLUMNS),
+            TakeRows(KONUT, KIELMC, f"Yalnız {HOUSE_YEAR}'de satılan 179 konut: tek dönemlik yatay kesit{price}",
+                     where=("year", HOUSE_YEAR), columns=columns),
+            *(Derive(KONUT, name, HOUSE_DERIVED[name][0], HOUSE_DERIVED[name][1]) for name in derived),
         ),
         frame=KONUT,
-        data=house_frame(),
-        roles={SONUC: "price", ACIKLAYICI: "area"},
+        data=data,
+        roles={SONUC: outcome, ACIKLAYICI: base},
         labels=labels,
-        extras=tuple(name for name in regressors if name != "area"),
+        extras=tuple(name for name in regressors if name != base),
         units=units,
         unit="konut",
+        extra=settings,
+    )
+
+
+def beauty_case(roles: dict[str, str] | None = None, extras: tuple[str, ...] = ("exper",), **extra) -> Case:
+    """BEAUTY (Hamermesh ve Biddle, 1994): sonuç saatlik ücret, temel açıklayıcı eğitim, kukla kadın; ``roles`` başka
+    roller ekler ya da değiştirir (ör. kategorik değişken)."""
+
+    labels, units = _labels(BEAUTY_LABELS)
+    settings = {
+        "phrases": BEAUTY_PHRASES, "steps": BEAUTY_STEPS, "short_units": BEAUTY_UNITS, "plural": "çalışanların",
+        "possessive": {"wage": "saatlik ücreti"}, "data_name": "BEAUTY", "logs": {"wage": "lwage"},
+    }
+    settings.update(extra)
+    return Case(
+        source="alternatif",
+        load=(LoadWooldridge(BEAUTY, "BEAUTY veri seti (Wooldridge, 2020; Hamermesh ve Biddle, 1994): 1260 çalışan"),),
+        frame=BEAUTY,
+        data=W.load(BEAUTY),
+        roles={SONUC: "wage", ACIKLAYICI: "educ", GOSTERGE: "female", **(roles or {})},
+        labels=labels,
+        extras=extras,
+        units=units,
+        unit="çalışan",
         extra=settings,
     )
 
@@ -568,6 +658,30 @@ def roles(steps: tuple[int, ...], extra: tuple[Role, ...] = ()) -> tuple[Role, .
 
 ROW_RULE = ("Seçilen bütün sütunlarda (sonuç, açıklayıcı ve ek değişkenler) boş hücresi olan satırlar analizden "
             "çıkarılır: bütün modeller aynı gözlemlerle kurulur.")
+POSITIVE_RULE = "Modeller notlardaki gibi log sonuçla kurulur: sonucun bütün değerleri pozitif olmalı."
+
+
+def validate_positive(case: Case) -> None:
+    """Log sonuçla kurulan konular (Konu 9–11): sonucun bütün değerleri pozitif olmalı."""
+
+    y = case.roles[SONUC]
+    if not positive(case, y):
+        raise K.UploadError(f"“{case.name(y)}” sütununda sıfır ya da negatif değerler var. Bu konuda modeller notlardaki "
+                            "gibi log sonuçla kurulur; sonucun bütün değerleri pozitif olmalı. Başka bir sonuç sütunu "
+                            "seçin.")
+
+
+def p_text(value: float, decimals: int = 3) -> str:
+    """p-değerinin eşitlikli yazımı: "p = 0,064"; basamakta 0 ya da 1 görünüyorsa "p < 0,001" ya da "p > 0,999"."""
+
+    smallest = 10 ** -decimals
+    if not math.isfinite(value):
+        return "p tanımsız"
+    if value < 0.5 * smallest:
+        return "p < " + sayi(smallest, decimals)
+    if value > 1 - 0.5 * smallest:
+        return "p > " + sayi(1 - smallest, decimals)
+    return f"p = {sayi(value, decimals)}"
 
 
 def custom_lab(build: Callable[[Case], LabSpec], sample: Callable[[], pd.DataFrame], intro: str,
