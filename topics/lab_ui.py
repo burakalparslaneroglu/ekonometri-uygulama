@@ -1063,6 +1063,10 @@ def render_lab(spec: LabSpec) -> None:
     base = render_custom(spec.topic_key, variants.custom)
     if base is not None:
         _render_steps(base)
+    else:
+        step = _render_navigation(spec)
+        st.subheader(f"Adım {step.number}: {step.title}")
+        st.caption("Seçilen adım hazır; hesaplama için yukarıdaki alandan kendi verinizi yükleyin.")
 
 
 def _render_steps(spec: LabSpec) -> None:

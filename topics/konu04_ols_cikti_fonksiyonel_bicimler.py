@@ -10,7 +10,7 @@ from core.quiz.registry import get_quiz
 from topics.lab_ui import render_lab
 from topics.lab_ui import widget_keys as lab_widget_keys
 from topics.quiz_ui import render_quiz
-from topics.shared import render_topic_header
+from topics.shared import render_topic_header, topic_tabs
 from topics.sim_ui import render_experiments
 from topics.sim_ui import widget_keys as experiment_widget_keys
 
@@ -19,7 +19,7 @@ TOPIC_KEY = "konu04"
 
 def render() -> None:
     render_topic_header(TOPIC_KEY)
-    application, intuition, self_test = st.tabs(("Uygulama", "Sezgi", "Kendini sına"))
+    application, intuition, self_test = topic_tabs(TOPIC_KEY, ("Uygulama", "Sezgi", "Kendini sına"))
     with application:
         render_lab(get_lab(TOPIC_KEY))
     with intuition:

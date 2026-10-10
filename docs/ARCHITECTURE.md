@@ -111,6 +111,10 @@ bağımsız tanımlardan gelir; arayüz yalnız bu tanımları gösterir.
   kaydırıcılar `lab_ui.decimal_slider` ile çizilir (`st.select_slider`; değer ondalık virgülle yazılır, çünkü
   `st.slider` biçimi yalnız noktayı bilir). `assets/styles.css` metrik etiketini üç noktayla kesmez, dar sütunda alt
   satıra geçirir ve aynı satırdaki metrik kutularını eşit yükseklikte tutar.
+- `core/navigation.py`: Streamlit'ten bağımsız sunum URL doğrulaması; deney ve adımlar mevcut tanımlardan okunur.
+  `topics/shared.apply_url_route`, doğrulanmış başlangıç durumunu widget'lar çizilmeden önce ve yalnız URL
+  değiştiğinde uygular. `topic_tabs`, üç gerçek sekmenin seçimini `{konu}_tab` anahtarında tutar.
+  Kendi veri henüz yüklenmemişse `lab_ui` hedef adımı ve yükleme alanını gösterir; hesap oluşturmaz.
 - Testler: `tests/test_konu00_content.py`, `tests/test_konu01_02_content.py`, `tests/test_konu03_04_content.py`,
   `tests/test_konu05_06_content.py`, `tests/test_konu07_08_content.py`, `tests/test_konu09_10_content.py`,
   `tests/test_konu11_12_content.py` (veri,

@@ -27,7 +27,7 @@ from topics import (
     konu12_heteroskedastisite,
 )
 from topics.lab_ui import CODE_LANGUAGE_KEY
-from topics.shared import keep_widget_state
+from topics.shared import apply_url_route, keep_widget_state
 
 # Konu sayfaları: her biri Uygulama, Sezgi ve Kendini sına sekmelerinden oluşur. (app.py Streamlit'in ana betiğidir:
 # modül düzeyindeki çıplak metinleri "magic" ile sayfaya yazar; bu yüzden burada açıklamalar docstring değil yorum
@@ -68,7 +68,8 @@ TOPIC_RENDERERS = {
 TOPIC_LABELS = {topic.label: topic.key for topic in list_topics()}
 
 # Çizilmediği çalıştırmalarda da korunan seçimler: kod dili, adım, spesifikasyon, deney ve kaydırıcılar.
-WIDGET_KEYS = frozenset({CODE_LANGUAGE_KEY}).union(*(page.widget_keys() for page in TOPIC_PAGES))
+WIDGET_KEYS = frozenset({CODE_LANGUAGE_KEY, *(f"konu{n:02d}_tab" for n in range(13))}).union(
+    *(page.widget_keys() for page in TOPIC_PAGES))
 
 
 def load_styles(scale: float) -> None:
@@ -92,6 +93,7 @@ def main() -> None:
         initial_sidebar_state="expanded",
     )
     keep_widget_state(WIDGET_KEYS)
+    apply_url_route()
     scale_label = st.session_state.get("text_scale_label", DEFAULT_TEXT_SCALE_LABEL)
     if scale_label not in TEXT_SCALE_OPTIONS:
         scale_label = DEFAULT_TEXT_SCALE_LABEL

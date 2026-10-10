@@ -6,6 +6,10 @@ Uygulama çalışma zamanında bir büyük dil modeli veya dış API kullanmaz. 
 
 Her konu **Uygulama**, **Sezgi** ve **Kendini sına** sekmelerinden oluşur. Uygulama sekmesi notlardaki laboratuvarın adımlarını izler ve notlarda basılı her sayıyı gerçek veriyle yeniden üretir; öğrenci bir adımda farklı bir spesifikasyon seçebilir (ör. açıklayıcı değişken), seçim yalnız ona bağlı sonraki adımlara geçer ve notlardaki modelle yan yana gösterilir. Her adımın ve her Sezgi deneyinin Python ve R kodu aynı tanımdan üretilir.
 
+Sunumlardan doğru konu, sekme, deney veya laboratuvar adımı doğrudan URL ile açılabilir;
+ör. `/?konu=03&sekme=sezgi&deney=2`. URL'nin başlangıç ayarları sonraki kullanıcı seçimlerini sıfırlamaz.
+Parametreler ve veri kaynağı davranışı için [Sunum bağlantıları](docs/SUNUM_BAGLANTILARI.md) belgesine bakın.
+
 Bütün konularda (0–12) Uygulama sekmesinin üstünde bir **veri kaynağı** seçimi vardır. Varsayılan **Notlardaki örnek**tir (yukarıdaki gibi). **Alternatif örnek** aynı adımları başka Wooldridge verileriyle yapar (WAGE2, OKUN, KIELMC, CRIME4, BEAUTY; Konu 2'nin deney adımında ve Konu 3'ün sıfır–bir değişken adımında veri üretim süreci belgelenmiş kurgusal bir iş arama programı). **Kendi verini yükle** aynı adımları öğrencinin Excel (.xlsx) ya da CSV dosyasıyla yapar: öğrenci sütunları rollere seçer (ör. sonuç ve açıklayıcı değişken), rolü seçilmeyen adım neye ihtiyacı olduğunu yazar. İki ek kaynakta kontrollerin beklenen değerleri uygulamanın kendi hesabıdır; indirilen Python ve R kodu bu değerleri yeniden üretir ve kendi verinde dosyayı betikle aynı klasörden okur. Yüklenen dosya yalnız oturumun belleğinde işlenir; diske, ortak önbelleğe ya da günlüğe yazılmaz.
 
 ## Kapsam
