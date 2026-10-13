@@ -74,7 +74,7 @@ def test_notes_specification_is_the_default_and_passes_every_check() -> None:
         assert resolved.variant == () and resolved.steps == spec.steps
         assert run_lab(spec).all_passed
     assert sum(len(step.checks) for step in KONU03_LAB.steps) == 80
-    assert sum(len(step.checks) for step in KONU04_LAB.steps) == 74
+    assert sum(len(step.checks) for step in KONU04_LAB.steps) == 76
     assert [step.note.section for step in KONU03_LAB.steps] == ["3.1", "3.3", "3.9", "3.10", "3.11", "3.11",
                                                                   "3.12", "3.13"]
     assert [step.note.section for step in KONU04_LAB.steps] == ["4.1", "4.2", "4.3", "4.4", "4.5", "4.7", "4.9",
@@ -207,8 +207,10 @@ def test_konu04_steps_compute_what_they_say() -> None:
     hprice1 = W.load("hprice1")
     s = run_operations(KONU04_LAB.resolve({"adim1_x": "exper"}).operations_through(5)).scalars
     assert s["artik_toplami"] == pytest.approx(0, abs=1e-9)
+    assert s["x_artik_toplami"] == pytest.approx(0, abs=1e-9)
     assert s["ort_tahmin"] == pytest.approx(s["ort_ucret"], rel=1e-12)
     assert s["dogru_xbar"] == pytest.approx(s["ort_ucret"], rel=1e-12)
+    assert s["capraz_terim_toplami"] == pytest.approx(0, abs=1e-9)
     assert s["tkt"] == pytest.approx(s["mkt"] + s["hkt"], rel=1e-12)
     assert s["r2_mkt"] == pytest.approx(s["r2_hkt"], rel=1e-10) == pytest.approx(s["r_kare"], rel=1e-10)
     s = run_operations(KONU04_LAB.resolve({"adim3_ybar": 20.0, "adim3_yhat": 0.0, "adim3_y": 12.5})

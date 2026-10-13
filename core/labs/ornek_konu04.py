@@ -145,9 +145,12 @@ def _step1(case: Case, choice: Choice) -> LabStep:
             ModelValue("b1", "model", "coef", f"Eğim β̂₁ ({x})", term=x),
             Derive(case.frame, "tahmin", E.add(E.ref("b0"), E.mul(E.ref("b1"), E.var(x))), "Tahmin edilen değer Ŷᵢ"),
             Derive(case.frame, "artik", E.sub(E.var(y), E.var("tahmin")), "Artık ûᵢ = Yᵢ − Ŷᵢ"),
+            Derive(case.frame, "x_artik", E.mul(E.var(x), E.var("artik")), "Xᵢ·ûᵢ"),
             Statistic(case.frame, y, "count", "n", "Gözlem sayısı", decimals=0),
             Statistic(case.frame, y, "mean", "ort_y", "Sonucun ortalaması Ȳ", decimals=6),
             Statistic(case.frame, "artik", "sum", "artik_toplami", "Artıkların toplamı Σûᵢ", decimals=shown),
+            Statistic(case.frame, "x_artik", "sum", "x_artik_toplami", "X ile artıkların iç çarpımı ΣXᵢûᵢ",
+                      decimals=shown),
             Statistic(case.frame, "tahmin", "mean", "ort_tahmin", "Tahmin edilen değerlerin ortalaması", decimals=6),
             Statistic(case.frame, x, "mean", "ort_x", "Açıklayıcı değişkenin ortalaması X̄", decimals=4),
             Scalar("dogru_xbar", E.add(E.ref("b0"), E.mul(E.ref("b1"), E.ref("ort_x"))),
@@ -160,7 +163,9 @@ def _step1(case: Case, choice: Choice) -> LabStep:
         unit = f" {short_unit(case, y)}" if short_unit(case, y) else ""
         shown = noise_decimals(case, regressors=(x,))
         text = (f"Artıkların toplamı {sayi(s['artik_toplami'], shown)}: bilgisayarın hesap hassasiyeti içinde sıfırdır "
-                "(Denklem 4.1); küçük işaret yazılıma göre değişebilir. Tahmin edilen değerlerin ortalaması "
+                "(Denklem 4.1); küçük işaret yazılıma göre değişebilir. X ile artıkların iç çarpımı da hesap "
+                "hassasiyeti içinde sıfırdır: EKK'da X ile artık vektörü ortogonaldir. Bu örneklem içi cebirsel "
+                "sonuç, sıfır koşullu ortalama varsayımını kanıtlamaz. Tahmin edilen değerlerin ortalaması "
                 f"{sayi(s['ort_tahmin'], 6)} ve doğrunun X̄'daki değeri {sayi(s['dogru_xbar'], 6)}, sonucun ortalamasına "
                 f"({sayi(s['ort_y'], 6)}{unit}) eşittir (Denklem 4.2–4.3). Bu eşitlikler sabit terimli her EKK "
                 "doğrusunun cebirsel özelliğidir; modelin doğru olduğunu ya da her artığın küçük olduğunu göstermez.")
@@ -171,11 +176,12 @@ def _step1(case: Case, choice: Choice) -> LabStep:
     return interactive_step(
         number=1,
         title="EKK doğrusunun temel örneklem özellikleri",
-        note=NoteRef("4.1", 0, ("Kod 4.1", "Denklem 4.1–4.3")),
+        note=NoteRef("4.1", 0, ("Kod 4.1", "Denklem 4.1–4.3", "X ile artıkların ortogonalliği")),
         explanation=(
-            "Sabit terimli EKK tahmininde üç eşitlik her örneklemde sağlanır: artıkların toplamı sıfırdır ($\\sum "
+            "Sabit terimli EKK tahmininde dört örneklem özelliği sağlanır: artıkların toplamı sıfırdır ($\\sum "
             "\\hat u_i = 0$), tahmin edilen değerlerin ortalaması $\\bar Y$'ye eşittir ve doğru $(\\bar X, \\bar Y)$ "
-            "noktasından geçer. Önce model tahmin edilir; tahmin edilen değer ve artık her gözlem için hesaplanır."
+            "noktasından geçer. Ayrıca $\\sum X_i\\hat u_i=0$: açıklayıcı değişken ile artıklar örneklemde ortogonaldir. "
+            "Önce model tahmin edilir; tahmin edilen değer ve artık her gözlem için hesaplanır."
         ),
         controls=(choice,),
         build=build,
@@ -183,6 +189,7 @@ def _step1(case: Case, choice: Choice) -> LabStep:
             _scalar("n", "Gözlem sayısı", 0),
             _scalar("ort_y", "Sonucun ortalaması", 6),
             _scalar("artik_toplami", "Artıkların toplamı", noise),
+            _scalar("x_artik_toplami", "X ile artıkların iç çarpımı", noise),
             _scalar("ort_tahmin", "Tahmin edilen değerlerin ortalaması", 6),
             _scalar("dogru_xbar", "Doğru (X̄, Ȳ) noktasından geçer", 6),
         ),
@@ -321,13 +328,18 @@ def _step4(case: Case, choice: Choice) -> LabStep:
 
     def build(choices) -> tuple:
         x = choices[X_KEY]
+        shown = noise_decimals(case, regressors=(x,))
         return (
             Derive(case.frame, "toplam_kare", E.power(E.sub(E.var(y), E.ref("ort_y")), 2), "(Yᵢ − Ȳ)²"),
             Derive(case.frame, "model_kare", E.power(E.sub(E.var("tahmin"), E.ref("ort_y")), 2), "(Ŷᵢ − Ȳ)²"),
             Derive(case.frame, "artik_kare", E.power(E.var("artik"), 2), "ûᵢ²"),
+            Derive(case.frame, "capraz_terim", E.mul(E.sub(E.var("tahmin"), E.ref("ort_y")), E.var("artik")),
+                   "(Ŷᵢ − Ȳ)·ûᵢ"),
             Statistic(case.frame, "toplam_kare", "sum", "tkt", "TKT = Σ(Yᵢ − Ȳ)²", decimals=3),
             Statistic(case.frame, "model_kare", "sum", "mkt", "MKT = Σ(Ŷᵢ − Ȳ)²", decimals=3),
             Statistic(case.frame, "artik_kare", "sum", "hkt", "HKT = Σûᵢ²", decimals=3),
+            Statistic(case.frame, "capraz_terim", "sum", "capraz_terim_toplami", "Çapraz terim Σ(Ŷᵢ − Ȳ)ûᵢ",
+                      decimals=shown),
             Scalar("mkt_hkt", E.add(E.ref("mkt"), E.ref("hkt")), "MKT + HKT", decimals=3),
             ScalarTable((("TKT", E.ref("tkt")), ("MKT", E.ref("mkt")), ("HKT", E.ref("hkt"))), "kareler", decimals=1),
             BarChart("kareler", "deger", "Kareler toplamı türü",
@@ -339,7 +351,10 @@ def _step4(case: Case, choice: Choice) -> LabStep:
     def note(state, choices) -> str:
         x = choices[X_KEY]
         s = state.scalars
-        return (f"TKT = {sayi(s['tkt'], 3)} = MKT {sayi(s['mkt'], 3)} + HKT {sayi(s['hkt'], 3)} (Denklem 4.5). Toplam "
+        return (f"Çapraz terim Σ(Ŷᵢ − Ȳ)ûᵢ = {sayi(s['capraz_terim_toplami'], 6)}: hesap hassasiyeti içinde sıfırdır. "
+                "Çünkü sabit terimli basit EKK'da Ŷᵢ − Ȳ = β̂₁(Xᵢ − X̄) ve Adım 1'de doğruladığınız ortogonallik "
+                "Σ(Xᵢ − X̄)ûᵢ = 0'dır. Bu nedenle TKT = "
+                f"{sayi(s['tkt'], 3)} = MKT {sayi(s['mkt'], 3)} + HKT {sayi(s['hkt'], 3)} (Denklem 4.5). Toplam "
                 f"değişkenliğin yaklaşık {sayi(s['mkt'], 1)} birimlik kısmı {phrase(case, x)} doğrusu boyunca hareket "
                 f"ederken {sayi(s['hkt'], 1)} birimlik kısmı artıklarda kalır. TKT açıklayıcı değişkene bağlı değildir: "
                 "yalnız sonucun ortalama çevresindeki değişkenliğidir. EKK'nin en küçük yaptığı ölçüt HKT'dir. "
@@ -353,13 +368,15 @@ def _step4(case: Case, choice: Choice) -> LabStep:
         explanation=(
             "Sapmaların işaretleri birbirini götürebildiği için kareleri toplanır: TKT $= \\sum (Y_i - \\bar Y)^2$, "
             "MKT $= \\sum (\\hat Y_i - \\bar Y)^2$, HKT $= \\sum \\hat u_i^2$. Sabit terimli EKK modelinde TKT = MKT + "
-            "HKT (Denklem 4.5). Bu adım Adım 1'deki modeli kullanır."
+            "HKT (Denklem 4.5), çünkü kare açılımındaki $\\sum (\\hat Y_i - \\bar Y)\\hat u_i$ çapraz terimi sıfırdır. "
+            "Bu, Adım 1'deki ortogonalliğin sonucudur; herhangi bir doğrunun otomatik özelliği değildir. Bu adım Adım "
+            "1'deki modeli kullanır."
         ),
         uses=(choice,),
         build=build,
         checks=(
             _scalar("tkt", "TKT", 3), _scalar("mkt", "MKT", 3), _scalar("hkt", "HKT", 3),
-            _scalar("mkt_hkt", "MKT + HKT", 3),
+            _scalar("capraz_terim_toplami", "Çapraz terim", 6), _scalar("mkt_hkt", "MKT + HKT", 3),
         ),
         note_for=lambda state, choices: note(state, choices),
     )

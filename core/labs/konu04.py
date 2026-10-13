@@ -99,9 +99,11 @@ def _properties(choices) -> tuple:
         ModelValue("b1", "model", "coef", f"Eğim β̂₁ ({x})", term=x),
         Derive(DATA, "tahmin", E.add(E.ref("b0"), E.mul(E.ref("b1"), E.var(x))), "Tahmin edilen değer Ŷᵢ"),
         Derive(DATA, "artik", E.sub(E.var(OUTCOME), E.var("tahmin")), "Artık ûᵢ = Yᵢ − Ŷᵢ"),
+        Derive(DATA, "x_artik", E.mul(E.var(x), E.var("artik")), "Xᵢ·ûᵢ"),
         Statistic(DATA, OUTCOME, "count", "n", "Gözlem sayısı", decimals=0),
         Statistic(DATA, OUTCOME, "mean", "ort_ucret", "Ortalama ücret Ȳ", decimals=6),
         Statistic(DATA, "artik", "sum", "artik_toplami", "Artıkların toplamı Σûᵢ", decimals=10),
+        Statistic(DATA, "x_artik", "sum", "x_artik_toplami", "X ile artıkların iç çarpımı ΣXᵢûᵢ", decimals=8),
         Statistic(DATA, "tahmin", "mean", "ort_tahmin", "Tahmin edilen değerlerin ortalaması", decimals=6),
         Statistic(DATA, x, "mean", "ort_x", "Açıklayıcı değişkenin ortalaması X̄", decimals=4),
         Scalar("dogru_xbar", E.add(E.ref("b0"), E.mul(E.ref("b1"), E.ref("ort_x"))), "Doğrunun X̄'daki değeri Ŷ(X̄)",
@@ -115,7 +117,9 @@ def _properties_note(state, choices) -> str:
     words = IN_WORDS[x][1]
     text = (
         f"Artıkların toplamı {plain(s['artik_toplami'], 10)}: bilgisayarın hesap hassasiyeti içinde sıfırdır "
-        "(Denklem 4.1); küçük işaret yazılıma göre değişebilir. Tahmin edilen değerlerin ortalaması "
+        "(Denklem 4.1); küçük işaret yazılıma göre değişebilir. X ile artıkların iç çarpımı da hesap hassasiyeti "
+        "içinde sıfırdır: EKK'da X ile artık vektörü ortogonaldir. Bu örneklem içi cebirsel sonuç, sıfır koşullu "
+        "ortalama varsayımını kanıtlamaz. Tahmin edilen değerlerin ortalaması "
         f"{plain(s['ort_tahmin'], 6)} ve doğrunun X̄'daki değeri {plain(s['dogru_xbar'], 6)}, ortalama ücrete "
         f"({plain(s['ort_ucret'], 6)} dolar) eşittir (Denklem 4.2–4.3). Bu eşitlikler sabit terimli her EKK "
         "doğrusunun cebirsel özelliğidir; modelin doğru olduğunu ya da her artığın küçük olduğunu göstermez."
@@ -187,9 +191,12 @@ def _sums_of_squares(choices) -> tuple:
         Derive(DATA, "toplam_kare", E.power(E.sub(E.var(OUTCOME), E.ref("ort_ucret")), 2), "(Yᵢ − Ȳ)²"),
         Derive(DATA, "model_kare", E.power(E.sub(E.var("tahmin"), E.ref("ort_ucret")), 2), "(Ŷᵢ − Ȳ)²"),
         Derive(DATA, "artik_kare", E.power(E.var("artik"), 2), "ûᵢ²"),
+        Derive(DATA, "capraz_terim", E.mul(E.sub(E.var("tahmin"), E.ref("ort_ucret")), E.var("artik")),
+               "(Ŷᵢ − Ȳ)·ûᵢ"),
         Statistic(DATA, "toplam_kare", "sum", "tkt", "TKT = Σ(Yᵢ − Ȳ)²", decimals=3),
         Statistic(DATA, "model_kare", "sum", "mkt", "MKT = Σ(Ŷᵢ − Ȳ)²", decimals=3),
         Statistic(DATA, "artik_kare", "sum", "hkt", "HKT = Σûᵢ²", decimals=3),
+        Statistic(DATA, "capraz_terim", "sum", "capraz_terim_toplami", "Çapraz terim Σ(Ŷᵢ − Ȳ)ûᵢ", decimals=8),
         Scalar("mkt_hkt", E.add(E.ref("mkt"), E.ref("hkt")), "MKT + HKT", decimals=3),
         ScalarTable((("TKT", E.ref("tkt")), ("MKT", E.ref("mkt")), ("HKT", E.ref("hkt"))), "kareler", decimals=1),
         BarChart("kareler", "deger", "Kareler toplamı türü", "Kareler toplamı ((dolar/saat)²)",
@@ -202,7 +209,10 @@ def _sums_note(state, choices) -> str:
     s = state.scalars
     words = IN_WORDS[x][1]
     return (
-        f"TKT = {plain(s['tkt'], 3)} = MKT {plain(s['mkt'], 3)} + HKT {plain(s['hkt'], 3)} (Denklem 4.5). Toplam "
+        f"Çapraz terim Σ(Ŷᵢ − Ȳ)ûᵢ = {plain(s['capraz_terim_toplami'], 8)}: hesap hassasiyeti içinde sıfırdır. "
+        "Çünkü sabit terimli basit EKK'da Ŷᵢ − Ȳ = β̂₁(Xᵢ − X̄) ve Adım 1'de doğruladığınız ortogonallik "
+        "Σ(Xᵢ − X̄)ûᵢ = 0'dır. Bu nedenle TKT = "
+        f"{plain(s['tkt'], 3)} = MKT {plain(s['mkt'], 3)} + HKT {plain(s['hkt'], 3)} (Denklem 4.5). Toplam "
         f"değişkenliğin yaklaşık {plain(s['mkt'], 1)} birimlik kısmı {words}–ücret doğrusu boyunca hareket ederken "
         f"{plain(s['hkt'], 1)} birimlik kısmı artıklarda kalır. TKT açıklayıcı değişkene bağlı değildir: yalnız "
         "ücretin ortalama çevresindeki değişkenliğidir. EKK'nin en küçük yaptığı ölçüt HKT'dir. Kısaltmalara dikkat: "
@@ -463,11 +473,12 @@ STEPS = (
     interactive_step(
         number=1,
         title="EKK doğrusunun temel örneklem özellikleri",
-        note=NoteRef("4.1", 0, ("Kod 4.1", "Denklem 4.1–4.3")),
+        note=NoteRef("4.1", 0, ("Kod 4.1", "Denklem 4.1–4.3", "X ile artıkların ortogonalliği")),
         explanation=(
-            "Sabit terimli EKK tahmininde üç eşitlik her örneklemde sağlanır: artıkların toplamı sıfırdır ($\\sum "
+            "Sabit terimli EKK tahmininde dört örneklem özelliği sağlanır: artıkların toplamı sıfırdır ($\\sum "
             "\\hat u_i = 0$), tahmin edilen değerlerin ortalaması $\\bar Y$'ye eşittir ve doğru $(\\bar X, \\bar Y)$ "
-            "noktasından geçer. Önce model tahmin edilir; tahmin edilen değer ve artık her çalışan için hesaplanır."
+            "noktasından geçer. Ayrıca $\\sum X_i\\hat u_i=0$: açıklayıcı değişken ile artıklar örneklemde ortogonaldir. "
+            "Önce model tahmin edilir; tahmin edilen değer ve artık her çalışan için hesaplanır."
         ),
         controls=(X_CHOICE,),
         build=_properties,
@@ -475,6 +486,7 @@ STEPS = (
             _scalar("n", 526, "Kod 4.1: gözlem sayısı", 0),
             _scalar("ort_ucret", 5.896103, "Kod 4.1: ortalama ücret", 6),
             _scalar("artik_toplami", 0.0, "Kod 4.1: artıkların toplamı", 10),
+            _scalar("x_artik_toplami", 0.0, "§4.1: X ile artıkların iç çarpımı", 8),
             _scalar("ort_tahmin", 5.896103, "Kod 4.1: tahmin edilen değerlerin ortalaması", 6),
             _scalar("dogru_xbar", 5.896103, "Denklem 4.3: doğru (X̄, Ȳ) noktasından geçer", 6),
         ),
@@ -524,7 +536,9 @@ STEPS = (
         explanation=(
             "Sapmaların işaretleri birbirini götürebildiği için kareleri toplanır: TKT $= \\sum (Y_i - \\bar Y)^2$, "
             "MKT $= \\sum (\\hat Y_i - \\bar Y)^2$, HKT $= \\sum \\hat u_i^2$. Sabit terimli EKK modelinde TKT = MKT + "
-            "HKT (Denklem 4.5). Bu adım Adım 1'deki modeli kullanır."
+            "HKT (Denklem 4.5), çünkü kare açılımındaki $\\sum (\\hat Y_i - \\bar Y)\\hat u_i$ çapraz terimi sıfırdır. "
+            "Bu, Adım 1'deki ortogonalliğin sonucudur; herhangi bir doğrunun otomatik özelliği değildir. Bu adım Adım "
+            "1'deki modeli kullanır."
         ),
         uses=(X_CHOICE,),
         build=_sums_of_squares,
@@ -532,6 +546,7 @@ STEPS = (
             _scalar("tkt", 7160.414, "Kod 4.2: TKT", 3),
             _scalar("mkt", 1179.732, "Kod 4.2: MKT", 3),
             _scalar("hkt", 5980.682, "Kod 4.2: HKT", 3),
+            _scalar("capraz_terim_toplami", 0.0, "§4.4: çapraz terim", 8),
             _scalar("mkt_hkt", 7160.414, "Kod 4.2: MKT + HKT", 3),
             _scalar("mkt", 1179.7, "§4.4: doğru boyunca hareket eden kısım", 1),
             _scalar("hkt", 5980.7, "§4.4: artıklarda kalan kısım", 1),
