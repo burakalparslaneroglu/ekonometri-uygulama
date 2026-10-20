@@ -28,7 +28,7 @@ CONFIDENCE_Q = 1 - 0.05 / 2
 
 
 def design_columns(op: OLS, data: pd.DataFrame) -> list[np.ndarray]:
-    """Terimlerin sütunları (sabit terim hariç): değişken ya da etkileşimde iki değişkenin çarpımı."""
+    """Terimlerin sütunları (kesim terimi hariç): değişken ya da etkileşimde iki değişkenin çarpımı."""
 
     columns = []
     for term in op.regressors:
@@ -168,14 +168,14 @@ HPRICE1'in bütün açıklayıcı seçimleri). Eşik ikisinin arasındadır; her
 
 
 def white_design(exog) -> np.ndarray:
-    """White yardımcı regresyonunun tasarımı: sabit, açıklayıcıların düzeyleri, kareleri ve çapraz çarpımları.
+    """White yardımcı regresyonunun tasarımı: kesim terimi, açıklayıcıların düzeyleri, kareleri ve çapraz çarpımları.
 
     Yalnız sıfırdan oluşan sütunlar (ör. birbirini dışlayan iki kuklanın çarpımı) atılır; sütunlar birim uzunluğa
     çekilir, böylece rank kararı sütun ölçeğinden (ör. arsa büyüklüğünün karesi) etkilenmez."""
 
     x = np.asarray(exog, dtype=float)
     if x.ndim != 2 or x.shape[1] < 2 or not np.all(x[:, 0] == 1):
-        raise ValueError("White testi için modelde sabit terim (ilk sütun) ve en az bir açıklayıcı değişken olmalıdır.")
+        raise ValueError("White testi için modelde kesim terimi (ilk sütun) ve en az bir açıklayıcı değişken olmalıdır.")
     level = x[:, 1:]
     first, second = np.triu_indices(level.shape[1])
     design = np.column_stack([np.ones(len(level)), level, level[:, first] * level[:, second]])
@@ -184,8 +184,8 @@ def white_design(exog) -> np.ndarray:
 
 
 def white_test(resid, exog) -> tuple[float, float]:
-    """White (1980) LM testi: kareli artıklar, açıklayıcıların düzeyleri, kareleri ve çapraz çarpımları üzerine regrese
-    edilir; LM = n·R², p = P(χ²_q > LM), q = yardımcı regresyondaki bağımsız terim sayısı (sabit hariç).
+    """White (1980) LM testi: artık değerlerin kareleri, açıklayıcıların düzeyleri, kareleri ve çapraz çarpımları üzerine regrese
+    edilir; LM = n·R², p = P(χ²_q > LM), q = yardımcı regresyondaki bağımsız terim sayısı (kesim terimi hariç).
 
     0/1 kuklanın karesi kendisidir: yinelenen sütun rankla ayıklanır (``np.linalg.lstsq``, eşik ``WHITE_RCOND``) ve q'ya
     bir kez girer. Üretilen Python kodundaki ``white_testi`` ve R kodu aynı hesabı yapar. statsmodels ``het_white`` aynı
@@ -202,7 +202,7 @@ def white_test(resid, exog) -> tuple[float, float]:
 
 
 def hetero_test(result, kind: str) -> tuple[float, float]:
-    """Heteroskedastisite testinin LM istatistiği ve p-değeri; yardımcı regresyon modelin artıkları ve açıklayıcılarıyla
+    """Heteroskedastisite testinin LM istatistiği ve p-değeri; yardımcı regresyon modelin artık değerleri ve açıklayıcılarıyla
     (``model.exog``) kurulur. ``bp``: statsmodels ``het_breuschpagan`` (Koenker'in n·R² biçimi); ``white``:
     :func:`white_test` (açık yardımcı regresyon)."""
 
@@ -270,4 +270,4 @@ def table_stars(op: RegressionTable, models: dict) -> dict[tuple[str, str], str]
 
 
 def term_label(term: str, label) -> str:
-    return "Sabit terim" if term == INTERCEPT else label(term)
+    return "Kesim terimi" if term == INTERCEPT else label(term)

@@ -154,8 +154,8 @@ def _scaling(choices) -> tuple:
         OLS("m_x", "olcek", "wage", (x_column, "exper", "tenure"),
             f"Ücret dolar, eğitim {x_name}: wage ~ {x_column} + exper + tenure"),
         *side,
-        ModelValue("a_1", "m_dolar", "coef", "Ücret dolar: sabit terim", term=INTERCEPT, decimals=3),
-        ModelValue("a_2", "m_y", "coef", f"Ücret {y_name}: sabit terim", term=INTERCEPT, decimals=3 + extra_y),
+        ModelValue("a_1", "m_dolar", "coef", "Ücret dolar: kesim terimi", term=INTERCEPT, decimals=3),
+        ModelValue("a_2", "m_y", "coef", f"Ücret {y_name}: kesim terimi", term=INTERCEPT, decimals=3 + extra_y),
         ModelValue("sh_1", "m_dolar", "se", "Ücret dolar: eğitim katsayısının standart hatası", term="educ", decimals=4),
         ModelValue("sh_2", "m_y", "se", f"Ücret {y_name}: eğitim katsayısının standart hatası", term="educ",
                    decimals=4 + extra_y),
@@ -181,7 +181,7 @@ def _scaling_note(state, choices) -> str:
     x_factor = "10'a bölünür" if x_unit == "on_yil" else "12 ile çarpılır"
     x_effect = ("bir birimlik artış artık on yıllık eğitim artışıdır" if x_unit == "on_yil"
                 else "bir birimlik artış artık bir aylık eğitim artışıdır")
-    return (f"Ücret {y_name} cinsinden yazılınca bağımlı değişken {factor}; sabit terim ({plain(s['a_1'], 3)} → "
+    return (f"Ücret {y_name} cinsinden yazılınca bağımlı değişken {factor}; kesim terimi ({plain(s['a_1'], 3)} → "
             f"{plain(s['a_2'], 3 + extra_y)}), eğitim katsayısı ({plain(s['b_1'], 3)} → {plain(s['b_2'], 3 + extra_y)}) "
             f"ve standart hatası ({plain(s['sh_1'], 4)} → {plain(s['sh_2'], 4 + extra_y)}) aynı oranda değişir. Eğitim "
             f"{x_name} biriminde yazılınca açıklayıcı değişken {x_factor}; {x_effect} ve katsayı "
@@ -310,7 +310,7 @@ def _exact_note(state, choices) -> str:
 # --- Adım 4: karesel ücret modeli ve ortak test ------------------------------------------------------------------
 
 _KOD92 = (
-    (INTERCEPT, "sabit terim", (0.2016, 0.101, 1.987, 0.048)),
+    (INTERCEPT, "kesim terimi", (0.2016, 0.101, 1.987, 0.048)),
     ("educ", "educ", (0.0845, 0.007, 11.803, 0.000)),
     ("exper", "exper", (0.0293, 0.005, 5.540, 0.000)),
     ("expersq", "expersq", (-0.0006, 0.000, -5.189, 0.000)),
@@ -354,7 +354,7 @@ def _marginal(choices) -> tuple:
                                      E.mul(b1, E.var("exper"))), E.mul(b2, E.power(E.var("exper"), 2))),
                         E.mul(E.ref("b_k"), E.ref("ort_kidem"))), E.mul(E.ref("b_kk"), E.power(E.ref("ort_kidem"), 2)))
     return (
-        ModelValue("b_0", "m4", "coef", "Sabit terim", term=INTERCEPT, decimals=4),
+        ModelValue("b_0", "m4", "coef", "Kesim terimi", term=INTERCEPT, decimals=4),
         ModelValue("b_d", "m4", "coef", "Deneyim katsayısı β̂₂", term="exper", decimals=6),
         ModelValue("b_dd", "m4", "coef", "Deneyim² katsayısı β̂₃", term="expersq", decimals=6),
         ModelValue("b_k", "m4", "coef", "Kıdem katsayısı β̂₄", term="tenure", decimals=6),
@@ -399,7 +399,7 @@ def _marginal(choices) -> tuple:
         Scalar("sifir", E.const(0), "Sıfır etki çizgisi", decimals=0, shown=False),
         ScatterPlot(DATA, "exper", "lwage", "Deneyim (yıl)", "ln(saatlik ücret)",
                     "Şekil 9.2: deneyim ile log ücret arasındaki karesel ilişki", size=6, opacity=0.35,
-                    curves=(("egri", "exper", "tahmin", "Tahmin edilen eğri"),)),
+                    curves=(("egri", "exper", "tahmin", "Uyum eğrisi"),)),
         LineChart("egri", "exper", "etki", "Deneyim (yıl)", "Bir ek yılın yaklaşık yüzde etkisi",
                   "Şekil 9.3: deneyimin tahmin edilen marjinal etkisi", references=(("sifir", "Sıfır etki"),),
                   markers=False, vlines=(("donum_d", "Dönüm noktası (yıl)"), ("x0", "Seçilen deneyim (yıl)"))),
@@ -469,14 +469,14 @@ def _centering(choices) -> tuple:
     return (
         ModelValue("r2_ham", "m4", "r2", "Ham model: R²", decimals=6),
         ModelValue("r2d_ham", "m4", "adj_r2", "Ham model: düzeltilmiş R²", decimals=6),
-        ModelValue("hkt_ham", "m4", "ssr", "Ham model: HKT (artık kareleri toplamı)", decimals=4),
+        ModelValue("hkt_ham", "m4", "ssr", "Ham model: HKT (artık değerlerin kareleri toplamı)", decimals=4),
         *noted,
         *_centered_table(c, "m_c", "merkez", "", "Tablo 9.6: Ham ve 10 yılda merkezlenmiş karesel modelin "
                          "karşılaştırılması" if notes else f"Seçiminiz: ham ve {c} yılda merkezlenmiş model"),
-        Residuals("merkez", "u_ham", "m4", "Ham modelin artıkları"),
-        Residuals("merkez", "u_mer", "m_c", "Merkezlenmiş modelin artıkları"),
-        Derive("merkez", "u_fark", E.absolute(E.sub(E.var("u_ham"), E.var("u_mer"))), "İki modelin artık farkı"),
-        Statistic("merkez", "u_fark", "max", "azami_fark", "Artıkların (ve tahmin edilen değerlerin) azami farkı",
+        Residuals("merkez", "u_ham", "m4", "Ham modelin artık değerleri"),
+        Residuals("merkez", "u_mer", "m_c", "Merkezlenmiş modelin artık değerleri"),
+        Derive("merkez", "u_fark", E.absolute(E.sub(E.var("u_ham"), E.var("u_mer"))), "İki modelin artık değer farkı"),
+        Statistic("merkez", "u_fark", "max", "azami_fark", "Artık değerlerin (ve uyum değerlerinin) azami farkı",
                   decimals=12),
         PairStatistic("merkez", "exper", "expersq", "corr", "r_ham", "Korelasyon: deneyim ile deneyim²", decimals=3),
         PairStatistic("merkez", "exper_c", "exper_c_sq", "corr", "r_mer",
@@ -490,11 +490,11 @@ def _centering_note(state, choices) -> str:
     if c == 0:
         return (f"c = 0 ham modelin kendisidir: merkezlenmiş deneyim deneyimle aynıdır ve katsayı "
                 f"{plain(s['egim_mer'], 6)}, deneyim 0 yıl iken (veri aralığının dışında) eğimdir. Anlamlı bir nokta "
-                "seçin, ör. notlardaki gibi 10 yıl: katsayı o noktadaki eğim olur. Merkezleme R²'yi, HKT'yi ve tahmin "
-                "edilen değerleri değiştirmez; ekonomik ilişkiyi ya da içselliği değiştirmez (§9.6).")
+                "seçin, ör. notlardaki gibi 10 yıl: katsayı o noktadaki eğim olur. Merkezleme R²'yi, HKT'yi ve uyum "
+                "değerlerini değiştirmez; ekonomik ilişkiyi ya da içselliği değiştirmez (§9.6).")
     return (f"Merkezlenmiş modelde deneyim katsayısı {plain(s['egim_mer'], 6)}: ham modelde {c} yıldaki eğim "
             f"β̂₂ + 2β̂₃·{c} = {plain(s['egim_ham'], 6)} ile aynıdır. R², düzeltilmiş R² ve HKT değişmez; iki "
-            f"modelin tahmin edilen değerleri arasındaki en büyük fark yalnız bilgisayar yuvarlaması düzeyindedir. "
+            f"modelin uyum değerleri arasındaki en büyük fark yalnız bilgisayar yuvarlaması düzeyindedir. "
             f"Merkezleme deneyim ile karesi arasındaki korelasyonu değiştirir ({plain(s['r_ham'], 3)} → "
             f"{plain(s['r_mer'], 3)}); ekonomik ilişkiyi, eksik değişken sorununu ya da içselliği değiştirmez (§9.6).")
 
@@ -673,7 +673,7 @@ STEPS = (
         note=NoteRef("9.2", 0, ("Tablo 9.2",)),
         explanation=(
             "Bir değişkeni başka bir birimle yazmak ekonomik bilgiyi değiştirmez; yalnız katsayının sayısal ölçeğini "
-            "değiştirir. Ücret dolar yerine sent cinsinden yazılırsa bağımlı değişken 100 ile çarpılır; sabit terim, "
+            "değiştirir. Ücret dolar yerine sent cinsinden yazılırsa bağımlı değişken 100 ile çarpılır; kesim terimi, "
             "eğim katsayıları ve standart hatalar da 100 ile çarpılır. Eğitim on yıllık birimle yazılırsa bir birimlik "
             "artış on yıllık artış olur. Model: $\\text{ücret} = \\beta_0 + \\beta_1\\text{eğitim} + "
             "\\beta_2\\text{deneyim} + \\beta_3\\text{kıdem} + u$. Ücretin ve eğitimin yeni birimini değiştirin."
@@ -681,7 +681,7 @@ STEPS = (
         controls=(Y_UNIT_1, X_UNIT_1),
         build=_scaling,
         checks=(
-            Check("§9.2: sabit terim", CoefTarget("m_dolar", INTERCEPT, "coef"), -2.873, 3),
+            Check("§9.2: kesim terimi", CoefTarget("m_dolar", INTERCEPT, "coef"), -2.873, 3),
             Check("§9.2: eğitim katsayısı", CoefTarget("m_dolar", "educ", "coef"), 0.599, 3),
             Check("§9.2: deneyim katsayısı", CoefTarget("m_dolar", "exper", "coef"), 0.022, 3),
             Check("§9.2: kıdem katsayısı", CoefTarget("m_dolar", "tenure", "coef"), 0.169, 3),
@@ -808,7 +808,7 @@ STEPS = (
         note=NoteRef("9.6", 0, ("Tablo 9.6",)),
         explanation=(
             "Karesel modelde deneyim katsayısı deneyim = 0 noktasındaki eğimdir. Deneyim c yılında merkezlenirse "
-            "($X_c = X - c$) doğrusal terim doğrudan c yıldaki eğimi verir. Model aynı tahmin edilen değerleri üretir; "
+            "($X_c = X - c$) doğrusal terim doğrudan c yıldaki eğimi verir. Model aynı uyum değerleri üretir; "
             "yalnız katsayıların referans noktası değişir. Merkez noktasını değiştirin."
         ),
         controls=(CENTER_6,),
@@ -828,7 +828,7 @@ STEPS = (
                   TableTarget("tablo96", "10 yıldaki deneyim eğimi", "Merkezlenmiş model"), 0.017465, 6),
             _scalar("egim_mer", 0.01746, "§9.6: 10 yılda merkezlenmiş deneyim katsayısı", 5),
             _scalar("egim_ham", 0.01746, "§9.6: 0,0293 + 2(−0,000592)(10)", 5),
-            _scalar("azami_fark", 0.0, "§9.6: iki model aynı tahmin edilen değerleri üretir", 10),
+            _scalar("azami_fark", 0.0, "§9.6: iki model aynı uyum değerleri üretir", 10),
         ),
         note_for=lambda state, choices: _centering_note(state, choices),
     ),
@@ -885,7 +885,7 @@ KONU09_LAB = LabSpec(
     steps=STEPS,
     labels=(
         *W.labels(DATA),
-        (INTERCEPT, "Sabit terim"),
+        (INTERCEPT, "Kesim terimi"),
         ("wage_sent", "Saatlik ücret (sent/saat)"),
         ("wage_bin", "Saatlik ücret (bin ABD doları/saat)"),
         ("educ_on", "Eğitim (on yıl)"),

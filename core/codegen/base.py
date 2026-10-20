@@ -58,7 +58,7 @@ FILE_SUFFIX = {"notlar": "uygulama", "alternatif": "alternatif", "kendi": "kendi
 """İndirilen betiğin adı veri kaynağına göre: ikt305_konuNN_<ek>.py."""
 STAT_NAMES = {
     "nobs": "gözlem sayısı", "r2": "R²", "adj_r2": "düzeltilmiş R²", "f": "F istatistiği",
-    "f_p": "F testinin p-değeri", "ssr": "artık kareleri toplamı", "df_resid": "artık serbestlik derecesi",
+    "f_p": "F testinin p-değeri", "ssr": "artık değerlerin kareleri toplamı", "df_resid": "artık değerlerin serbestlik derecesi",
 }
 """Model bilgisinin kod yorumlarındaki Türkçe adı (``MODEL_QUANTITIES``)."""
 
@@ -80,7 +80,7 @@ CURVE_DASHES = ("solid", "dash", "dot")
 
 def curve_style(index: int) -> tuple[str, int]:
     """``index``'inci (0'dan) eğrinin rengi ve çizgi biçiminin sırası. Renkler PALETTE[2]'den başlar: PALETTE[0]
-    noktaların, PALETTE[1] tahmin edilen doğrunun rengidir; eğriler doğrunun ve birbirlerinin altında kaybolmasın diye
+    noktaların, PALETTE[1] uyum doğrusunun rengidir; eğriler doğrunun ve birbirlerinin altında kaybolmasın diye
     biçimleri de farklıdır."""
 
     return PALETTE[(index + 2) % len(PALETTE)], index % len(CURVE_DASHES)

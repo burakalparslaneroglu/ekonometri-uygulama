@@ -128,7 +128,7 @@ def _decomposition(choices) -> tuple:
     notes = z == "exper"
     return (
         OLS("yardimci", DATA, z, ("educ",), f"Yardımcı regresyon: {z} ~ educ" + (" (Denklem 6.12)" if notes else "")),
-        ModelValue("yardimci_sabit", "yardimci", "coef", "Yardımcı regresyon: sabit terim", term=INTERCEPT),
+        ModelValue("yardimci_sabit", "yardimci", "coef", "Yardımcı regresyon: kesim terimi", term=INTERCEPT),
         ModelValue("yardimci_egim", "yardimci", "coef", f"Yardımcı eğim δ̂ ({WORDS[z]} ~ eğitim)", term="educ"),
         Scalar("katki", E.mul(E.ref("uzun_z"), E.ref("yardimci_egim")),
                f"Dışarıda kalan değişkenin katkısı: β̂ ({WORDS[z]}) × δ̂", decimals=4),
@@ -312,7 +312,7 @@ _TABLE66 = (
 )
 _ROW_NAMES = {"educ": "eğitim katsayısı", "exper": "deneyim katsayısı", "tenure": "kıdem katsayısı", "r2": "R²"}
 _KOD63 = (
-    (INTERCEPT, "sabit terim", (-3.3905, 0.767, -4.423, 0.000)),
+    (INTERCEPT, "kesim terimi", (-3.3905, 0.767, -4.423, 0.000)),
     ("educ", "eğitim", (0.6443, 0.054, 11.974, 0.000)),
     ("exper", "deneyim", (0.0701, 0.011, 6.385, 0.000)),
 )
@@ -333,9 +333,9 @@ STEPS = (
         controls=(Z_CHOICE,),
         build=_short_long,
         checks=(
-            Check("Denklem 6.10: sabit terim", CoefTarget("kisa", INTERCEPT), -0.9049, 4),
+            Check("Denklem 6.10: kesim terimi", CoefTarget("kisa", INTERCEPT), -0.9049, 4),
             Check("Denklem 6.10: eğitim katsayısı", CoefTarget("kisa", "educ"), 0.5414, 4),
-            Check("Denklem 6.11: sabit terim", CoefTarget("uzun", INTERCEPT), -3.3905, 4),
+            Check("Denklem 6.11: kesim terimi", CoefTarget("uzun", INTERCEPT), -3.3905, 4),
             Check("Denklem 6.11: eğitim katsayısı", CoefTarget("uzun", "educ"), 0.6443, 4),
             Check("Denklem 6.11: deneyim katsayısı", CoefTarget("uzun", "exper"), 0.0701, 4),
             _scalar("kisa_egitim", 0.541, "§6.8: kısa model, 0,541", 3),
@@ -356,7 +356,7 @@ STEPS = (
         uses=(Z_CHOICE,),
         build=_decomposition,
         checks=(
-            _scalar("yardimci_sabit", 35.4615, "Denklem 6.12: sabit terim", 4),
+            _scalar("yardimci_sabit", 35.4615, "Denklem 6.12: kesim terimi", 4),
             _scalar("yardimci_egim", -1.4682, "Denklem 6.12: yardımcı eğim", 4),
             _scalar("yardimci_egim", -1.468, "§6.8: yaklaşık 1,468 yıl daha düşük", 3),
             _scalar("katki", -0.1029, "§6.8: (0,0701)(−1,4682)", 4),
@@ -407,8 +407,8 @@ STEPS = (
                      for i in range(1, len(PAIRS) + 1)),
         takeaway=(
             "Tam bağlantıda katsayılar “yanlış” olmadan önce ayrı ayrı tanımlanamaz: aynı tahmini veren sonsuz sayıda "
-            "katsayı çifti vardır. Sık kaynaklar: aynı değişkenin farklı birimleri, toplam ile bütün parçaları, sabit "
-            "terimle birlikte bütün kategori göstergeleri (kukla değişken tuzağı, Konu 10). A3 yalnız tam tekrarı "
+            "katsayı çifti vardır. Sık kaynaklar: aynı değişkenin farklı birimleri, toplam ile bütün parçaları, kesim terimi "
+            "le birlikte bütün kategori göstergeleri (kukla değişken tuzağı, Konu 10). A3 yalnız tam tekrarı "
             "yasaklar; değişkenlerin ilişkili olması olağandır."
         ),
     ),
@@ -459,7 +459,7 @@ KONU06_LAB = LabSpec(
     steps=STEPS,
     labels=(
         *W.labels(DATA, HPRICE),
-        (INTERCEPT, "Sabit terim"),
+        (INTERCEPT, "Kesim terimi"),
         ("beta1", "β₁ (aylık gelir)"),
         ("beta2", "β₂ (yıllık gelir)"),
         ("birlesim", "β₁ + 12β₂"),

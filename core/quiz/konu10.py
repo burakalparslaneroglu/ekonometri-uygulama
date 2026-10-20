@@ -166,8 +166,8 @@ QUESTIONS = (
             correct=0,
         ),
         explanation=(
-            "Sabitli modelde dört kategorinin üçü kuklayla girer; çıktıda görünmeyen kategori referanstır ve sabit "
-            "terim onun düzeyini taşır. Referans belirtilmezse formül arayüzü kategorileri sıralayıp ilkini (burada "
+            "Kesim terimli modelde dört kategorinin üçü kuklayla girer; çıktıda görünmeyen kategori referanstır ve kesim terimi "
+            " onun düzeyini taşır. Referans belirtilmezse formül arayüzü kategorileri sıralayıp ilkini (burada "
             "alfabetik sırada Batı) referans alır; bu yüzden katsayılar notlardaki Kuzeydoğu referanslı Tablo 10.3'ten "
             "farklıdır. Referansı `Treatment(reference=...)` ile açıkça yazmak ve tabloda belirtmek gerekir (§10.9)."
         ),
@@ -199,7 +199,7 @@ QUESTIONS = (
         key="d01", concept="kukla-modeli-sayisal-kodu-kapsar", note=_note("10.1"),
         prompt=(
             "Üç kategorili bir değişken için (a) kodu 1, 2, 3 diye tek sayısal değişken olarak kullanan model ve (b) iki "
-            "kuklalı sabitli model aynı veriyle tahmin ediliyor. (b)'nin $R^2$'si (a)'nınkinden küçük olamaz."
+            "kuklalı kesim terimli model aynı veriyle tahmin ediliyor. (b)'nin $R^2$'si (a)'nınkinden küçük olamaz."
         ),
         answer=TrueFalse(True),
         explanation=(
@@ -233,16 +233,16 @@ QUESTIONS = (
         ),
         answer=TrueFalse(True),
         explanation=(
-            "Kodlama ters çevrilince referans grup değişir: sabit terim erkeklerin düzeyinden kadınlarınkine iner "
+            "Kodlama ters çevrilince referans grup değişir: kesim terimi erkeklerin düzeyinden kadınlarınkine iner "
             "(0,5013 − 0,3011 = 0,2002) ve kukla katsayısı işaret değiştirir. Aynı fark ölçüldüğü için standart hata "
-            "aynıdır; t yalnız işaret değiştirir ve iki taraflı p-değeri aynı kalır. Tahmin edilen değerler, artıklar ve "
+            "aynıdır; t yalnız işaret değiştirir ve iki taraflı p-değeri aynı kalır. Uyum değerleri, artık değerler ve "
             "$R^2$ de değişmez (§10.4)."
         ),
     ),
     Question(
         key="d04", concept="otomatik-dusurme-referansi-gizler", note=_note("10.6"),
         prompt=(
-            "Sabit terimli bir modele dört bölge kuklasının dördü de yazıldı ve yazılım kuklalardan birini kendiliğinden "
+            "Kesim terimli bir modele dört bölge kuklasının dördü de yazıldı ve yazılım kuklalardan birini kendiliğinden "
             "düşürdü. Bu durumda hangi bölgenin referans olduğunu ayrıca kontrol etmeye gerek yoktur."
         ),
         answer=TrueFalse(False),
@@ -262,12 +262,12 @@ QUESTIONS = (
         explanation=(
             "Her kukla katsayısı referansa göre farktır; referans değişince katsayının karşılaştırdığı iki grup ve "
             "sınanan hipotez de değişir. Kuzeydoğu referansında Batı katsayısı 0,0331 ve p = 0,580'dir (Tablo 10.3); "
-            "Güney referansında Batı katsayısı 0,1160 ve p ≈ 0,035 olur. Tahmin edilen değerler, $R^2$ ve bölge "
+            "Güney referansında Batı katsayısı 0,1160 ve p ≈ 0,035 olur. Uyum değerleri, $R^2$ ve bölge "
             "kuklalarının ortak F testi ise referanstan bağımsızdır (§10.5)."
         ),
     ),
     Question(
-        key="d06", concept="sabit-etkiler-evet-anlamlilik-degil", note=_note("10.9"),
+        key="d06", concept="kesim terimi-etkiler-evet-anlamlilik-degil", note=_note("10.9"),
         prompt=(
             "Bir makale tablosundaki “Bölge sabit etkileri: Evet” satırı, bölge kuklalarının birlikte istatistiksel "
             "olarak anlamlı olduğunu gösterir."
@@ -290,7 +290,7 @@ QUESTIONS = (
         explanation=(
             "Her çalışan dört bölgeden birinde yaşar; üç kuklanın birden 0 olması çalışanın referans kategoride, yani "
             "Kuzeydoğu'da yaşadığını gösterir. Sıfır değeri çoğu zaman bir özelliğin yokluğu değil, referans kategorinin "
-            "kodudur (Sık Yapılan Yorum Hataları, madde 1). Sabit terim bu çalışanlar için tahmin edilen düzeyi taşır "
+            "kodudur (Sık Yapılan Yorum Hataları, madde 1). Kesim terimi bu çalışanlar için tahmin edilen düzeyi taşır "
             "(§10.10)."
         ),
     ),
@@ -338,20 +338,20 @@ QUESTIONS = (
         explanation=(
             "İki katsayı aynı referansa göre olduğundan Kuzeydoğu farkta düşer: 0,033 − (−0,071) = 0,104. Tam yüzde "
             "farkı $100(e^{0{,}104} - 1) \\approx 10{,}96$; yuvarlanmamış katsayılarla (0,1045) yaklaşık 11,01'dir. "
-            "Referans Kuzey Merkez yapılsaydı Batı katsayısı doğrudan bu farkı verirdi; tahmin edilen değerler "
+            "Referans Kuzey Merkez yapılsaydı Batı katsayısı doğrudan bu farkı verirdi; uyum değerleri "
             "değişmezdi (§10.5)." + LOG_MEAN_NOTE
         ),
     ),
     Question(
         key="b04", concept="iki-kategorik-degiskende-kukla-sayisi", note=_note("10.6"),
         prompt=(
-            "Sabit terimli bir modele 5 kategorili sektör değişkeni ve 3 kategorili eğitim düzeyi değişkeni birlikte "
+            "Kesim terimli bir modele 5 kategorili sektör değişkeni ve 3 kategorili eğitim düzeyi değişkeni birlikte "
             "kukla olarak girecek. Tam çoklu doğrusal bağlantı yaratmadan kullanılabilecek en çok kukla sayısı: "
-            "**(1)**. Sabit terim çıkarılırsa bu sayı: **(2)**."
+            "**(1)**. Kesim terimi çıkarılırsa bu sayı: **(2)**."
         ),
         answer=FillBlanks((NumberBlank(6.0, 0.5, "6"), NumberBlank(7.0, 0.5, "7"))),
         explanation=(
-            "Sabitli modelde her kategorik değişken bir referans bırakır: (5 − 1) + (3 − 1) = 6. Sabit çıkarılınca "
+            "Kesim terimli modelde her kategorik değişken bir referans bırakır: (5 − 1) + (3 − 1) = 6. Kesim terimi çıkarılınca "
             "yalnız bir değişkenin bütün kategorileri kullanılabilir (5 + 2 ya da 4 + 3 = 7): beş sektör kuklasının "
             "toplamı da üç eğitim kuklasının toplamı da her gözlemde 1'dir; ikisi birden tam alınırsa bu iki toplam "
             "birbirine eşit olur ve tam bağlantı doğar. İki gösterimde de düzeyleri belirleyen parametre sayısı yedidir "
@@ -362,7 +362,7 @@ QUESTIONS = (
         key="b05", concept="ortak-testte-serbestlik-dereceleri", note=_note("10.8", "Tablo 10.4"),
         prompt=(
             "WAGE1 endüstri modelinde altı endüstri kuklasının ortak testi $F(6, 514) = 8{,}242$'dir (n = 526). "
-            "Kısıtsız modelde sabit dışında **(1)** eğim vardır; endüstri kuklaları çıkarılmış kısıtlı modelde eğim "
+            "Kısıtsız modelde kesim terimi dışında **(1)** eğim vardır; endüstri kuklaları çıkarılmış kısıtlı modelde eğim "
             "sayısı **(2)** olur."
         ),
         answer=FillBlanks((NumberBlank(11.0, 0.5, "11"), NumberBlank(5.0, 0.5, "5"))),
@@ -377,7 +377,7 @@ QUESTIONS = (
     Question(
         key="e01", concept="kukla-modelinde-r2", note=_note("10.2", "Kod 10.2"),
         prompt=(
-            "Sabitli basit kukla modeli $Y = \\beta_0 + \\delta D + u$'da n gözlem vardır; $D = 1$ olanların oranı p, "
+            "Kesim terimli basit kukla modeli $Y = \\beta_0 + \\delta D + u$'da n gözlem vardır; $D = 1$ olanların oranı p, "
             "kukla katsayısının tahmini $\\widehat\\delta$ ve toplam kareler toplamı TKT'dir. $R^2$'yi n, p, $\\widehat\\delta$ "
             "ve TKT cinsinden yazın."
         ),
@@ -393,7 +393,7 @@ QUESTIONS = (
             shown="\\frac{n\\,p\\,(1 - p)\\,\\widehat\\delta^2}{\\text{TKT}}",
         ),
         explanation=(
-            "Tahmin edilen değerler grup ortalamalarıdır: $\\bar Y_1 - \\bar Y = (1 - p)\\widehat\\delta$ ve $\\bar Y_0 - "
+            "Uyum değerleri grup ortalamalarıdır: $\\bar Y_1 - \\bar Y = (1 - p)\\widehat\\delta$ ve $\\bar Y_0 - "
             "\\bar Y = -p\\widehat\\delta$. Böylece MKT $= np(1 - p)^2\\widehat\\delta^2 + n(1 - p)p^2\\widehat\\delta^2 = np(1 - "
             "p)\\widehat\\delta^2$ ve $R^2$ = MKT/TKT. Ücretteki değişkenliğin yalnız gruplar arası kısmı açıklanır. "
             "WAGE1'de $526 \\times 0{,}479 \\times 0{,}521 \\times 2{,}5118^2/7160{,}41 \\approx 0{,}116$ (Kod 10.2) "
@@ -430,7 +430,7 @@ QUESTIONS = (
     Question(
         key="e03", concept="kukla-katsayisinin-standart-hatasi", note=_note("10.4", "Kod 10.2"),
         prompt=(
-            "Sabitli basit kukla modelinde $D = 1$ grubunda $n_1$, $D = 0$ grubunda $n_0$ gözlem vardır ve regresyonun "
+            "Kesim terimli basit kukla modelinde $D = 1$ grubunda $n_1$, $D = 0$ grubunda $n_0$ gözlem vardır ve regresyonun "
             "standart hatası $\\widehat\\sigma$'dır. Kukla katsayısının standart hatasını $\\widehat\\sigma$, $n_1$ ve $n_0$ "
             "cinsinden yazın."
         ),

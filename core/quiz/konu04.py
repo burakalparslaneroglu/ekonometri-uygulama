@@ -40,23 +40,23 @@ QUESTIONS = (
     Question(
         key="k01", concept="kucuk-sayisal-artik-toplami", note=_note("4.1", "(4.1)"),
         prompt=(
-            "Bir yazılım, sabit terimli bir EKK modelinde artıkların toplamını $-3{,}2 \\times 10^{-14}$ olarak "
+            "Bir yazılım, kesim terimli bir EKK modelinde artık değerlerin toplamını $-3{,}2 \\times 10^{-14}$ olarak "
             "gösteriyor. Bu sayı için en doğru yorum hangisidir?"
         ),
         answer=MultipleChoice(
             (
                 "Model, gözlemleri sistematik olarak olduklarından daha yüksek tahmin etmektedir",
                 "Sayısal hesaplama hassasiyetinden kaynaklanır; uygulamada sıfır kabul edilir",
-                "Artıkların ortalaması negatif olduğu için sabit terim bu kadar küçültülmelidir",
-                "Kareli artıklar toplamının da sıfıra çok yakın olduğunu gösterir",
+                "Artık değerlerin ortalaması negatif olduğu için kesim terimi bu kadar küçültülmelidir",
+                "Artık değerlerin kareleri toplamının da sıfıra çok yakın olduğunu gösterir",
             ),
             correct=1,
         ),
         explanation=(
-            "Eşitlik (4.1)'e göre sabit terimli EKK'de artıkların toplamı matematiksel olarak sıfırdır. Ekrandaki çok "
+            "Eşitlik (4.1)'e göre kesim terimli EKK'de artık değerlerin toplamı matematiksel olarak sıfırdır. Ekrandaki çok "
             "küçük değer yuvarlama ve sayısal hesaplama hassasiyetinden doğar; işareti yazılıma ve bilgisayara göre "
-            "değişebilir. İşaretli toplamın sıfır olması artıkların küçük olduğunu göstermez: pozitif ve negatif "
-            "artıklar birbirini dengeler, kareli artıklar toplamı büyük olabilir (§4.1)."
+            "değişebilir. İşaretli toplamın sıfır olması artık değerlerin küçük olduğunu göstermez: pozitif ve negatif "
+            "artık değerler birbirini dengeler, artık değerlerin kareleri toplamı büyük olabilir (§4.1)."
         ),
     ),
     Question(
@@ -67,7 +67,7 @@ QUESTIONS = (
         ),
         answer=MultipleChoice(
             (
-                "SSR her kaynakta artık kareleri toplamıdır; bu yüzden doğrudan HKT olarak alınır",
+                "SSR her kaynakta artık değerlerin kareleri toplamıdır; bu yüzden doğrudan HKT olarak alınır",
                 "SSR her kaynakta model kareleri toplamıdır; doğrudan MKT olarak alınır",
                 "SSR toplam kareler toplamının kısaltmasıdır; doğrudan TKT olarak alınır",
                 "Hangi toplam olduğu, formülden ya da yazılımın açıklamasından kontrol edilir",
@@ -75,7 +75,7 @@ QUESTIONS = (
             correct=3,
         ),
         explanation=(
-            "SSR bazı kaynaklarda artık kareleri toplamı (sum of squared residuals), bazılarında model kareleri "
+            "SSR bazı kaynaklarda artık değerlerin kareleri toplamı (sum of squared residuals), bazılarında model kareleri "
             "toplamı (regression sum of squares) anlamında kullanılır. Kısaltmaya değil formüle bakılır: $\\sum "
             "\\widehat{u}_i^2$ HKT'yi, $\\sum (\\widehat{Y}_i - \\bar{Y})^2$ MKT'yi verir. Notlar karışıklığı azaltmak "
             "için TKT, MKT ve HKT kısaltmalarını kullanır (§4.4)."
@@ -84,13 +84,13 @@ QUESTIONS = (
     Question(
         key="k03", concept="r2-oran-olarak-okunur", note=_note("4.5", "(4.6)"),
         prompt=(
-            "Farklı veri setleriyle tahmin edilen sabit terimli iki basit regresyonda $R^2$ sırasıyla 0,95 ve "
+            "Farklı veri setleriyle tahmin edilen kesim terimli iki basit regresyonda $R^2$ sırasıyla 0,95 ve "
             "0,40'tır. Aşağıdakilerden hangisi kesinlikle doğrudur?"
         ),
         answer=MultipleChoice(
             (
-                "Birinci modelde toplam değişkenliğin artıklarda kalan payı (HKT/TKT) daha küçüktür",
-                "Birinci modelin kareli artıklar toplamı (HKT) ikinci modelinkinden küçüktür",
+                "Birinci modelde toplam değişkenliğin artık değerlerde kalan payı (HKT/TKT) daha küçüktür",
+                "Birinci modelin artık değerlerin kareleri toplamı (HKT) ikinci modelinkinden küçüktür",
                 "Birinci modelin eğim tahmini, ikinci modelin eğim tahmininden mutlak değerce büyüktür",
                 "Birinci modelde X'in Y üzerindeki nedensel etkisi daha güçlüdür",
             ),
@@ -98,7 +98,7 @@ QUESTIONS = (
         ),
         explanation=(
             "$R^2 = 1 - \\text{HKT}/\\text{TKT}$ olduğundan HKT/TKT birinci modelde 0,05, ikincide 0,60'tır: "
-            "artıklarda kalan pay birincide daha küçüktür. HKT'nin kendisi ise TKT'ye bağlıdır; bağımlı değişkenleri "
+            "artık değerlerde kalan pay birincide daha küçüktür. HKT'nin kendisi ise TKT'ye bağlıdır; bağımlı değişkenleri "
             "ve örneklemleri farklı iki modelde birinci modelin HKT'si daha büyük bile olabilir. $R^2$ eğimin "
             "büyüklüğü hakkında bilgi vermez ve nedensellik ölçüsü değildir (§4.5, §4.6)."
         ),
@@ -204,12 +204,12 @@ QUESTIONS = (
     ),
     Question(
         key="d02", concept="r2-sifir-egim-sifir", note=_note("4.5"),
-        prompt="Sabit terimli basit regresyonda $R^2 = 0$ ise EKK eğim tahmini de sıfırdır.",
+        prompt="Kesim terimli basit regresyonda $R^2 = 0$ ise EKK eğim tahmini de sıfırdır.",
         answer=TrueFalse(True),
         explanation=(
             "$R^2 = \\text{MKT}/\\text{TKT}$ ve §4.5'teki türetime göre MKT, $\\widehat{\\beta}_1^{\\,2} \\sum (X_i - "
             "\\bar{X})^2$ ifadesine eşittir. X'te değişkenlik varken MKT = 0 ancak $\\widehat{\\beta}_1 = 0$ ile "
-            "mümkündür: tahmin edilen doğru yataydır ve her gözlem için $\\bar{Y}$ tahmin eder. Eşdeğer olarak $R^2 = "
+            "mümkündür: uyum doğrusu yataydır ve her gözlem için $\\bar{Y}$ tahmin eder. Eşdeğer olarak $R^2 = "
             "r_{XY}^2 = 0$, korelasyonun sıfır olması demektir (§4.5)."
         ),
     ),
@@ -286,13 +286,13 @@ QUESTIONS = (
     Question(
         key="b01", concept="artik-toplamindan-eksik-artik", note=_note("4.1", "(4.1)"),
         prompt=(
-            "Sabit terimli bir EKK modelinde beş gözlemin artıklarından dördü 1,2; −0,4; 0,9 ve −2,1'dir. Beşinci "
-            "artık **(1)** olmalıdır. Beş artığın kareleri toplamı (HKT) **(2)** olur."
+            "Kesim terimli bir EKK modelinde beş gözlemin artıklarından dördü 1,2; −0,4; 0,9 ve −2,1'dir. Beşinci "
+            "artık değer **(1)** olmalıdır. Beş artık değerin kareleri toplamı (HKT) **(2)** olur."
         ),
         answer=FillBlanks((NumberBlank(0.4, 0.005, "0,4"), NumberBlank(6.98, 0.005, "6,98"))),
         explanation=(
-            "Eşitlik (4.1)'e göre sabit terimli EKK'de artıkların toplamı sıfırdır; dört artığın toplamı −0,4 "
-            "olduğundan beşincisi 0,4'tür. Kareli artıklar toplamı ise 1,44 + 0,16 + 0,81 + 4,41 + 0,16 = 6,98: "
+            "Eşitlik (4.1)'e göre kesim terimli EKK'de artık değerlerin toplamı sıfırdır; dört artık değerin toplamı −0,4 "
+            "olduğundan beşincisi 0,4'tür. Artık değerlerin kareleri toplamı ise 1,44 + 0,16 + 0,81 + 4,41 + 0,16 = 6,98: "
             "işaretli toplam sıfır olsa da kareli toplam pozitiftir. EKK'nin en küçük yaptığı ölçüt ikincisidir (§4.1)."
         ),
     ),
@@ -300,14 +300,14 @@ QUESTIONS = (
         key="b02", concept="sapmalardan-artik-ve-tahmin", note=_note("4.3", "(4.4)"),
         prompt=(
             "Bir örneklemde $\\bar{Y} = 20$'dir. Bir gözlemin toplam sapması $Y_i - \\bar{Y} = -6$, model kaynaklı "
-            "sapması $\\widehat{Y}_i - \\bar{Y} = -2$'dir. Bu gözlemin artığı **(1)**, tahmin edilen değeri "
+            "sapması $\\widehat{Y}_i - \\bar{Y} = -2$'dir. Bu gözlemin artık değeri **(1)**, uyum değerini "
             "$\\widehat{Y}_i$ ise **(2)** olur."
         ),
         answer=FillBlanks((NumberBlank(-4, 0.005, "−4"), NumberBlank(18, 0.005, "18"))),
         explanation=(
-            "(4.4)'e göre toplam sapma, model kaynaklı sapma ile artığın toplamıdır: −6 = −2 + $\\widehat{u}_i$, "
-            "dolayısıyla $\\widehat{u}_i = -4$. Tahmin edilen değer 20 − 2 = 18, gözlenen değer 20 − 6 = 14'tür; artık "
-            "14 − 18 = −4 ile tutarlıdır. Gözlem hem ortalamanın hem de tahmin edilen değerin altındadır (§4.3)."
+            "(4.4)'e göre toplam sapma, model kaynaklı sapma ile artık değerin toplamıdır: −6 = −2 + $\\widehat{u}_i$, "
+            "dolayısıyla $\\widehat{u}_i = -4$. Uyum değeri 20 − 2 = 18, gözlenen değer 20 − 6 = 14'tür; artık değer "
+            "14 − 18 = −4 ile tutarlıdır. Gözlem hem ortalamanın hem de uyum değerinin altındadır (§4.3)."
         ),
     ),
     Question(
@@ -319,7 +319,7 @@ QUESTIONS = (
         answer=FillBlanks((NumberBlank(338, 0.05, "338"), NumberBlank(336.4, 0.05, "336,4"))),
         explanation=(
             "TKT, Tablo 3.2'deki $Y_i - \\bar{Y}$ sapmalarının karelerinin toplamıdır: 121 + 36 + 1 + 36 + 144 = 338. "
-            "Tablo 3.3'teki kareli artıkların toplamı HKT = 1,60 olduğundan (4.5)'ten MKT = 338 − 1,60 = 336,4 "
+            "Tablo 3.3'teki artık değerlerin karelerinin toplamı HKT = 1,60 olduğundan (4.5)'ten MKT = 338 − 1,60 = 336,4 "
             "bulunur. Aynı değer $\\widehat{\\beta}_1^{\\,2} \\sum (X_i - \\bar{X})^2 = 2{,}9^2 \\times 40$ ile de "
             "elde edilir; bu küçük örnekte $R^2 \\approx 0{,}995$ olur (§4.4)."
         ),
@@ -358,22 +358,22 @@ QUESTIONS = (
     Question(
         key="e01", concept="tahmin-ortalamasindan-x-ortalamasi", note=_note("4.1", "(4.2)", "(4.3)"),
         prompt=(
-            "Sabit terimli EKK ile $\\widehat{Y} = b_0 + b_1 X$ doğrusu tahmin edilmiştir; tahmin edilen değerlerin "
+            "Kesim terimli EKK ile $\\widehat{Y} = b_0 + b_1 X$ doğrusu tahmin edilmiştir; uyum değerlerinin "
             "örneklem ortalaması $q$ olarak veriliyor. Açıklayıcı değişkenin "
             "örneklem ortalamasını $b_0$, $b_1$ ve $q$ cinsinden yazın."
         ),
         answer=Equation(
             lhs="\\bar{X}",
             symbols=(
-                Symbol("b0", "b_0", "sabit tahmini", -5, 5, aliases=("b_0",)),
+                Symbol("b0", "b_0", "kesim terimi tahmini", -5, 5, aliases=("b_0",)),
                 Symbol("b1", "b_1", "eğim tahmini", 0.2, 2, aliases=("b_1",)),
-                Symbol("q", "q", "tahmin edilen değerlerin ortalaması", 1, 20, aliases=bar_aliases("Y")),
+                Symbol("q", "q", "uyum değerlerinin ortalaması", 1, 20, aliases=bar_aliases("Y")),
             ),
             answer="(q - b0)/b1",
             shown="\\frac{q - b_0}{b_1}",
         ),
         explanation=(
-            "(4.2)'ye göre tahmin edilen değerlerin ortalaması $\\bar{Y}$ ile aynıdır; (4.3)'e göre doğru $(\\bar{X}, "
+            "(4.2)'ye göre uyum değerlerinin ortalaması $\\bar{Y}$ ile aynıdır; (4.3)'e göre doğru $(\\bar{X}, "
             "\\bar{Y})$ noktasından geçer. Buradan $q = b_0 + b_1 \\bar{X}$ ve $\\bar{X} = (q - b_0)/b_1$. WAGE1'de "
             "$(5{,}896 + 0{,}9049)/0{,}5414 \\approx 12{,}56$ yıl, yani ortalama eğitim süresidir (§4.1)."
         ),
@@ -381,7 +381,7 @@ QUESTIONS = (
     Question(
         key="e02", concept="model-kaynakli-sapma-formulu", note=_note("4.3", "(4.4)", "§4.5"),
         prompt=(
-            "Sabit terimli basit regresyonda $\\widehat{Y}_i = \\widehat{\\beta}_0 + \\widehat{\\beta}_1 X_i$ olsun. "
+            "Kesim terimli basit regresyonda $\\widehat{Y}_i = \\widehat{\\beta}_0 + \\widehat{\\beta}_1 X_i$ olsun. "
             "Bir gözlemin model kaynaklı sapmasını, $\\widehat{Y}_i - "
             "\\bar{Y}$, eğim tahmini ile $X_i$ ve $\\bar{X}$ cinsinden yazın."
         ),
@@ -397,7 +397,7 @@ QUESTIONS = (
             shown="\\widehat{\\beta}_1\\,(X_i - \\bar{X})",
         ),
         explanation=(
-            "(3.9)'dan $\\widehat{\\beta}_0 = \\bar{Y} - \\widehat{\\beta}_1 \\bar{X}$; bunu tahmin edilen doğruya "
+            "(3.9)'dan $\\widehat{\\beta}_0 = \\bar{Y} - \\widehat{\\beta}_1 \\bar{X}$; bunu uyum doğrusuna "
             "yerleştirmek $\\widehat{Y}_i - \\bar{Y} = \\widehat{\\beta}_1 (X_i - \\bar{X})$ verir. Model kaynaklı "
             "sapma, gözlemin X'te ortalamadan uzaklığıyla orantılıdır; X değeri ortalamaya eşit olan gözlemde "
             "sıfırdır. Bu eşitlik §4.5'teki $R^2 = r_{XY}^2$ türetiminin ilk adımıdır (§4.3, (4.4))."
@@ -406,8 +406,8 @@ QUESTIONS = (
     Question(
         key="e03", concept="hkt-korelasyonla", note=_note("4.5", "(4.6)"),
         prompt=(
-            "Sabit terimli basit regresyonda toplam kareler toplamı TKT, X ile Y arasındaki örneklem korelasyonu "
-            "$r_{XY}$ olsun. Artık kareleri toplamını (HKT) bu iki büyüklük cinsinden yazın."
+            "Kesim terimli basit regresyonda toplam kareler toplamı TKT, X ile Y arasındaki örneklem korelasyonu "
+            "$r_{XY}$ olsun. Artık değerlerin kareleri toplamını (HKT) bu iki büyüklük cinsinden yazın."
         ),
         answer=Equation(
             lhs="\\text{HKT}",
@@ -419,23 +419,23 @@ QUESTIONS = (
             shown="\\text{TKT}\\,(1 - r_{XY}^2)",
         ),
         explanation=(
-            "(4.6)'ya göre $R^2 = 1 - \\text{HKT}/\\text{TKT}$; §4.5'e göre sabit terimli basit regresyonda $R^2 = "
+            "(4.6)'ya göre $R^2 = 1 - \\text{HKT}/\\text{TKT}$; §4.5'e göre kesim terimli basit regresyonda $R^2 = "
             "r_{XY}^2$. İkisi birleşince $\\text{HKT} = \\text{TKT}\\,(1 - r_{XY}^2)$. WAGE1'de $7160{,}414 \\times (1 "
             "- 0{,}4059^2) \\approx 5980{,}7$; bu, Kod 4.2'deki "
-            "HKT'dir. Korelasyon ±1 ise bütün artıklar sıfırdır (§4.5)."
+            "HKT'dir. Korelasyon ±1 ise bütün artık değerler sıfırdır (§4.5)."
         ),
     ),
     Question(
         key="e04", concept="birim-degisince-sabit", note=_note("4.7", "Tablo 4.1"),
         prompt=(
-            "Bir düzey–düzey modelde sabit tahmini $b_0$, eğim tahmini $b_1$'dir. Bağımlı değişken $c$ ile, açıklayıcı "
+            "Bir düzey–düzey modelde kesim terimi tahmini $b_0$, eğim tahmini $b_1$'dir. Bağımlı değişken $c$ ile, açıklayıcı "
             "değişken $k$ ile çarpılarak yeni birimlere çevriliyor (ör. $c = 1000$: bin TL'den TL'ye). Yeni modelin "
-            "sabit tahminini yazın; gerekmeyen sembolleri kullanmayın."
+            "kesim terimi tahminini yazın; gerekmeyen sembolleri kullanmayın."
         ),
         answer=Equation(
             lhs="\\tilde{b}_0",
             symbols=(
-                Symbol("b0", "b_0", "eski sabit", -5, 5, aliases=("b_0",)),
+                Symbol("b0", "b_0", "eski kesim terimi", -5, 5, aliases=("b_0",)),
                 Symbol("b1", "b_1", "eski eğim", 0.1, 2, aliases=("b_1",)),
                 Symbol("c", "c", "bağımlı değişkenin çarpanı", 0.5, 1000),
                 Symbol("k", "k", "açıklayıcı değişkenin çarpanı", 0.5, 100),
@@ -444,9 +444,9 @@ QUESTIONS = (
             shown="c\\,b_0",
         ),
         explanation=(
-            "Yeni birimlerde tahmin edilen doğru $c\\widehat{Y} = c\\,b_0 + (c\\,b_1/k)(kX)$ biçimini alır: yeni sabit "
-            "$c\\,b_0$, yeni eğim $c\\,b_1/k$ olur. Sabit, X = 0'daki tahmin olduğu için yalnız Y'nin biriminden "
-            "etkilenir. Tablo 4.1'de X'in birimi 100'e bölündüğünde sabitin değişmemesi bu yüzdendir (§4.7, Tablo 4.1)."
+            "Yeni birimlerde uyum doğrusu $c\\widehat{Y} = c\\,b_0 + (c\\,b_1/k)(kX)$ biçimini alır: yeni kesim terimi "
+            "$c\\,b_0$, yeni eğim $c\\,b_1/k$ olur. Kesim terimi, X = 0'daki tahmin olduğu için yalnız Y'nin biriminden "
+            "etkilenir. Tablo 4.1'de X'in birimi 100'e bölündüğünde kesim teriminin değişmemesi bu yüzdendir (§4.7, Tablo 4.1)."
         ),
     ),
     Question(

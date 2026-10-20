@@ -109,7 +109,7 @@ _COEF_LABELS = {"coef": "Katsayı", "se": "Standart hata", "t": "t", "p": "p-de�
 _COEF_DECIMALS = {"coef": 4, "se": 3, "t": 3, "p": 3, "ci_low": 3, "ci_high": 3}
 """Katsayı tablosunun gösterim basamağı: yazılım çıktısındaki (statsmodels) gibi."""
 _MODEL_LABELS = {"nobs": "Gözlem sayısı n", "r2": "R²", "adj_r2": "Düzeltilmiş R²", "f": "F istatistiği",
-                 "f_p": "F testinin p-değeri", "ssr": "Artık kareler toplamı", "df_resid": "Artık serbestlik derecesi"}
+                 "f_p": "F testinin p-değeri", "ssr": "Artık değerlerin kareleri toplamı", "df_resid": "Artık değerlerin serbestlik derecesi"}
 _MODEL_DECIMALS = {"nobs": 0, "r2": 3, "adj_r2": 3, "f": 2, "f_p": 3, "ssr": 2, "df_resid": 0}
 _BOX_LABELS = {
     "en_kucuk": "En küçük değer",
@@ -301,7 +301,7 @@ def coefficient_number(value: float, decimals: int) -> str:
 
 
 def coefficient_display(op: ShowModel, result, label: Callable[[str], str]) -> pd.DataFrame:
-    """Yazılım çıktısının katsayı tablosu, Türkçe sayılarla; satırlar terimler (sabit terim ilk)."""
+    """Yazılım çıktısının katsayı tablosu, Türkçe sayılarla; satırlar terimler (kesim terimi ilk)."""
 
     table = RG.coefficient_table(result)
     shown = pd.DataFrame({"Terim": [f"{RG.term_label(term, label)} · {term}" for term in table.index]})

@@ -310,7 +310,7 @@ def _confounder_metrics(state: LabState, parameters: Parameters) -> tuple[SimMet
 def _confounder_takeaway(state: LabState, parameters: Parameters) -> str:
     link, effect, _ = _confounder_settings(parameters)
     s = state.scalars
-    within = (f"Aynı havadaki günleri karşılaştırınca (sıcaklık sabit: ceteris paribus) fark sıcak günlerde "
+    within = (f"Aynı havadaki günleri karşılaştırınca (sıcaklık kesim terimi: ceteris paribus) fark sıcak günlerde "
               f"{plain(s['fark_sicak'], 0)}, soğuk günlerde {plain(s['fark_soguk'], 0)} TL. Bu karşılaştırmalar "
               f"sıcaklığın etkisini içermez; gerçek etkiden ({plain(effect, 0)} TL) yalnız örneklem nedeniyle ayrılır.")
     shares = (f"kampanyalı günlerin {percent(100 * s['sicak_pay1'], 0)} kadarı, kampanyasız günlerin "

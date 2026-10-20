@@ -202,7 +202,7 @@ def _step2(case: Case) -> LabStep:
         if x in variables:
             low, high = table.loc[x, "min"], table.loc[x, "max"]
             parts.append(f"{_capital(_phrase(case, x))} {sayi(low, 2 if low % 1 else 0)} ile "
-                         f"{sayi(high, 2 if high % 1 else 0)} arasında değişir; bu aralık sabit terimi yorumlarken "
+                         f"{sayi(high, 2 if high % 1 else 0)} arasında değişir; bu aralık kesim terimi yorumlarken "
                          "önem taşır.")
         indicators = _indicators(case, variables)
         if indicators:
@@ -320,16 +320,16 @@ def _step4(case: Case, choice: Choice) -> LabStep:
         controls=(choice,),
         build=build,
         checks=stable_checks((
-            coef(INTERCEPT, "coef", 4, "Sabit terim"),
+            coef(INTERCEPT, "coef", 4, "Kesim terimi"),
             coef(default, "coef", 4, "Eğim katsayısı"),
-            coef(INTERCEPT, "se", 3, "Sabit terimin standart hatası"),
+            coef(INTERCEPT, "se", 3, "Kesim teriminin standart hatası"),
             coef(default, "se", 3, "Eğimin standart hatası"),
-            coef(INTERCEPT, "t", 3, "Sabit terimin t değeri"),
+            coef(INTERCEPT, "t", 3, "Kesim teriminin t değeri"),
             coef(default, "t", 3, "Eğimin t değeri"),
-            coef(INTERCEPT, "p", 3, "Sabit terimin p-değeri"),
+            coef(INTERCEPT, "p", 3, "Kesim teriminin p-değeri"),
             coef(default, "p", 3, "Eğimin p-değeri"),
-            coef(INTERCEPT, "ci_low", 3, "Sabit terim, %95 GA alt sınır"),
-            coef(INTERCEPT, "ci_high", 3, "Sabit terim, %95 GA üst sınır"),
+            coef(INTERCEPT, "ci_low", 3, "Kesim terimi, %95 GA alt sınır"),
+            coef(INTERCEPT, "ci_high", 3, "Kesim terimi, %95 GA üst sınır"),
             coef(default, "ci_low", 3, "Eğim, %95 GA alt sınır"),
             coef(default, "ci_high", 3, "Eğim, %95 GA üst sınır"),
             Check("R²", ModelTarget("model", "r2"), 0.0, 3),
@@ -337,7 +337,7 @@ def _step4(case: Case, choice: Choice) -> LabStep:
             Check("Gözlem sayısı", ModelTarget("model", "nobs"), 0.0, 0),
             Check("Makale tablosu: eğim", TableTarget("makale", default, "(1)"), 0.0, 3),
             Check("Makale tablosu: eğimin standart hatası", TableTarget("makale", f"{default}_sh", "(1)"), 0.0, 3),
-            Check("Makale tablosu: sabit terim", TableTarget("makale", INTERCEPT, "(1)"), 0.0, 3),
+            Check("Makale tablosu: kesim terimi", TableTarget("makale", INTERCEPT, "(1)"), 0.0, 3),
             Check("Makale tablosu: gözlem sayısı", TableTarget("makale", "n", "(1)"), 0.0, 0),
             Check("Makale tablosu: R²", TableTarget("makale", "r2", "(1)"), 0.0, 3),
         ), case.own and exact_fit(case.data, y, default), table="makale"),
@@ -358,7 +358,7 @@ def _step5(case: Case, choice: Choice) -> LabStep:
     def build(choices) -> tuple:
         x = choices[X_KEY]
         return (
-            ModelValue("b0", "model", "coef", "Sabit terim β̂₀", term=INTERCEPT),
+            ModelValue("b0", "model", "coef", "Kesim terimi β̂₀", term=INTERCEPT),
             ModelValue("b1", "model", "coef", f"Eğim β̂₁ ({x})", term=x),
             ModelValue("r2", "model", "r2", "R²", decimals=3),
             Scalar("r2_yuzde", E.mul(E.ref("r2"), 100), "R², yüzde olarak", decimals=1, percent=True),
@@ -385,7 +385,7 @@ def _step5(case: Case, choice: Choice) -> LabStep:
         values = case.data[x].dropna()
         constant = ""
         if values.min() > 0 or values.max() < 0:
-            constant = (f" Sabit terim, {_phrase(case, x)} sıfırken tahmin edilen değerdir; verideki değerler "
+            constant = (f" Kesim terimi, {_phrase(case, x)} sıfırken uyum değeridir; verideki değerler "
                         f"{sayi(values.min(), 2 if values.min() % 1 else 0)} ile "
                         f"{sayi(values.max(), 2 if values.max() % 1 else 0)} arasında olduğu için bu nokta verinin "
                         "dışındadır ve ekonomik olarak yorumlanmaz.")
@@ -402,7 +402,7 @@ def _step5(case: Case, choice: Choice) -> LabStep:
         uses=(choice,),
         build=build,
         checks=(
-            Check("Sabit terim β̂₀", ScalarTarget("b0"), 0.0, 4),
+            Check("Kesim terimi β̂₀", ScalarTarget("b0"), 0.0, 4),
             Check("Eğim β̂₁", ScalarTarget("b1"), 0.0, 4),
             Check("R²", ScalarTarget("r2"), 0.0, 3),
             Check("R², yüzde", ScalarTarget("r2_yuzde"), 0.0, 1),
@@ -440,7 +440,7 @@ def build(case: Case) -> LabSpec:
     choice = _x_choice(case, X_KEY, f"Açıklayıcı değişken (bağımlı değişken: {case.name(case.roles[SONUC])})",
                        "Konu 1'de yalnız basit regresyon kurulur; birden çok açıklayıcı değişken Konu 5'te.")
     labels = {column: _display(case, column) for column in case.labels}
-    labels.update({INTERCEPT: "Sabit terim", "n": "Gözlem sayısı", "k": "Değişken sayısı"})
+    labels.update({INTERCEPT: "Kesim terimi", "n": "Gözlem sayısı", "k": "Değişken sayısı"})
     spec = LabSpec(
         topic_key=TOPIC,
         title=str(case.extra.get("title", TITLE)),

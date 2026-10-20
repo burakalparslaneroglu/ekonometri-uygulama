@@ -321,7 +321,7 @@ def execute(op: Operation, state: LabState) -> None:
     elif isinstance(op, Residuals):
         result, frame = state.models[op.model], state.frames[op.frame]
         if int(result.nobs) != len(frame) or not result.resid.index.equals(frame.index):
-            raise ValueError("Artıklar yalnız modelin bütün gözlemleriyle tahmin edildiği veri çerçevesine yeni sütun "
+            raise ValueError("Artık değerler yalnız modelin bütün gözlemleriyle tahmin edildiği veri çerçevesine yeni sütun "
                              "olarak eklenir.")
         frame[op.name] = result.resid.to_numpy(dtype=float)  # satırlar aynı: üretilen koddaki sıra eşlemesiyle aynı
     elif isinstance(op, ShowModel):
@@ -498,7 +498,7 @@ def execute(op: Operation, state: LabState) -> None:
         source = state.frames[op.frame] if op.frame in state.frames else state.tables[op.frame]
         data = source[[op.x, op.y]].dropna()
         line = None
-        if op.fit_line:  # en küçük kareler doğrusu: eğim ve sabit (np.polyfit, derece 1)
+        if op.fit_line:  # en küçük kareler doğrusu: eğim ve kesim terimi (np.polyfit, derece 1)
             slope, intercept = np.polyfit(data[op.x].to_numpy(dtype=float), data[op.y].to_numpy(dtype=float), 1)
             line = (float(intercept), float(slope))
         known = [(parameter(first, state), parameter(second, state), label) for first, second, label in op.lines]
@@ -619,7 +619,7 @@ _ROW_FUNCTIONS = frozenset(("cumprod", "cummean", "seq", "factorial", "comb", "p
 
 def batchable(op: MonteCarlo) -> bool:
     """Gövde toplu hesaba uygun mu: tohumsuz örneklemler, sürekli çekilişler, türetmeler, alt grupsuz istatistikler,
-    iki değişkenli istatistikler, en küçük kareler (etkileşim terimleri ve dayanıklı kovaryansla), artıklar, katsayı
+    iki değişkenli istatistikler, en küçük kareler (etkileşim terimleri ve dayanıklı kovaryansla), artık değerler, katsayı
     ve uyum nicelikleri ile skalerler."""
 
     frames: set[str] = set()
@@ -660,7 +660,7 @@ def batchable(op: MonteCarlo) -> bool:
 @dataclass
 class _BatchFit:
     """Bütün tekrarların en küçük kareler sonuçları: satırlar tekrarlar. Standart hata, t, p, güven aralığı ve F,
-    statsmodels'in hesap sırasıyla (``bse = sqrt(diag(pinv·pinvᵀ · SSR/(n − k − 1)))``, k sabit dışındaki
+    statsmodels'in hesap sırasıyla (``bse = sqrt(diag(pinv·pinvᵀ · SSR/(n − k − 1)))``, k kesim terimi dışındaki
     açıklayıcı sayısı; ``t = β̂/bse``, ``p = 2·sf(|t|)``, ``β̂ ± t_{0,975}·bse``, ``F = (ESS/df_model)/(SSR/df_resid)``).
 
     Dayanıklı kovaryans (HC0–HC3) statsmodels'in ``cov_HC*`` hesabıyla, tekrar tekrar: pinv·diag(ω)·pinvᵀ;
@@ -790,7 +790,7 @@ def _batch_pair(x: np.ndarray, y: np.ndarray, stat: str) -> np.ndarray:
 
 def _batch_ols(op: OLS, frame: dict[str, np.ndarray]) -> _BatchFit:
     """Bütün tekrarlarda EKK, tekrar tekrar: statsmodels'in ``pinv`` yönteminin numpy adımlarıyla (tekil değer
-    ayrışımı, sözde ters, ``np.dot``; artık kareleri ``np.dot``, toplam kareler statsmodels'teki gibi ağırlıklı
+    ayrışımı, sözde ters, ``np.dot``; artık değerlerin kareleri ``np.dot``, toplam kareler statsmodels'teki gibi ağırlıklı
     toplam). Formül ayrıştırma ve veri çerçevesi kurma yükü olmadan aynı sayıları verir. Etkileşim terimi patsy'deki
     gibi iki sütunun çarpımıdır."""
 

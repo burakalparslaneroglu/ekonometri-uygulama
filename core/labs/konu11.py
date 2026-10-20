@@ -1,4 +1,4 @@
-"""Konu 11 uygulaması: etkileşim terimleri ve gruplar arasında sabit ile eğim farkları (gerçek veri).
+"""Konu 11 uygulaması: etkileşim terimleri ve gruplar arasında kesim terimi ile eğim farkları (gerçek veri).
 
 Bölüm 11'in çözümlü örnekleri bölüm sırasıyla: additif kukla modelinin paralel doğruları (§11.1), etkileşim teriminin
 kurulması ve grup denklemleri (§11.2), dört olası yapı (§11.3), koşullu grup farkı ve merkezleme (§11.4–11.5),
@@ -145,7 +145,7 @@ def _wage_terms(dummy: str, x: str = "educ12") -> tuple[str, ...]:
 
 def _group_lines(frame: str, axis: str, grid: tuple[int, int], prefix: str, dummy: str, slope_term: str,
                  center: float, others: tuple[str, ...], averages: str, log: bool = False) -> tuple:
-    """İki grubun tahmin edilen doğruları bir ızgarada: diğer açıklayıcılar örneklem ortalamasında.
+    """İki grubun uyum doğruları bir ızgarada: diğer açıklayıcılar örneklem ortalamasında.
 
     ``prefix`` katsayı skalerlerinin önekidir (``{prefix}_b0``, ``{prefix}_g0``, ``{prefix}_b1``, ``{prefix}_g1`` ve
     ``{prefix}_{değişken}``); ``averages`` ortalama skalerlerinin önekidir. ``center``: ızgaradaki değer ile modeldeki
@@ -173,11 +173,11 @@ def _group_lines(frame: str, axis: str, grid: tuple[int, int], prefix: str, dumm
 
 def _coefficients(model: str, prefix: str, dummy: str, slope_term: str, others: tuple[str, ...],
                   interaction: bool = True, shown: bool = True) -> tuple:
-    """Katsayı skalerleri: sabit, kukla, eğim, (etkileşim) ve diğer açıklayıcılar. ``shown=False``: sayılar aynı
+    """Katsayı skalerleri: kesim terimi, kukla, eğim, (etkileşim) ve diğer açıklayıcılar. ``shown=False``: sayılar aynı
     adımda bir çıktıda ya da tabloda görünüyor; ölçü kutusu olarak tekrar edilmez."""
 
     values = [
-        ModelValue(f"{prefix}_b0", model, "coef", "Sabit terim β̂₀", term=INTERCEPT, decimals=4, shown=shown),
+        ModelValue(f"{prefix}_b0", model, "coef", "Kesim terimi β̂₀", term=INTERCEPT, decimals=4, shown=shown),
         ModelValue(f"{prefix}_g0", model, "coef", "Kukla katsayısı γ̂₀", term=dummy, decimals=4, shown=shown),
         ModelValue(f"{prefix}_b1", model, "coef", f"{X_WORDS.get(slope_term, slope_term).capitalize()} eğimi β̂₁",
                    term=slope_term, decimals=4, shown=shown),
@@ -241,7 +241,7 @@ def _additive_note(state, choices) -> str:
     s = state.scalars
     return (f"İki doğrunun eğimi aynıdır (eğitim katsayısı {plain(s['a1_b1'], 4)}); dikey fark her eğitim düzeyinde "
             f"kukla katsayısıdır: en küçük ve en büyük fark {plain(s['fark1_min'], 4)} ve {plain(s['fark1_max'], 4)}. "
-            f"Additif model {one} ve {zero} çalışanlara farklı sabit verir, farklı eğim vermez; grup farkı eğitimden "
+            f"Additif model {one} ve {zero} çalışanlara farklı kesim terimi verir, farklı eğim vermez; grup farkı eğitimden "
             "bağımsız varsayılır. Bu varsayım veriyle ayrıca değerlendirilir: eğimin gruba göre değişmesine izin veren "
             "terim etkileşim terimidir (Adım 2, §11.1).")
 
@@ -254,19 +254,19 @@ X_2 = Choice("adim2_x", "Kadın kuklasıyla etkileşen nicel değişken X",
              help="Notlarda 12 yıl etrafında merkezlenmiş eğitim (§11.6).")
 
 
-GROUP_ROWS = (("Erkek (female = 0): sabit β̂₀", "b0"), ("Kadın (female = 1): sabit β̂₀ + γ̂₀", "sabit1"),
-              ("Erkek: eğim β̂₁", "b1"), ("Kadın: eğim β̂₁ + γ̂₁", "egim1"), ("Sabit farkı γ̂₀", "g0"),
+GROUP_ROWS = (("Erkek (female = 0): kesim terimi β̂₀", "b0"), ("Kadın (female = 1): kesim terimi β̂₀ + γ̂₀", "sabit1"),
+              ("Erkek: eğim β̂₁", "b1"), ("Kadın: eğim β̂₁ + γ̂₁", "egim1"), ("Kesim terimi farkı γ̂₀", "g0"),
               ("Eğim farkı γ̂₁", "g1"))
 """Grup denklemleri tablosunun satırları (Tablo 11.1'deki roller) ve skaler sonekleri."""
 
 
 def _group_equations(model: str, prefix: str, x: str, shown: bool = True) -> tuple:
-    """Etkileşimli modelin grup denklemleri: iki grubun sabiti ve eğimi, sabit ve eğim farkı."""
+    """Etkileşimli modelin grup denklemleri: iki grubun kesim terimi ve eğimi, kesim terimi ve eğim farkı."""
 
     word = X_WORDS[x]
     return (
         *_coefficients(model, prefix, "female", x, _others(x, ("educ12", *CONTROLS)), shown=shown),
-        Scalar(f"{prefix}_sabit1", E.add(E.ref(f"{prefix}_b0"), E.ref(f"{prefix}_g0")), "Kadın grubunun sabiti β̂₀ + γ̂₀",
+        Scalar(f"{prefix}_sabit1", E.add(E.ref(f"{prefix}_b0"), E.ref(f"{prefix}_g0")), "Kadın grubunun kesim terimi β̂₀ + γ̂₀",
                decimals=4, shown=shown),
         Scalar(f"{prefix}_egim1", E.add(E.ref(f"{prefix}_b1"), E.ref(f"{prefix}_g1")),
                f"Kadın grubunun {word} eğimi β̂₁ + γ̂₁", decimals=4, shown=shown),
@@ -287,7 +287,7 @@ def _interaction(choices) -> tuple:
             ScalarTable(tuple((label.replace("eğim", "eğitim eğimi"), E.ref(f"e2_{suffix}"))
                               for label, suffix in GROUP_ROWS),
                         "grup_denklemleri", decimals=4, heading="Katsayı", value="Tahmin",
-                        title="Grup denklemleri: sabitler ve eğimler (Tablo 11.1'deki roller)"),
+                        title="Grup denklemleri: kesim terimleri ve eğimler (Tablo 11.1'deki roller)"),
         )
     else:  # notlardaki eğitim etkileşimi seçilen değişkenle yan yana
         table = (
@@ -329,17 +329,17 @@ def _interaction_note(state, choices) -> str:
     return (f"Erkek çalışanların {word} eğimi β̂₁ = {plain(s['e2_b1'], 4)}; kadın çalışanlarınki β̂₁ + γ̂₁ = "
             f"{total}. Etkileşim katsayısı "
             f"γ̂₁ = {plain(s['e2_g1'], 4)} kadın grubunun eğimi değil, iki eğim arasındaki farktır; kukla katsayısı "
-            f"γ̂₀ = {plain(s['e2_g0'], 4)} da kadın grubunun sabiti değil, X = 0 noktasındaki farktır. Çarpım sütunu "
+            f"γ̂₀ = {plain(s['e2_g0'], 4)} da kadın grubunun kesim terimi değil, X = 0 noktasındaki farktır. Çarpım sütunu "
             "erkeklerde sıfır olduğu için etkileşim yalnız kadın grubunun eğimini değiştirir (§11.2).")
 
 
 # --- Adım 3: dört olası regresyon yapısı ---------------------------------------------------------------------------
 
 STRUCTURES = {
-    "1": ("Aynı sabit, aynı eğim", ("educ12", *CONTROLS)),
-    "2": ("Farklı sabit, aynı eğim", ("female", "educ12", *CONTROLS)),
-    "3": ("Aynı sabit, farklı eğim", ("female:educ12", "educ12", *CONTROLS)),
-    "4": ("Farklı sabit, farklı eğim", ("female", "educ12", "female:educ12", *CONTROLS)),
+    "1": ("Aynı kesim terimi, aynı eğim", ("educ12", *CONTROLS)),
+    "2": ("Farklı kesim terimi, aynı eğim", ("female", "educ12", *CONTROLS)),
+    "3": ("Aynı kesim terimi, farklı eğim", ("female:educ12", "educ12", *CONTROLS)),
+    "4": ("Farklı kesim terimi, farklı eğim", ("female", "educ12", "female:educ12", *CONTROLS)),
 }
 """Tablo 11.2'nin dört yapısı, WAGE1'de: (1) 1, X; (2) 1, X, D; (3) 1, X, DX; (4) 1, X, D, DX (deneyim ve kıdem her
 modelde). Yapı 3'te etkileşim formülde eğitimden önce yazılır: R terimi ``female:educ12`` olarak adlandırsın."""
@@ -355,7 +355,7 @@ def _structures(choices) -> tuple:
     models = tuple(OLS(f"m_yapi{key}", WAGE, "lwage", model_terms, f"Yapı ({key}), {name.lower()}: "
                        f"{_formula('lwage', model_terms)}") for key, (name, model_terms) in STRUCTURES.items())
     values: list = [  # sayılar tablonun sütununda görünür; ölçü kutusu olarak tekrar edilmez
-        ModelValue("y3_b0", f"m_yapi{chosen}", "coef", "Sabit terim", term=INTERCEPT, decimals=4, shown=False),
+        ModelValue("y3_b0", f"m_yapi{chosen}", "coef", "Kesim terimi", term=INTERCEPT, decimals=4, shown=False),
         ModelValue("y3_b1", f"m_yapi{chosen}", "coef", "Eğitim eğimi β̂₁ (erkek; yapı 1–2'de iki grupta ortak)",
                    term="educ12", decimals=4, shown=False),
         *(ModelValue(f"y3_{term}", f"m_yapi{chosen}", "coef", f"{X_WORDS[term].capitalize()} katsayısı", term=term,
@@ -363,7 +363,7 @@ def _structures(choices) -> tuple:
     ]
     values.append(ModelValue("y3_g0", f"m_yapi{chosen}", "coef", "Kukla katsayısı", term="female", decimals=4,
                              shown=False)
-                  if has_dummy else Scalar("y3_g0", E.const(0), "Sabit farkı yok (γ₀ = 0)", decimals=0, shown=False))
+                  if has_dummy else Scalar("y3_g0", E.const(0), "Kesim terimi farkı yok (γ₀ = 0)", decimals=0, shown=False))
     values.append(ModelValue("y3_g1", f"m_yapi{chosen}", "coef", "Etkileşim katsayısı", term="female:educ12",
                              decimals=4, shown=False)
                   if has_interaction else Scalar("y3_g1", E.const(0), "Eğim farkı yok (γ₁ = 0)", decimals=0,
@@ -416,7 +416,7 @@ def _centering(choices) -> tuple:
             "exper + tenure"),
         RegressionTable((("Notlar: c = 12", "m_merk12"), (f"Seçiminiz: c = {center}", "m_merk")),
                         (INTERCEPT, "female", "educ12", "educ_c", "female:educ12", "female:educ_c", *CONTROLS),
-                        "yan114", "Aynı model, iki merkezleme noktası: yalnız sabit ve kukla katsayısı değişir",
+                        "yan114", "Aynı model, iki merkezleme noktası: yalnız kesim terimi ve kukla katsayısı değişir",
                         decimals=4, exact=True, r2_decimals=6),
     )
     return (
@@ -454,8 +454,8 @@ def _centering_note(state, choices) -> str:
         gap += (f"Örneklemde eğitimi {center} yıl olan yalnız {count} çalışan vardır: bu noktadaki fark büyük ölçüde "
                 "doğrusal model varsayımına dayanır ve belirsizliği büyüktür. ")
     return (gap + f"Eğim farkı ({plain(s['g1_c'], 4)}), erkek eğitim eğimi ({plain(s['b1_c'], 4)}) ve R² "
-            f"({plain(s['r2_c'], 6)}) c ne olursa olsun aynıdır: merkezleme tahmin edilen değerleri değiştirmez, yalnız "
-            "sabitin ve kukla katsayısının hangi eğitim düzeyinde okunduğunu değiştirir. Kukla katsayısının standart "
+            f"({plain(s['r2_c'], 6)}) c ne olursa olsun aynıdır: merkezleme uyum değerleri değiştirmez, yalnız "
+            "kesim teriminin ve kukla katsayısının hangi eğitim düzeyinde okunduğunu değiştirir. Kukla katsayısının standart "
             "hatası o noktadaki farkın standart hatasıdır (§11.4–11.5).")
 
 
@@ -775,7 +775,7 @@ def _house_gaps(choices) -> tuple:
     terms_add = ("colonial", *HOUSE_X)
     line_values = tuple(  # doğruların katsayıları Kod 11.4 çıktısında görünür; ölçü kutusu olarak tekrar edilmez
         ModelValue(name, "m_h", "coef", label, term=term, decimals=4, shown=False)
-        for name, label, term in (("h8_b0", "Sabit terim", INTERCEPT), ("h8_b1", f"{word.capitalize()} eğimi", x),
+        for name, label, term in (("h8_b0", "Kesim terimi", INTERCEPT), ("h8_b1", f"{word.capitalize()} eğimi", x),
                                   ("h8_g0", "Kolonyal katsayısı", "colonial"), ("h8_g1", "Eğim farkı", f"colonial:{x}"),
                                   *((f"h8_{term}", f"{X_WORDS[term].capitalize()} katsayısı", term) for term in others)))
     counts: tuple = () if not notes else (  # §11.7: grafik aralığındaki ve üstündeki konut sayıları
@@ -801,7 +801,7 @@ def _house_gaps(choices) -> tuple:
         *line_values,
         *_averages(HOUSE, "ort8", others),
         *_group_lines("cizgi8", column, grid, "h8", "colonial", x, center, others, "ort8"),
-        LineChart("cizgi8", column, "grup0", axis, "Tahmin edilen konut fiyatı (bin dolar)",
+        LineChart("cizgi8", column, "grup0", axis, "Konut fiyatının uyum değeri (bin dolar)",
                   ("Şekil 11.5: HPRICE1 modelinde mimari tarza göre arsa büyüklüğü eğimleri" if notes
                    else f"Mimari tarza göre {word} eğimleri"),
                   markers=False, series=(("grup1", "Kolonyal"),), legend="Kolonyal değil"),
@@ -1009,7 +1009,7 @@ STEPS = (
         title="Additif kukla modeli: paralel doğrular",
         note=NoteRef("11.1", 0, ("Şekil 11.1", "Tablo 11.6 (§11.9)")),
         explanation=(
-            "Additif modelde $Y_i = \\beta_0 + \\beta_1 X_i + \\gamma_0 D_i + u_i$: iki grubun sabiti farklı olabilir, "
+            "Additif modelde $Y_i = \\beta_0 + \\beta_1 X_i + \\gamma_0 D_i + u_i$: iki grubun kesim terimi farklı olabilir, "
             "eğimi aynıdır. $\\mathbb{E}(Y \\mid X, D = 1) - \\mathbb{E}(Y \\mid X, D = 0) = \\gamma_0$ her $X$ "
             "düzeyinde aynıdır ve tahmin doğruları paraleldir. WAGE1'de ln(ücret), 12 yıl etrafında merkezlenmiş eğitim, "
             "deneyim ve kıdemle açıklanır. Kukla değişkeni değiştirin." + LOG_MEAN_NOTE
@@ -1037,14 +1037,14 @@ STEPS = (
             "Kukla ile nicel değişkenin çarpımı modele eklenir: $Y_i = \\beta_0 + \\beta_1 X_i + \\gamma_0 D_i + "
             "\\gamma_1 (D_i X_i) + u_i$. $D_i X_i$ erkekte (D = 0) sıfır, kadında (D = 1) $X_i$'dir. Böylece $D = 0$ "
             "grubunun denklemi $\\beta_0 + \\beta_1 X$, $D = 1$ grubununki $(\\beta_0 + \\gamma_0) + (\\beta_1 + "
-            "\\gamma_1) X$ olur: $\\gamma_0$ sabit farkı, $\\gamma_1$ eğim farkıdır. Etkileşimdeki nicel değişkeni "
+            "\\gamma_1) X$ olur: $\\gamma_0$ kesim terimi farkı, $\\gamma_1$ eğim farkıdır. Etkileşimdeki nicel değişkeni "
             "değiştirin."
         ),
         controls=(X_2,),
         build=_interaction,
         checks=(
-            _scalar("e2_b0", 1.5480, "Kod 11.2: erkek grubunun sabiti β̂₀", 4),
-            _scalar("e2_g0", -0.2973, "Kod 11.2: sabit farkı γ̂₀", 4),
+            _scalar("e2_b0", 1.5480, "Kod 11.2: erkek grubunun kesim terimi β̂₀", 4),
+            _scalar("e2_g0", -0.2973, "Kod 11.2: kesim terimi farkı γ̂₀", 4),
             _scalar("e2_b1", 0.0903, "Tablo 11.3: erkek eğitim eğimi β̂₁", 4),
             _scalar("e2_g1", -0.0072, "Kod 11.2: eğim farkı γ̂₁", 4),
             _scalar("e2_egim1", 0.0830, "Tablo 11.3: kadın eğitim eğimi β̂₁ + γ̂₁", 4),
@@ -1057,22 +1057,22 @@ STEPS = (
         title="Gruplar arasında dört olası regresyon yapısı",
         note=NoteRef("11.3", 0, ("Tablo 11.2", "Şekil 11.2")),
         explanation=(
-            "İki grup ve bir nicel değişkenle dört yapı kurulabilir: (1) aynı sabit, aynı eğim: $1, X$; (2) farklı sabit, "
-            "aynı eğim: $1, X, D$; (3) aynı sabit, farklı eğim: $1, X, DX$; (4) farklı sabit, farklı eğim: "
+            "İki grup ve bir nicel değişkenle dört yapı kurulabilir: (1) aynı kesim terimi, aynı eğim: $1, X$; (2) farklı kesim terimi, "
+            "aynı eğim: $1, X, D$; (3) aynı kesim terimi, farklı eğim: $1, X, DX$; (4) farklı kesim terimi, farklı eğim: "
             "$1, X, D, DX$. Hiyerarşi ilkesi: $DX$ modeldeyse $D$ ve $X$ ana etkileri de tutulur; (3) $D$'yi "
-            "çıkararak iki grubun $X = 0$ noktasında aynı sabite sahip olduğunu dayatır. Grafikteki yapıyı değiştirin."
+            "çıkararak iki grubun $X = 0$ noktasında aynı kesim terimine sahip olduğunu dayatır. Grafikteki yapıyı değiştirin."
         ),
         controls=(STRUCTURE_3,),
         build=_structures,
         checks=(
-            Check("§11.6: additif modelin R²'si (yapı 2)", TableTarget("tablo_yapi", "r2", "(2) Farklı sabit, aynı eğim"),
+            Check("§11.6: additif modelin R²'si (yapı 2)", TableTarget("tablo_yapi", "r2", "(2) Farklı kesim terimi, aynı eğim"),
                   0.39227, 5),
             Check("§11.6: etkileşimli modelin R²'si (yapı 4)",
-                  TableTarget("tablo_yapi", "r2", "(4) Farklı sabit, farklı eğim"), 0.39260, 5),
+                  TableTarget("tablo_yapi", "r2", "(4) Farklı kesim terimi, farklı eğim"), 0.39260, 5),
             Check("§11.6: additif modelin düzeltilmiş R²'si", TableTarget("tablo_yapi", "adj_r2",
-                                                                         "(2) Farklı sabit, aynı eğim"), 0.38760, 5),
+                                                                         "(2) Farklı kesim terimi, aynı eğim"), 0.38760, 5),
             Check("§11.6: etkileşimli modelin düzeltilmiş R²'si",
-                  TableTarget("tablo_yapi", "adj_r2", "(4) Farklı sabit, farklı eğim"), 0.38676, 5),
+                  TableTarget("tablo_yapi", "adj_r2", "(4) Farklı kesim terimi, farklı eğim"), 0.38676, 5),
         ),
         note_for=lambda state, choices: _structures_note(state, choices),
     ),
@@ -1084,7 +1084,7 @@ STEPS = (
             "Etkileşimli modelde grup farkı $X$'e bağlıdır: $\\mathbb{E}(Y \\mid X, D = 1) - \\mathbb{E}(Y \\mid X, "
             "D = 0) = \\gamma_0 + \\gamma_1 X$ (§11.4). $\\gamma_0$ yalnız $X = 0$ noktasındaki farktır. $X$ anlamlı bir "
             "$c$ değeri etrafında merkezlenirse ($X^c = X - c$) kukla katsayısı farkı doğrudan $X = c$ noktasında verir; "
-            "tahmin edilen değerler, R² ve eğimler değişmez. Merkezleme noktasını değiştirin." + LOG_MEAN_NOTE
+            "uyum değerleri, R² ve eğimler değişmez. Merkezleme noktasını değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(CENTER_4,),
         build=_centering,
@@ -1255,12 +1255,12 @@ def _interaction_labels() -> tuple[tuple[str, str], ...]:
 
 KONU11_LAB = LabSpec(
     topic_key="konu11",
-    title="Uygulama: Etkileşim Terimleri ve Gruplar Arasında Sabit ile Eğim Farklılıkları",
+    title="Uygulama: Etkileşim Terimleri ve Gruplar Arasında Kesim terimi ile Eğim Farklılıkları",
     note_section="11",
     steps=STEPS,
     labels=(
         *W.labels(WAGE, HOUSE),
-        (INTERCEPT, "Sabit terim"),
+        (INTERCEPT, "Kesim terimi"),
         ("educ12", "Eğitim − 12 (yıl)"),
         ("educ_c", "Eğitim − c (yıl)"),
         ("lotsize10k", "(Arsa − 10.000)/1.000 (bin fit²)"),

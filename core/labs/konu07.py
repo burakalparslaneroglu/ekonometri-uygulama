@@ -145,7 +145,7 @@ def _wage_t(choices) -> tuple:
         *_load(),
         ModelValue("b2", "m", "coef", f"{TITLES[term]} katsayısı β̂", term=term, decimals=3),
         ModelValue("sh2", "m", "se", "Standart hata se(β̂)", term=term, decimals=4),
-        ModelValue("sd_artik", "m", "df_resid", "Artık serbestlik derecesi n − k − 1", decimals=0),
+        ModelValue("sd_artik", "m", "df_resid", "Artık değerlerin serbestlik derecesi n − k − 1", decimals=0),
         Scalar("t0_2", E.div(E.ref("b2"), E.ref("sh2")), "t, H₀: β = 0", decimals=2),
         Scalar("ta_2", E.div(E.sub(E.ref("b2"), a), E.ref("sh2")), f"t, H₀: β = {_value(a)}", decimals=2),
         Scalar("kritik_2", E.tinv(0.975, E.ref("sd_artik")), "Kritik değer t₀,₀₂₅ (sd = 522)", decimals=3),
@@ -346,7 +346,7 @@ def _output_note(state, choices) -> str:
     k = len(choices["adim7_x"])
     n, df = int(result.nobs), int(result.df_resid)
     significant = [W.variable(DATA, term).label.lower() for term in choices["adim7_x"] if result.pvalues[term] < 0.05]
-    text = (f"Artık serbestlik derecesi n − k − 1 = {n} − {k} − 1 = {df}. `coef` katsayı tahmini, `std err` "
+    text = (f"Artık değerlerin serbestlik derecesi n − k − 1 = {n} − {k} − 1 = {df}. `coef` katsayı tahmini, `std err` "
             "klasik EKK standart hatası, `t` ve `P>|t|` H₀: β = 0 için t istatistiği ve iki taraflı p-değeri, "
             "`[0.025 0.975]` yüzde 95 güven aralığıdır. ")
     text += (f"Yüzde 5 düzeyinde sıfırdan farklı eğimler: {', '.join(significant)}. " if significant
@@ -450,7 +450,7 @@ _COLUMN_LABELS = {"katsayi": "katsayı", "sh": "SH", "t": "t", "p": "p", "alt": 
 _TABLE74_COLUMNS = (("katsayi", "katsayı", 3), ("sh", "SH", 3), ("t", "t", 2), ("p", "p", 3), ("alt", "GA alt", 3),
                     ("ust", "GA üst", 3))
 _OUTPUT = (
-    (INTERCEPT, "sabit terim", (-2.8727, 0.729, -3.941, 0.000, -4.305, -1.441)),
+    (INTERCEPT, "kesim terimi", (-2.8727, 0.729, -3.941, 0.000, -4.305, -1.441)),
     ("educ", "educ", (0.5990, 0.051, 11.679, 0.000, 0.498, 0.700)),
     ("exper", "exper", (0.0223, 0.012, 1.853, 0.064, -0.001, 0.046)),
     ("tenure", "tenure", (0.1693, 0.022, 7.820, 0.000, 0.127, 0.212)),
@@ -505,7 +505,7 @@ STEPS = (
         controls=(TERM_2, A_2),
         build=_wage_t,
         checks=(
-            Check("§7.4: sabit terim", CoefTarget("m", INTERCEPT), -2.873, 3),
+            Check("§7.4: kesim terimi", CoefTarget("m", INTERCEPT), -2.873, 3),
             Check("§7.4: eğitim katsayısı", CoefTarget("m", "educ"), 0.599, 3),
             Check("§7.4: deneyim katsayısı", CoefTarget("m", "exper"), 0.022, 3),
             Check("§7.4: kıdem katsayısı", CoefTarget("m", "tenure"), 0.169, 3),
@@ -601,7 +601,7 @@ STEPS = (
         explanation=(
             "Statsmodels çıktısında `coef`, `std err`, `t`, `P>|t|` ve `[0.025 0.975]` sütunları aynı katsayıyı farklı "
             "açılardan özetler. Önce bağımlı değişkeni ve gözlem sayısını, sonra ilgilenilen katsayı satırını okuyun. "
-            "Modeli değiştirin: artık serbestlik derecesi ve katsayı satırları nasıl değişiyor?"
+            "Modeli değiştirin: artık değerlerin serbestlik derecesi ve katsayı satırları nasıl değişiyor?"
         ),
         controls=(OUTCOME_7, REGRESSORS_7),
         build=_output,
@@ -610,7 +610,7 @@ STEPS = (
               for term, name, values in _OUTPUT
               for (quantity, label, decimals), value in zip(_OUTPUT_QUANTITIES, values)),
             Check("Kod 7.2: gözlem sayısı", ModelTarget("cikti", "nobs"), 526, 0),
-            Check("Kod 7.2: artık serbestlik derecesi", ModelTarget("cikti", "df_resid"), 522, 0),
+            Check("Kod 7.2: artık değerlerin serbestlik derecesi", ModelTarget("cikti", "df_resid"), 522, 0),
             Check("Kod 7.2: R²", ModelTarget("cikti", "r2"), 0.306, 3),
         ),
         note_for=lambda state, choices: _output_note(state, choices),
@@ -691,7 +691,7 @@ KONU07_LAB = LabSpec(
     steps=STEPS,
     labels=(
         *W.labels(DATA, HPRICE),
-        (INTERCEPT, "Sabit terim"),
+        (INTERCEPT, "Kesim terimi"),
     ),
     consistency_notes=(
         "Veri notlardaki gibi WAGE1 ve HPRICE1'dir; notlardaki kod, betikler, uygulama ve üretilen kod onları wooldridge "

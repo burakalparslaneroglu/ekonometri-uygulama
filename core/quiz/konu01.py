@@ -112,8 +112,8 @@ QUESTIONS = (
         answer=MultipleChoice(("Betimleme", "İlişki", "Tahmin", "Nedensel etki"), correct=2),
         explanation=(
             "Amaç bilinen özelliklerle yeni bir sonucu, her müşterinin gelecekteki harcamasını öngörmektir. Soru "
-            "kampanyanın harcamayı ne kadar artırdığını sormaz; bu nedensel etki sorusu olurdu. İyi bir tahmin modeli "
-            "yeni gözlemlerde düşük tahmin hatası üretmelidir; katsayılarının nedensel yorumlanması bu amaç için "
+            "kampanyanın harcamayı ne kadar artırdığını sormaz; bu nedensel etki sorusu olurdu. İyi bir öngörü modeli "
+            "yeni gözlemlerde düşük öngörü hatası üretmelidir; katsayılarının nedensel yorumlanması bu amaç için "
             "zorunlu değildir (§1.5)."
         ),
     ),
@@ -324,39 +324,39 @@ QUESTIONS = (
     Question(
         key="e01", concept="tahmin-hatasi", note=_note("1.5", "Tablo 1.2"),
         prompt=(
-            "Tahmin hatası, gerçekleşen değerden tahmin edilen değer çıkarılarak tanımlanır. İki yeni gözlemde "
-            "gerçekleşen değerler $y_1$ ve $y_2$, modelin tahminleri $p_1$ ve $p_2$ ise iki tahmin hatasının "
+            "Öngörü hatası, gerçekleşen değerden öngörü değeri çıkarılarak tanımlanır. İki yeni gözlemde "
+            "gerçekleşen değerler $y_1$ ve $y_2$, modelin öngörüleri $p_1$ ve $p_2$ ise iki öngörü hatasının "
             "ortalamasını yazın."
         ),
         answer=Equation(
-            lhs="\\text{ortalama tahmin hatası}",
+            lhs="\\text{ortalama öngörü hatası}",
             symbols=(
                 Symbol("y1", "y_1", "1. gözlemin gerçekleşen değeri", 1, 20, aliases=("y_1",)),
                 Symbol("y2", "y_2", "2. gözlemin gerçekleşen değeri", 1, 20, aliases=("y_2",)),
-                Symbol("p1", "p_1", "1. gözlemin tahmini", 1, 20, aliases=("p_1",)),
-                Symbol("p2", "p_2", "2. gözlemin tahmini", 1, 20, aliases=("p_2",)),
+                Symbol("p1", "p_1", "1. gözlemin öngörüsü", 1, 20, aliases=("p_1",)),
+                Symbol("p2", "p_2", "2. gözlemin öngörüsü", 1, 20, aliases=("p_2",)),
             ),
             answer="((y1 - p1) + (y2 - p2))/2",
             shown="\\frac{(y_1 - p_1) + (y_2 - p_2)}{2}",
         ),
         explanation=(
-            "Her gözlemin tahmin hatası gerçekleşen değer eksi tahmindir; iki hatanın ortalaması toplamlarının "
+            "Her gözlemin öngörü hatası gerçekleşen değer eksi öngörüdür; iki hatanın ortalaması toplamlarının "
             "yarısıdır (ortalama: §0.3). Pozitif ve negatif hatalar birbirini götürebilir (§0.4): ortalama hata "
-            "tahminlerin sistematik olarak yukarı ya da aşağı sapıp sapmadığını gösterir, tek tek hataların "
-            "büyüklüğünü göstermez. İyi bir tahmin modeli yeni gözlemlerde küçük tahmin hataları üretir; bu, "
+            "öngörülerin sistematik olarak yukarı ya da aşağı sapıp sapmadığını gösterir, tek tek hataların "
+            "büyüklüğünü göstermez. İyi bir öngörü modeli yeni gözlemlerde küçük öngörü hataları üretir; bu, "
             "katsayıların nedensel olduğunu göstermez (§1.5, Tablo 1.2)."
         ),
     ),
     Question(
         key="e02", concept="tahmin-edilen-ucret", note=_note("1.6", "(1.4)"),
         prompt=(
-            "Tahmin edilen doğrunun sabiti $c$, eğimi $m$ ise eğitimi $x$ yıl olan bir çalışanın tahmin edilen "
-            "saatlik ücretini yazın."
+            "Uyum doğrusunun kesim terimi $c$, eğimi $m$ ise eğitimi $x$ yıl olan bir çalışan için "
+            "saatlik ücretin uyum değerini yazın."
         ),
         answer=Equation(
             lhs="\\widehat{\\text{wage}}",
             symbols=(
-                Symbol("c", "c", "sabit terim", -2, 2),
+                Symbol("c", "c", "kesim terimi", -2, 2),
                 Symbol("m", "m", "eğim", 0.1, 1),
                 Symbol("x", "x", "eğitim yılı", 0, 18),
             ),
@@ -364,14 +364,14 @@ QUESTIONS = (
             shown="c + m\\,x",
         ),
         explanation=(
-            "Tahmin edilen değer sabit terim ile eğim × eğitim toplamıdır. Denklem (1.4)'e göre eğitimi 12 yıl olan "
+            "Uyum değeri kesim terimi ile eğim × eğitim toplamıdır. Denklem (1.4)'e göre eğitimi 12 yıl olan "
             "bir çalışanın tahmin edilen ücreti −0,9049 + 0,5414 × 12 ≈ 5,59 dolardır (§1.6, (1.4))."
         ),
     ),
     Question(
         key="e03", concept="egitim-farkina-karsilik-tahmini-fark", note=_note("1.6", "(1.4)"),
         prompt=(
-            "Tahmin edilen doğrunun eğimi $m$'dir. Eğitimleri arasında $d$ yıl fark olan iki çalışandan eğitimi fazla "
+            "Uyum doğrusunun eğimi $m$'dir. Eğitimleri arasında $d$ yıl fark olan iki çalışandan eğitimi fazla "
             "olanın tahmin edilen saatlik ücretinden diğerininkini çıkararak farkı yazın."
         ),
         answer=Equation(
@@ -381,7 +381,7 @@ QUESTIONS = (
             shown="m\\,d",
         ),
         explanation=(
-            "Sabit terim c iki tahminde de aynı olduğu için farkta birbirini götürür: eğitimler x₁ ve x₂ = x₁ + d ise "
+            "Kesim terimi c iki tahminde de aynı olduğu için farkta birbirini götürür: eğitimler x₁ ve x₂ = x₁ + d ise "
             "(c + m x₂) − (c + m x₁) = m d. WAGE1'de 3 yıllık fark 3 × 0,5414 ≈ 1,62 dolardır (§1.6)."
         ),
     ),
@@ -413,7 +413,7 @@ QUESTIONS = (
             symbols=(
                 Symbol("y", "y", "sonuç değişkeni", 1, 20),
                 Symbol("x", "x", "açıklayıcı değişken", 0, 18),
-                Symbol("a", "a", "sabit parametre", -2, 2),
+                Symbol("a", "a", "kesim terimi", -2, 2),
                 Symbol("b", "b", "eğim parametresi", 0.1, 1),
             ),
             answer="y - a - b*x",

@@ -1,7 +1,7 @@
 """Konu 12 genel uygulaması: heteroskedastisite ve heteroskedastisiteye dayanıklı çıkarım.
 
 Notlardaki sekiz adım (``core.labs.konu12``) aynı numaralarla ve aynı işlemlerle, verisi değiştirilebilir biçimde
-yazılır: artık grafikleri, Breusch–Pagan ve White testleri, HC0–HC3 dayanıklı kovaryans seçenekleri, düzey modelinde
+yazılır: artık değer grafikleri, Breusch–Pagan ve White testleri, HC0–HC3 dayanıklı kovaryans seçenekleri, düzey modelinde
 geleneksel ve dayanıklı çıkarım, log modelle karşılaştırma, makale tablosunda standart hata türü, dayanıklı ortak test ve
 ikinci bir veride düzey ve log sonuç modellerinin karşılaştırılması.
 
@@ -105,7 +105,7 @@ QUARTER_LABELS = {1: "1. çeyrek (en düşük tahmin)", 2: "2. çeyrek", 3: "3. 
 CLOSE_RATIO = 1.15
 """Dayanıklı/geleneksel SH oranı bundan küçükse iki standart hata "birbirine yakın" sayılır (notlardaki gibi)."""
 SPREAD_RATIO = 1.5
-"""En yüksek tahmin çeyreğindeki artık standart sapması diğerlerinin en büyüğünün bu katından büyükse huni biçimi."""
+"""En yüksek tahmin çeyreğindeki artık değer standart sapması diğerlerinin en büyüğünün bu katından büyükse huni biçimi."""
 HIGH_LEVERAGE = 3
 """Kaldıraç ortalama kaldıracın ((k + 1)/n) bu katından büyükse yüksek sayılır (Belsley, Kuh ve Welsch, 1980'in 2(k + 1)/n
 kuralından daha temkinli)."""
@@ -136,7 +136,7 @@ def _p(value: float, decimals: int = 4) -> str:
 
 @dataclass(frozen=True)
 class Model:
-    """Ana verinin modeli: (anahtar, model adı, bağımlı değişken, açıklayıcılar, kısa ad, tahmin ekseninin adı, artık
+    """Ana verinin modeli: (anahtar, model adı, bağımlı değişken, açıklayıcılar, kısa ad, tahmin ekseninin adı, artık değer
     ekseninin birimi)."""
 
     key: str
@@ -185,7 +185,7 @@ def _leverage(data: pd.DataFrame, terms) -> np.ndarray:
 
 
 def _usable(data: pd.DataFrame, terms) -> bool:
-    """Model kurulabilir mi ve HC2–HC3 tanımlı mı: tam doğrusal bağlantı yok, artık serbestlik derecesi en az 1 ve hiçbir
+    """Model kurulabilir mi ve HC2–HC3 tanımlı mı: tam doğrusal bağlantı yok, artık değerlerin serbestlik derecesi en az 1 ve hiçbir
     gözlemin kaldıracı 1 değil."""
 
     design = _matrix(data, terms)
@@ -210,12 +210,12 @@ def _models(case: Case) -> dict[str, Model]:
     if "models" in case.extra:
         return {key: Model(key, *values) for key, values in case.extra["models"].items()}
     y, x = case.roles[SONUC], case.roles[ACIKLAYICI]
-    found = {"duzey": Model("duzey", "m_duzey", y, (x, *_extras(case)), "Düzey modeli", f"Tahmin edilen {case.name(y)}",
+    found = {"duzey": Model("duzey", "m_duzey", y, (x, *_extras(case)), "Düzey modeli", f"{case.name(y)} için uyum değeri",
                             "")}
     if _log_ok(case):
         names = _names(case)
         found["log"] = Model("log", "m_log", names.ly, (names.lx, *_extras(case)), "Log modeli",
-                             f"Tahmin edilen ln({case.name(y)})", " (log birimi)")
+                             f"ln({case.name(y)}) için uyum değeri", " (log birimi)")
     return found
 
 
@@ -296,7 +296,7 @@ def _exact_flags(case: Case) -> dict[str, bool]:
 
 
 def _stable(checks, exact: bool) -> tuple[Check, ...]:
-    """Uyum tamsa (R² ≈ 1) artıklar yuvarlama gürültüsüdür: standart hata, t, p, güven aralığı, LM ve F kontrolleri
+    """Uyum tamsa (R² ≈ 1) artık değerler yuvarlama gürültüsüdür: standart hata, t, p, güven aralığı, LM ve F kontrolleri
     çıkarılır."""
 
     if not exact:
@@ -318,7 +318,7 @@ def _stable(checks, exact: bool) -> tuple[Check, ...]:
     return tuple(kept)
 
 
-EXACT_NOTE = (" Model veriye neredeyse tam uyuyor (R² ≈ 1): artıklar yuvarlama gürültüsüdür; standart hatalar, testler ve "
+EXACT_NOTE = (" Model veriye neredeyse tam uyuyor (R² ≈ 1): artık değerler yuvarlama gürültüsüdür; standart hatalar, testler ve "
               "p-değerleri yorumlanmaz ve indirilen kodda karşılaştırılmaz.")
 
 
@@ -380,10 +380,10 @@ def _value_text(value: float) -> str:
     return level_text(round(number, 4))
 
 
-# --- Adım 1: artık grafikleri ------------------------------------------------------------------------------------
+# --- Adım 1: artık değer grafikleri ------------------------------------------------------------------------------------
 
 def _quartiles(case: Case, model: Model) -> tuple[int, ...]:
-    """Tahmin edilen değerin çeyrekleri (uygulamadaki kuralla): en az iki gözlemi olan çeyrekler (standart sapma
+    """Uyum değerinin çeyrekleri (uygulamadaki kuralla): en az iki gözlemi olan çeyrekler (standart sapma
     tanımlı olsun)."""
 
     data = _data(case)
@@ -418,9 +418,9 @@ def _step1(case: Case) -> LabStep:
                                                        ("ort_mutlak", "mutlak", "mean")),
                                     "yayilim", groups, decimals=_spread_digits(case, model),
                                     labels=tuple((group, QUARTER_LABELS[group]) for group in groups),
-                                    heading="Tahmin edilen değer",
-                                    title="Artıkların yayılımı tahmin edilen değerin çeyreklerine göre (standart sapma ve "
-                                          "ortalama mutlak artık)"),)
+                                    heading="Uyum değeri",
+                                    title="Artık değerlerin yayılımı uyum değerinin çeyreklerine göre (standart sapma ve "
+                                          "ortalama mutlak artık değer)"),)
         return (
             *case.load,
             *_setup(case),
@@ -428,21 +428,21 @@ def _step1(case: Case) -> LabStep:
             ShowModel(model.name, f"{model.title}: katsayılar", columns=("coef",), stats=("nobs", "r2"),
                       exact=not case.own),
             CopyFrame("tani", case.frame, "Tanı için verinin kopyası (özgün veri değişmez)"),
-            Residuals("tani", "artik", model.name, f"{model.title}: artıklar û"),
-            Derive("tani", "tahmin", E.sub(E.var(model.outcome), E.var("artik")), "Tahmin edilen değer: Ŷ = Y − û"),
-            Derive("tani", "mutlak", E.absolute(E.var("artik")), "Mutlak artık |û|"),
-            ScatterPlot("tani", "tahmin", "artik", model.axis, "Artık" + model.unit,
-                        f"{_prefix(case)}{model.title.lower()}: artıklar ve tahmin edilen değerler (Şekil "
+            Residuals("tani", "artik", model.name, f"{model.title}: artık değerler û"),
+            Derive("tani", "tahmin", E.sub(E.var(model.outcome), E.var("artik")), "Uyum değeri: Ŷ = Y − û"),
+            Derive("tani", "mutlak", E.absolute(E.var("artik")), "Mutlak artık değer |û|"),
+            ScatterPlot("tani", "tahmin", "artik", model.axis, "Artık değer" + model.unit,
+                        f"{_prefix(case)}{model.title.lower()}: artık değerler ve uyum değerleri (Şekil "
                         f"{'12.3' if level else '12.5'}'teki gibi)", lines=((0.0, 0.0, "Sıfır çizgisi"),), opacity=0.8),
-            ScatterPlot("tani", "tahmin", "mutlak", model.axis, "Mutlak artık" + model.unit,
-                        f"{_prefix(case)}{model.title.lower()}: mutlak artıklar ve tahmin edilen değerler (Şekil 12.4'teki "
+            ScatterPlot("tani", "tahmin", "mutlak", model.axis, "Mutlak artık değer" + model.unit,
+                        f"{_prefix(case)}{model.title.lower()}: mutlak artık değerler ve uyum değerleri (Şekil 12.4'teki "
                         "gibi)", opacity=0.8),
-            *(Percentile("tani", "tahmin", p, f"q{p}", f"Tahmin edilen değerin {p}. yüzdeliği", decimals=3)
+            *(Percentile("tani", "tahmin", p, f"q{p}", f"Uyum değerinin {p}. yüzdeliği", decimals=3)
               for p in (25, 50, 75)),
             Derive("tani", "ceyrek", E.add(E.add(E.add(1, E.compare("ge", E.var("tahmin"), E.ref("q25"))),
                                                   E.compare("ge", E.var("tahmin"), E.ref("q50"))),
                                             E.compare("ge", E.var("tahmin"), E.ref("q75"))),
-                   "Tahmin edilen değerin çeyreği: 1 (en düşük) … 4 (en yüksek)"),
+                   "Uyum değerinin çeyreği: 1 (en düşük) … 4 (en yüksek)"),
             *summary,
         )
 
@@ -450,7 +450,7 @@ def _step1(case: Case) -> LabStep:
         kind = choices["adim1_model"]
         model = models[kind]
         if exact[kind]:
-            return ("Uyum tam olduğu için artıklar yuvarlama gürültüsüdür: grafikteki yayılım heteroskedastisite hakkında "
+            return ("Uyum tam olduğu için artık değerler yuvarlama gürültüsüdür: grafikteki yayılım heteroskedastisite hakkında "
                     "bilgi vermez (§12.4)." + EXACT_NOTE)
         text = ""
         table = state.tables.get("yayilim")
@@ -465,17 +465,17 @@ def _step1(case: Case) -> LabStep:
                         f"{sayi(mean[:-1].min(), decimals)} ile {sayi(mean[:-1].max(), decimals)} arasında")
             low_spread = (sayi(spread[:-1].min(), decimals) if len(spread) == 2 else
                           f"{sayi(spread[:-1].min(), decimals)}–{sayi(spread[:-1].max(), decimals)}")
-            text = (f"Ortalama mutlak artık {lower} {low_mean}, {label} {sayi(mean[-1], decimals)}; artıkların standart "
+            text = (f"Ortalama mutlak artık değer {lower} {low_mean}, {label} {sayi(mean[-1], decimals)}; artık değerlerin standart "
                     f"sapması {label} {sayi(spread[-1], decimals)}, {lower} {low_spread}. ")
             if spread[-1] >= spread.max() and spread[-1] >= SPREAD_RATIO * spread[0]:
-                text += ("Düşük tahmin düzeylerinde artıklar daha dar bir alanda toplanırken yüksek tahmin edilen değerlerde "
-                         "çok daha büyük pozitif ve negatif artıklar görülür: huni biçimi heteroskedastisite şüphesini "
+                text += ("Düşük uyum değeri düzeylerinde artık değerler daha dar bir alanda toplanırken yüksek uyum değerlerinde "
+                         "çok daha büyük pozitif ve negatif artık değerler görülür: huni biçimi heteroskedastisite şüphesini "
                          "güçlendirir. ")
             elif spread[0] >= spread.max() and spread[0] >= SPREAD_RATIO * spread[-1]:
-                text += ("Yayılım tahmin edilen değer büyüdükçe daralır: daralan bir yayılım da heteroskedastisite "
+                text += ("Yayılım uyum değeri büyüdükçe daralır: daralan bir yayılım da heteroskedastisite "
                          "izidir. ")
             elif spread.max() >= SPREAD_RATIO * spread.min():
-                text += ("Yayılım çeyreklere göre değişir ama tahmin edilen değerle düzenli biçimde artmaz ya da azalmaz: "
+                text += ("Yayılım çeyreklere göre değişir ama uyum değeriyle düzenli biçimde artmaz ya da azalmaz: "
                          "grafik açık bir huni biçimi göstermez. ")
             else:
                 text += "Yayılım çeyrekler arasında birbirine yakındır: grafik belirgin bir huni biçimi göstermez. "
@@ -488,18 +488,18 @@ def _step1(case: Case) -> LabStep:
     checks = []
     for model in models.values():
         fit = _fit(data, model.outcome, model.terms)
-        checks += [_check(f"{model.title}: {'sabit terim' if term == INTERCEPT else _word_raw(case, term)}, katsayı",
+        checks += [_check(f"{model.title}: {'kesim terimi' if term == INTERCEPT else _word_raw(case, term)}, katsayı",
                           CoefTarget(model.name, term, "coef"), _d(float(fit.params[term])))
                    for term in (INTERCEPT, *model.terms)]
         checks.append(_check(f"{model.title}: R²", ModelTarget(model.name, "r2"), 4))
     return _step(
         number=1,
-        title="Artık grafikleriyle ilk tanı",
+        title="Artık değer grafikleriyle ilk tanı",
         note=NoteRef("12.4", 0, ("Şekil 12.3", "Şekil 12.4", "Şekil 12.5")),
         explanation=(
-            "Hata terimleri gözlenmez; EKK artıkları $\\hat u_i$ kullanılır. Artık–tahmin grafiğinde yatay eksende "
+            "Hata terimleri gözlenmez; EKK artık değerleri $\\hat u_i$ kullanılır. Artık değer–tahmin grafiğinde yatay eksende "
             "$\\hat Y_i$, dikey eksende $\\hat u_i$ vardır. Homoskedastik modelde sıfır çizgisi çevresindeki dikey "
-            "yayılım yaklaşık sabittir; huni ya da yelpaze biçimi heteroskedastisite şüphesi doğurur. Mutlak artıklar "
+            "yayılım yaklaşık sabittir; huni ya da yelpaze biçimi heteroskedastisite şüphesi doğurur. Mutlak artık değerler "
             "hata büyüklüğünü işaretinden bağımsız gösterir. "
             + case.extra.get("model_text", "")
             + ("İncelenen modeli değiştirin." if _live(control) else
@@ -548,8 +548,8 @@ def _white_terms(case: Case, frame: str, terms: tuple[str, ...]) -> tuple[tuple,
 
 
 def _white_count(data: pd.DataFrame, terms: tuple[str, ...]) -> int:
-    """White yardımcı regresyonundaki terim sayısı (sabit hariç): düzeyler, kareler ve çapraz çarpımlar; iki değerli bir
-    sütunun karesi (ör. 0/1 kukla) sütunun ve sabitin doğrusal birleşimidir, sayılmaz. Gözlem sayısıyla sınırlanmaz."""
+    """White yardımcı regresyonundaki terim sayısı (kesim terimi hariç): düzeyler, kareler ve çapraz çarpımlar; iki değerli bir
+    sütunun karesi (ör. 0/1 kukla) sütunun ve kesim teriminin doğrusal birleşimidir, sayılmaz. Gözlem sayısıyla sınırlanmaz."""
 
     count = len(terms)
     two_valued = sum(1 for term in terms if data[term].nunique() <= 2)
@@ -562,7 +562,7 @@ def _step2(case: Case) -> LabStep:
     test_control = Choice("adim2_test", "Yardımcı regresyon",
                           (("bp", "Breusch–Pagan: açıklayıcıların düzeyleri (notlar)"),
                            ("white", "White: düzeyler, kareler ve çapraz çarpımlar")), "bp",
-                          help="Yardımcı regresyonun bağımlı değişkeni artıkların karesidir; LM = n·R².")
+                          help="Yardımcı regresyonun bağımlı değişkeni artık değerlerin karesidir; LM = n·R².")
     model_control = Choice("adim2_model", "Model", _model_options(case), "duzey", help="Notlarda düzey modeli (§12.5).")
 
     def build(choices) -> tuple:
@@ -578,8 +578,8 @@ def _step2(case: Case) -> LabStep:
         rows = tuple((other.title, other.key) for other in models.values())
         return (
             CopyFrame("yardimci", case.frame, "Yardımcı regresyon için verinin kopyası (özgün veri değişmez)"),
-            Residuals("yardimci", "artik", model.name, f"{model.title}: artıklar û"),
-            Derive("yardimci", "artik2", E.power(E.var("artik"), 2), "Kareli artık û²: hata varyansının gözlenebilir "
+            Residuals("yardimci", "artik", model.name, f"{model.title}: artık değerler û"),
+            Derive("yardimci", "artik2", E.power(E.var("artik"), 2), "Artık değerin karesi û²: hata varyansının gözlenebilir "
                    "ölçüsü"),
             *white,
             OLS("m_yardimci", "yardimci", "artik2", aux_terms,
@@ -587,7 +587,7 @@ def _step2(case: Case) -> LabStep:
             ModelValue("r2_yardimci", "m_yardimci", "r2", "Yardımcı regresyonun R²'si", decimals=6),
             ModelValue("n_yardimci", "m_yardimci", "nobs", "Gözlem sayısı n", decimals=0),
             Scalar("lm_elle", E.mul(E.ref("n_yardimci"), E.ref("r2_yardimci")), "LM = n·R² (elle)", decimals=3),
-            Scalar("q_yardimci", E.const(len(aux_terms)), "Serbestlik derecesi q (sabit dışındaki terim sayısı)",
+            Scalar("q_yardimci", E.const(len(aux_terms)), "Serbestlik derecesi q (kesim terimi dışındaki terim sayısı)",
                    decimals=0),
             Scalar("p_elle", E.chi2sf(E.ref("lm_elle"), E.ref("q_yardimci")), "p = P(χ²_q > LM)", decimals=4,
                    p_value=True),
@@ -609,14 +609,14 @@ def _step2(case: Case) -> LabStep:
         model = models[kind]
         s = state.scalars
         if exact[kind]:
-            return (f"{HETERO_TESTS[test]} ({model.title.lower()}): uyum tam olduğu için kareli artıklar yuvarlama "
+            return (f"{HETERO_TESTS[test]} ({model.title.lower()}): uyum tam olduğu için artık değerlerin kareleri yuvarlama "
                     "gürültüsüdür; LM ve p yorumlanmaz (§12.5)." + EXACT_NOTE)
         rejected = s["p_elle"] < 0.05
         product = s["n_yardimci"] * float(f"{s['r2_yardimci']:.6f}")  # ekrandaki R² ile çarpım
         sign = "=" if sayi(product, 3) == sayi(s["lm_elle"], 3) else "≈"
         return (f"{HETERO_TESTS[test]} ({model.title.lower()}): yardımcı regresyonun R²'si {sayi(s['r2_yardimci'], 6)}, "
                 f"LM = n·R² = {sayi(s['n_yardimci'], 0)} × {sayi(s['r2_yardimci'], 6)} {sign} {sayi(s['lm_elle'], 3)}, "
-                f"q = {sayi(s['q_yardimci'], 0)} (yardımcı regresyondaki sabit dışındaki terim sayısı), "
+                f"q = {sayi(s['q_yardimci'], 0)} (yardımcı regresyondaki kesim terimi dışındaki terim sayısı), "
                 f"{_p(s['p_elle'])}; tek çağrı ({'statsmodels `het_breuschpagan`' if test == 'bp' else '`white_testi`'}) "
                 f"aynı sayıyı verir ({sayi(s['lm_kutuphane'], 3)}). Yüzde 5 düzeyinde homoskedastisite hipotezi "
                 + ("reddedilir. " if rejected else "reddedilemez; reddedememek homoskedastisitenin kanıtlandığı anlamına "
@@ -639,8 +639,8 @@ def _step2(case: Case) -> LabStep:
         note=NoteRef("12.5", 0, ("Tablo 12.2", "Kod 12.1")),
         explanation=(
             "İki testin sıfır hipotezi homoskedastisitedir: $H_0: \\operatorname{Var}(u_i \\mid X_i) = \\sigma^2$. "
-            "Kareli artıklar $\\hat u_i^2$ yardımcı regresyonla açıklanır; $H_0$ altında ve büyük örneklemde "
-            "$LM = nR^2_{aux}$ yaklaşık $\\chi^2_q$ dağılır ($q$: yardımcı regresyondaki sabit dışındaki terim sayısı). "
+            "Artık değerlerin kareleri $\\hat u_i^2$ yardımcı regresyonla açıklanır; $H_0$ altında ve büyük örneklemde "
+            "$LM = nR^2_{aux}$ yaklaşık $\\chi^2_q$ dağılır ($q$: yardımcı regresyondaki kesim terimi dışındaki terim sayısı). "
             "Breusch–Pagan yardımcı regresyonda modelin açıklayıcılarını, White ayrıca karelerini ve çapraz çarpımlarını "
             "kullanır. Küçük p-değeri homoskedastisitenin reddedilmesine yol açar. "
             + ("Testi ve modeli değiştirin." if _live(model_control) else "Testi değiştirin.")
@@ -690,7 +690,7 @@ def _leverage_text(case: Case, model: Model) -> str:
         lead = ("HC2 ve HC3'teki artış yüksek kaldıraçlı bir gözlemden gelir: " if found["share"] >= 0.5 else
                 "En büyük kaldıraç: ")
         text = (f"{lead}{_describe(case, model, found['index'])} kaldıracı yaklaşık {sayi(h, 2)} {mean}. HC3 bu gözlemin "
-                f"kareli artığını (1 − h)² ≈ {sayi((1 - h) ** 2, 3)} ile bölerek yaklaşık {sayi(1 / (1 - h) ** 2, 1)} kat "
+                f"artık değerin karesiini (1 − h)² ≈ {sayi((1 - h) ** 2, 3)} ile bölerek yaklaşık {sayi(1 / (1 - h) ** 2, 1)} kat "
                 f"büyütür; {word} katsayısının HC3 varyansının yaklaşık yüzde {sayi(100 * found['share'], 0)} kadarı bu "
                 "tek gözlemden gelir. ")
     elif h >= HIGH_LEVERAGE * found["mean"]:
@@ -751,7 +751,7 @@ def _step3(case: Case) -> LabStep:
                 f"{word if word.startswith('ln(') else capital(word)} katsayısının standart hatası: geleneksel "
                 f"{sayi(s['sh3_gel'], d)}, HC0 "
                 f"{sayi(s['sh3_hc0'], d)}, HC1 {sayi(s['sh3_hc1'], d)}, HC2 {sayi(s['sh3_hc2'], d)}, HC3 "
-                f"{sayi(s['sh3_hc3'], d)}. HC1, HC0 varyansını n/(n − k − 1) = {n}/{df} ile çarpar (k: sabit dışındaki "
+                f"{sayi(s['sh3_hc3'], d)}. HC1, HC0 varyansını n/(n − k − 1) = {n}/{df} ile çarpar (k: kesim terimi dışındaki "
                 f"açıklayıcı sayısı); standart hata bunun kareköküyle büyür: {sayi(s['sh3_hc0'], d + 1)} × √({n}/{df}) "
                 f"{sign} {sayi(s['sh3_hc1'], d)}. ")
         return (text + _leverage_text(case, model) + "HC3 en koruyucudur. Varsayılan tür HC1'dir (notlardaki gibi); küçük "
@@ -760,7 +760,7 @@ def _step3(case: Case) -> LabStep:
 
     level = models["duzey"]
     fit = _fit(_data(case), level.outcome, level.terms)
-    checks = tuple(_check(f"Tablo: {'sabit terim' if term == INTERCEPT else _word_raw(case, term)}, HC1 SH",
+    checks = tuple(_check(f"Tablo: {'kesim terimi' if term == INTERCEPT else _word_raw(case, term)}, HC1 SH",
                           TableTarget("tablo_hc", f"{term}_sh", "(3) HC1"), _d(float(fit.bse[term])))
                    for term in (INTERCEPT, *level.terms))
     return _step(
@@ -772,10 +772,10 @@ def _step3(case: Case) -> LabStep:
             "§12.3'teki gerçek varyans formülünde $\\sigma_i^2$ yerine gözleme özgü bir tahmin $\\omega_i$ konur: "
             "$\\widehat{\\operatorname{Var}}(\\hat\\beta_1) = \\sum_i (X_i - \\bar X)^2\\omega_i / [\\sum_i (X_i - "
             "\\bar X)^2]^2$; çoklu regresyonda aynı fikir bütün katsayılara uygulanır. HC0'da $\\omega_i = \\hat u_i^2$; "
-            "HC1 bunu $n/(n - k - 1)$ ile çarpar ($k$: sabit dışındaki açıklayıcı sayısı); HC2 ve HC3 gözlemin "
+            "HC1 bunu $n/(n - k - 1)$ ile çarpar ($k$: kesim terimi dışındaki açıklayıcı sayısı); HC2 ve HC3 gözlemin "
             "kaldıracı $h_i$ ile $\\hat u_i^2/(1 - h_i)$ ve $\\hat u_i^2/(1 - h_i)^2$ kullanır. Kaldıraç, gözlemin "
-            "açıklayıcı değerlerinin örneklemin merkezinden uzaklığını ölçer ($0 < h_i < 1$). Katsayılar, tahmin edilen "
-            "değerler ve R² değişmez." + (" Modeli değiştirin." if _live(control) else "")
+            "açıklayıcı değerlerinin örneklemin merkezinden uzaklığını ölçer ($0 < h_i < 1$). Katsayılar, uyum "
+            "değerleri ve R² değişmez." + (" Modeli değiştirin." if _live(control) else "")
         ),
         controls=(control,),
         build=build,
@@ -830,7 +830,7 @@ def _table_decimals(case: Case, model: Model) -> int:
 
 def _output_checks(case: Case, table: str, model: Model, decimals: int) -> list[Check]:
     columns = ("coef", "OLS se", "OLS p", "HC1 se", "HC1 p")
-    return [_check(f"Tablo: {'sabit terim' if term == INTERCEPT else _word_raw(case, term)}, {column}",
+    return [_check(f"Tablo: {'kesim terimi' if term == INTERCEPT else _word_raw(case, term)}, {column}",
                    TableTarget(table, term, column), 4 if column.endswith("p") else decimals)
             for term in (INTERCEPT, *model.terms) for column in columns]
 
@@ -939,7 +939,7 @@ def _step4(case: Case) -> LabStep:
         explanation=(
             "Düzey modelinin geleneksel ve dayanıklı sonuçları aynı tabloda: katsayılar aynıdır, standart hata, "
             "p-değeri ve güven aralıkları değişir. statsmodels'te `fit(cov_type=\"HC1\", use_t=True)` (Kod 12.2) t ve F "
-            "dağılımını ($n - k - 1$ serbestlik derecesi; $k$ sabit dışındaki açıklayıcı sayısı) kullanır; `use_t` "
+            "dağılımını ($n - k - 1$ serbestlik derecesi; $k$ kesim terimi dışındaki açıklayıcı sayısı) kullanır; `use_t` "
             "yazılmazsa normal dağılım kullanılır ve p-değerleri farklı olur. Dayanıklı kovaryans türünü değiştirin: "
             "varsayılan HC1 sütunu yan yana gösterilir."
         ),
@@ -1094,7 +1094,7 @@ def _step6(case: Case) -> LabStep:
     checks = []
     for heading in ("(1) Geleneksel SH", "(2) HC1 SH"):
         for term in (*level.terms, INTERCEPT):
-            name = "sabit" if term == INTERCEPT else _word_raw(case, term)
+            name = "kesim terimi" if term == INTERCEPT else _word_raw(case, term)
             checks += [_check(f"Tablo: {heading}, {name}", TableTarget("tablo124", term, heading),
                               max(3, digits_for(float(fit.params[term]), 3))),
                        _check(f"Tablo: {heading}, {name} (SH)", TableTarget("tablo124", f"{term}_sh", heading),
@@ -1369,7 +1369,7 @@ def _step8(case: Case) -> LabStep:
         same = terms == default
         s = state.scalars
         if any(_exact(case, data, outcome, terms) for _, outcome, _ in models):
-            return ("Uyum tam olduğu için artıklar yuvarlama gürültüsüdür; testler ve standart hatalar yorumlanmaz "
+            return ("Uyum tam olduğu için artık değerler yuvarlama gürültüsüdür; testler ve standart hatalar yorumlanmaz "
                     "(§12.10)." + EXACT_NOTE)
         text = (f"Düzey sonuç modelinde BP {_p(s['p_bp_wd'], 3)}, White {_p(s['p_wh_wd'], 3)}; log sonuç modelinde BP "
                 f"{_p(s['p_bp_wl'], 3)}, White {_p(s['p_wh_wl'], 3)}. ")
@@ -1425,14 +1425,14 @@ def build(case: Case) -> LabSpec:
     other = _second(case)
     for column, label in labels_of(other).items():
         labels.setdefault(column, label)
-    labels[INTERCEPT] = "Sabit terim"
+    labels[INTERCEPT] = "Kesim terimi"
     if case.own:
         names = _names(case)
         labels.setdefault(names.ly, f"ln({case.name(case.roles[SONUC])})")
         labels.setdefault(names.lx, f"ln({case.name(case.roles[ACIKLAYICI])})")
-    labels.update({"artik": "Artık û", "artik2": "Kareli artık û²", "tahmin": "Tahmin edilen değer Ŷ",
-                   "mutlak": "Mutlak artık |û|", "ceyrek": "Tahmin edilen değerin çeyreği", "n": "Gözlem sayısı",
-                   "ss": "Artıkların standart sapması", "ort_mutlak": "Ortalama mutlak artık"})
+    labels.update({"artik": "Artık değer û", "artik2": "Artık değerin karesi û²", "tahmin": "Uyum değeri Ŷ",
+                   "mutlak": "Mutlak artık değer |û|", "ceyrek": "Uyum değerinin çeyreği", "n": "Gözlem sayısı",
+                   "ss": "Artık değerlerin standart sapması", "ort_mutlak": "Ortalama mutlak artık değer"})
     short = dict(_plot_labels(case))
     for model in _models(case).values():  # White yardımcı regresyonunun kare ve çarpım sütunları
         for name, first, second_ in _white_pairs(case, model.terms):
@@ -1474,9 +1474,9 @@ def alternative_case() -> Case:
         level_terms, outcome="price1000", base="land1000", columns=(*HOUSE_COLUMNS, "lland"),
         derived=("price1000", "area100", "land1000"),
         title="Uygulama: Heteroskedastisite ve Heteroskedastisiteye Dayanıklı Çıkarım (KIELMC ve WAGE2)",
-        models={"duzey": ("m_duzey", "price1000", level_terms, "Fiyat düzeyi", "Tahmin edilen konut fiyatı (bin dolar)",
+        models={"duzey": ("m_duzey", "price1000", level_terms, "Fiyat düzeyi", "Konut fiyatının uyum değeri (bin dolar)",
                           " (bin dolar)"),
-                "log": ("m_log", "lprice", log_terms, "Log fiyat", "Tahmin edilen log konut fiyatı", " (log birimi)")},
+                "log": ("m_log", "lprice", log_terms, "Log fiyat", "Log konut fiyatının uyum değeri", " (log birimi)")},
         plot_labels=(("land1000", "Arsa / 1.000"), ("area100", "Konut / 100"), ("rooms", "Oda"), ("baths", "Banyo"),
                      ("lland", "log(arsa)"), ("larea", "log(konut)")),
         raw={"land1000": "land", "lland": "land"},

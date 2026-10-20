@@ -95,16 +95,16 @@ def _properties(choices) -> tuple:
     return (
         LoadWooldridge(DATA, "WAGE1 veri seti (Wooldridge, 2020): 526 çalışan"),
         OLS("model", DATA, OUTCOME, (x,), f"Basit regresyon: {OUTCOME} ~ {x}"),
-        ModelValue("b0", "model", "coef", "Sabit terim β̂₀", term=INTERCEPT),
+        ModelValue("b0", "model", "coef", "Kesim terimi β̂₀", term=INTERCEPT),
         ModelValue("b1", "model", "coef", f"Eğim β̂₁ ({x})", term=x),
-        Derive(DATA, "tahmin", E.add(E.ref("b0"), E.mul(E.ref("b1"), E.var(x))), "Tahmin edilen değer Ŷᵢ"),
-        Derive(DATA, "artik", E.sub(E.var(OUTCOME), E.var("tahmin")), "Artık ûᵢ = Yᵢ − Ŷᵢ"),
+        Derive(DATA, "tahmin", E.add(E.ref("b0"), E.mul(E.ref("b1"), E.var(x))), "Uyum değeri Ŷᵢ"),
+        Derive(DATA, "artik", E.sub(E.var(OUTCOME), E.var("tahmin")), "Artık değer ûᵢ = Yᵢ − Ŷᵢ"),
         Derive(DATA, "x_artik", E.mul(E.var(x), E.var("artik")), "Xᵢ·ûᵢ"),
         Statistic(DATA, OUTCOME, "count", "n", "Gözlem sayısı", decimals=0),
         Statistic(DATA, OUTCOME, "mean", "ort_ucret", "Ortalama ücret Ȳ", decimals=6),
-        Statistic(DATA, "artik", "sum", "artik_toplami", "Artıkların toplamı Σûᵢ", decimals=10),
-        Statistic(DATA, "x_artik", "sum", "x_artik_toplami", "X ile artıkların iç çarpımı ΣXᵢûᵢ", decimals=8),
-        Statistic(DATA, "tahmin", "mean", "ort_tahmin", "Tahmin edilen değerlerin ortalaması", decimals=6),
+        Statistic(DATA, "artik", "sum", "artik_toplami", "Artık değerlerin toplamı Σûᵢ", decimals=10),
+        Statistic(DATA, "x_artik", "sum", "x_artik_toplami", "X ile artık değerlerin iç çarpımı ΣXᵢûᵢ", decimals=8),
+        Statistic(DATA, "tahmin", "mean", "ort_tahmin", "Uyum değerlerinin ortalaması", decimals=6),
         Statistic(DATA, x, "mean", "ort_x", "Açıklayıcı değişkenin ortalaması X̄", decimals=4),
         Scalar("dogru_xbar", E.add(E.ref("b0"), E.mul(E.ref("b1"), E.ref("ort_x"))), "Doğrunun X̄'daki değeri Ŷ(X̄)",
                decimals=6),
@@ -116,13 +116,13 @@ def _properties_note(state, choices) -> str:
     s = state.scalars
     words = IN_WORDS[x][1]
     text = (
-        f"Artıkların toplamı {plain(s['artik_toplami'], 10)}: bilgisayarın hesap hassasiyeti içinde sıfırdır "
-        "(Denklem 4.1); küçük işaret yazılıma göre değişebilir. X ile artıkların iç çarpımı da hesap hassasiyeti "
-        "içinde sıfırdır: EKK'da X ile artık vektörü ortogonaldir. Bu örneklem içi cebirsel sonuç, sıfır koşullu "
-        "ortalama varsayımını kanıtlamaz. Tahmin edilen değerlerin ortalaması "
+        f"Artık değerlerin toplamı {plain(s['artik_toplami'], 10)}: bilgisayarın hesap hassasiyeti içinde sıfırdır "
+        "(Denklem 4.1); küçük işaret yazılıma göre değişebilir. X ile artık değerlerin iç çarpımı da hesap hassasiyeti "
+        "içinde sıfırdır: EKK'da X ile artık değer vektörü ortogonaldir. Bu örneklem içi cebirsel sonuç, sıfır koşullu "
+        "ortalama varsayımını kanıtlamaz. Uyum değerlerinin ortalaması "
         f"{plain(s['ort_tahmin'], 6)} ve doğrunun X̄'daki değeri {plain(s['dogru_xbar'], 6)}, ortalama ücrete "
-        f"({plain(s['ort_ucret'], 6)} dolar) eşittir (Denklem 4.2–4.3). Bu eşitlikler sabit terimli her EKK "
-        "doğrusunun cebirsel özelliğidir; modelin doğru olduğunu ya da her artığın küçük olduğunu göstermez."
+        f"({plain(s['ort_ucret'], 6)} dolar) eşittir (Denklem 4.2–4.3). Bu eşitlikler kesim terimli her EKK "
+        "doğrusunun cebirsel özelliğidir; modelin doğru olduğunu ya da her artık değerin küçük olduğunu göstermez."
     )
     if x != "educ":
         text += f" Açıklayıcı değişkeni {words} yaptığınızda da aynı eşitlikler geçerlidir."
@@ -163,8 +163,8 @@ def _decomposition(choices) -> tuple:
                decimals=2),
         Scalar("model_sapma", E.sub(yhat, ybar), f"Model kaynaklı sapma Ŷᵢ − Ȳ = {plain(yhat, 2)} − {plain(ybar, 2)}",
                decimals=2),
-        Scalar("artik_sapma", E.sub(y, yhat), f"Artık ûᵢ = Yᵢ − Ŷᵢ = {plain(y, 2)} − {plain(yhat, 2)}", decimals=2),
-        Scalar("iki_bilesen", E.add(E.ref("model_sapma"), E.ref("artik_sapma")), "Model kaynaklı sapma + artık",
+        Scalar("artik_sapma", E.sub(y, yhat), f"Artık değer ûᵢ = Yᵢ − Ŷᵢ = {plain(y, 2)} − {plain(yhat, 2)}", decimals=2),
+        Scalar("iki_bilesen", E.add(E.ref("model_sapma"), E.ref("artik_sapma")), "Model kaynaklı sapma + artık değer",
                decimals=2),
     )
 
@@ -172,14 +172,14 @@ def _decomposition(choices) -> tuple:
 def _decomposition_note(state, choices) -> str:
     s = state.scalars
     total, model, residual = s["toplam_sapma"], s["model_sapma"], s["artik_sapma"]
-    text = (f"Toplam sapma {plain(total, 2)} = model kaynaklı sapma {plain(model, 2)} + artık {plain(residual, 2)} "
+    text = (f"Toplam sapma {plain(total, 2)} = model kaynaklı sapma {plain(model, 2)} + artık değer {plain(residual, 2)} "
             "(Denklem 4.4). Eşitlik her gözlemde tanım gereği sağlanır.")
     if total * model < 0:
         text += (" Bu gözlemde model tahmini ortalamanın öbür tarafındadır: model kaynaklı sapma ile toplam sapmanın "
-                 "işaretleri farklıdır; artık bu farkı kapatır.")
+                 "işaretleri farklıdır; artık değer bu farkı kapatır.")
     elif abs(residual) > abs(total) and total != 0:
-        text += " Artık toplam sapmadan büyüktür: bu gözlemde doğru ortalamadan daha kötü bir tahmin vermiştir."
-    return text + (" “Model kaynaklı” sapma nedensel bir açıklama değildir; yalnız tahmin edilen değerin ortalamadan "
+        text += " Artık değer toplam sapmadan büyüktür: bu gözlemde doğru ortalamadan daha kötü bir tahmin vermiştir."
+    return text + (" “Model kaynaklı” sapma nedensel bir açıklama değildir; yalnız uyum değerinin ortalamadan "
                    "ne kadar ayrıldığını anlatır.")
 
 
@@ -200,7 +200,7 @@ def _sums_of_squares(choices) -> tuple:
         Scalar("mkt_hkt", E.add(E.ref("mkt"), E.ref("hkt")), "MKT + HKT", decimals=3),
         ScalarTable((("TKT", E.ref("tkt")), ("MKT", E.ref("mkt")), ("HKT", E.ref("hkt"))), "kareler", decimals=1),
         BarChart("kareler", "deger", "Kareler toplamı türü", "Kareler toplamı ((dolar/saat)²)",
-                 f"WAGE1, ücret–{words} modeli: toplam, model ve artık kareler toplamları", decimals=1),
+                 f"WAGE1, ücret–{words} modeli: toplam, model ve artık değerlerin kareleri toplamları", decimals=1),
     )
 
 
@@ -210,13 +210,13 @@ def _sums_note(state, choices) -> str:
     words = IN_WORDS[x][1]
     return (
         f"Çapraz terim Σ(Ŷᵢ − Ȳ)ûᵢ = {plain(s['capraz_terim_toplami'], 8)}: hesap hassasiyeti içinde sıfırdır. "
-        "Çünkü sabit terimli basit EKK'da Ŷᵢ − Ȳ = β̂₁(Xᵢ − X̄) ve Adım 1'de doğruladığınız ortogonallik "
+        "Çünkü kesim terimli basit EKK'da Ŷᵢ − Ȳ = β̂₁(Xᵢ − X̄) ve Adım 1'de doğruladığınız ortogonallik "
         "Σ(Xᵢ − X̄)ûᵢ = 0'dır. Bu nedenle TKT = "
         f"{plain(s['tkt'], 3)} = MKT {plain(s['mkt'], 3)} + HKT {plain(s['hkt'], 3)} (Denklem 4.5). Toplam "
         f"değişkenliğin yaklaşık {plain(s['mkt'], 1)} birimlik kısmı {words}–ücret doğrusu boyunca hareket ederken "
-        f"{plain(s['hkt'], 1)} birimlik kısmı artıklarda kalır. TKT açıklayıcı değişkene bağlı değildir: yalnız "
+        f"{plain(s['hkt'], 1)} birimlik kısmı artık değerlerde kalır. TKT açıklayıcı değişkene bağlı değildir: yalnız "
         "ücretin ortalama çevresindeki değişkenliğidir. EKK'nin en küçük yaptığı ölçüt HKT'dir. Kısaltmalara dikkat: "
-        "bazı yazılımlarda `SSR` artık kareler toplamı, bazılarında regresyon kareler toplamıdır."
+        "bazı yazılımlarda `SSR` artık değerlerin kareleri toplamı, bazılarında regresyon kareler toplamıdır."
     )
 
 
@@ -243,7 +243,7 @@ def _r_squared_note(state, choices) -> str:
         f"R² = {plain(s['r2_mkt'], 4)}: WAGE1 örnekleminde saatlik ücretin ortalama çevresindeki değişkenliğinin "
         f"yaklaşık %{plain(s['r2_yuzde'], 1)} kadarı {_accusative(words)} kullanan doğrusal model tarafından "
         "örneklem içinde izlenir. Yorum örnekleme ve seçilen doğrusal modele aittir; nedensel etki oranı değildir. "
-        f"Sabit terimli basit regresyonda R² korelasyonun karesidir: r = {plain(s['r'], 4)}, r² = "
+        f"Kesim terimli basit regresyonda R² korelasyonun karesidir: r = {plain(s['r'], 4)}, r² = "
         f"{plain(s['r_kare'], 4)}. Yüksek R² nedenselliği ya da doğru modeli garanti etmez; düşük R² katsayıyı "
         "değersiz yapmaz. R²'ler yalnız aynı bağımlı değişkenli modeller arasında karşılaştırılır (§4.6)."
     )
@@ -274,7 +274,7 @@ def _units(choices) -> tuple:
         OLS("model_birim", HPRICE, y, (x,), f"Düzey–düzey model: {y} ~ {x}"),
         ShowModel("model_birim", "Notlardaki birimlerle model (§4.9.1)" if notes else "Seçtiğiniz birimlerle model",
                   columns=("coef",), stats=("nobs", "r2"), stars=False),
-        ModelValue("sabit_birim", "model_birim", "coef", f"Sabit terim ({y_name})", term=INTERCEPT, decimals=3),
+        ModelValue("sabit_birim", "model_birim", "coef", f"Kesim terimi ({y_name})", term=INTERCEPT, decimals=3),
         ModelValue("egim_birim", "model_birim", "coef", f"Eğim ({y_name} / {x_name})", term=x),
         ModelValue("r2_birim", "model_birim", "r2", "R²", decimals=4),
         Scalar("bir_fit_dolar", E.mul(E.ref("egim_birim"), 1000 / (y_factor * x_size)),
@@ -296,20 +296,20 @@ def _units_note(state, choices) -> str:
     y_key, x_key = choices["adim6_y"], choices["adim6_x"]
     s = state.scalars
     y_name, x_name = Y_UNITS[y_key][1], X_UNITS[x_key][1]
-    text = (f"Eğim {plain(s['egim_birim'], 4)} {y_name} / {x_name}; sabit {plain(s['sabit_birim'], 3)} {y_name}. "
+    text = (f"Eğim {plain(s['egim_birim'], 4)} {y_name} / {x_name}; kesim terimi {plain(s['sabit_birim'], 3)} {y_name}. "
             f"Ekonomik ilişki aynıdır: bir kare fitlik farkın tahmini fiyat farkı {plain(s['bir_fit_dolar'], 1)} "
             f"dolar, 100 kare fitlik farkınki {plain(s['yuz_fit_bin'], 2)} bin dolardır; R² = "
             f"{plain(s['r2_birim'], 4)}.")
     if (y_key, x_key) == ("bin", "fit"):
-        return text + (" Birim kuralı (Tablo 4.1): fiyat 1000 ile çarpılırsa sabit ve eğim 1000 ile çarpılır; "
-                       "büyüklük 100'e bölünürse eğim 100 ile çarpılır, sabit değişmez. Tahmin edilen fiyatlar "
+        return text + (" Birim kuralı (Tablo 4.1): fiyat 1000 ile çarpılırsa kesim terimi ve eğim 1000 ile çarpılır; "
+                       "büyüklük 100'e bölünürse eğim 100 ile çarpılır, kesim terimi değişmez. Tahmin edilen fiyatlar "
                        "ekonomik olarak aynıdır (fiyat dolar yazılınca sayı olarak 1000 ile çarpılır); R² değişmez. "
                        "Birimleri değiştirerek deneyin.")
     changes = []
     if y_key == "dolar":
-        changes.append("fiyatı dolar yaptınız: sabit, eğim ve tahmin edilen fiyatlar 1000 ile çarpıldı")
+        changes.append("fiyatı dolar yaptınız: kesim terimi, eğim ve tahmin edilen fiyatlar 1000 ile çarpıldı")
     if x_key == "yuz":
-        changes.append("büyüklüğü yüz kare fit yaptınız: eğim 100 ile çarpıldı, sabit değişmedi")
+        changes.append("büyüklüğü yüz kare fit yaptınız: eğim 100 ile çarpıldı, kesim terimi değişmedi")
     predictions = ("Tahmin edilen fiyatlar ekonomik olarak aynıdır, yalnız yazıldıkları birim değişir"
                    if y_key == "dolar" else "Tahmin edilen fiyatlar hiç değişmez")
     return text + " Tabloda " + "; ".join(changes) + f". {predictions}; R² değişmez (Tablo 4.1)."
@@ -357,7 +357,7 @@ _FORM_NOTES = {
                   "{ld1} farkla ilişkilidir; 100 kare fitlik fark için yaklaşık yüzde {ld}. Eğim küçük görünür, çünkü "
                   "bir kare fit küçük bir birimdir."),
     "duzey_log": ("Fiyat düzeyde, büyüklük logaritmiktir: büyüklükteki yüzde 1'lik fark koşullu aritmetik ortalama fiyatta yaklaşık β̂₁/100 = "
-                  "{dl} bin dolarlık farkla ilişkilidir. Sonuç yüzde değil, fiyat birimidir. Sabitin ekonomik anlamı "
+                  "{dl} bin dolarlık farkla ilişkilidir. Sonuç yüzde değil, fiyat birimidir. Kesim teriminin ekonomik anlamı "
                   "yoktur: ln(büyüklük) = 0, yani bir kare fitlik konut demektir."),
     "log_log": ("İki değişken de logaritmiktir; eğim esnekliktir: büyüklük yüzde 1 daha yüksek olduğunda tahmin "
                 "edilen koşullu geometrik ortalama fiyat yaklaşık yüzde {ll} daha yüksektir; yüzde 10 için yaklaşık yüzde {ll10}."),
@@ -465,29 +465,29 @@ _FORM_TABLE = (
     ("(3) Düzey–log", "lsqrft", 297.911, 3), ("(3) Düzey–log", INTERCEPT, -1962.420, 3),
     ("(4) Log–log", "lsqrft", 0.8727, 4), ("(4) Log–log", INTERCEPT, -0.9751, 4),
 )
-"""Tablo 4.3: dört biçimin eğim ve sabit tahminleri (basılı basamakla)."""
+"""Tablo 4.3: dört biçimin eğim ve kesim terimi tahminleri (basılı basamakla)."""
 _FORM_R2 = (("(1) Düzey–düzey", 0.6208), ("(2) Log–düzey", 0.5837), ("(3) Düzey–log", 0.5630), ("(4) Log–log", 0.5530))
-_TERM_NAMES = {"sqrft": "eğim", "lsqrft": "eğim", INTERCEPT: "sabit"}
+_TERM_NAMES = {"sqrft": "eğim", "lsqrft": "eğim", INTERCEPT: "kesim terimi"}
 
 STEPS = (
     interactive_step(
         number=1,
         title="EKK doğrusunun temel örneklem özellikleri",
-        note=NoteRef("4.1", 0, ("Kod 4.1", "Denklem 4.1–4.3", "X ile artıkların ortogonalliği")),
+        note=NoteRef("4.1", 0, ("Kod 4.1", "Denklem 4.1–4.3", "X ile artık değerlerin ortogonalliği")),
         explanation=(
-            "Sabit terimli EKK tahmininde dört örneklem özelliği sağlanır: artıkların toplamı sıfırdır ($\\sum "
-            "\\hat u_i = 0$), tahmin edilen değerlerin ortalaması $\\bar Y$'ye eşittir ve doğru $(\\bar X, \\bar Y)$ "
-            "noktasından geçer. Ayrıca $\\sum X_i\\hat u_i=0$: açıklayıcı değişken ile artıklar örneklemde ortogonaldir. "
-            "Önce model tahmin edilir; tahmin edilen değer ve artık her çalışan için hesaplanır."
+            "Kesim terimli EKK tahmininde dört örneklem özelliği sağlanır: artık değerlerin toplamı sıfırdır ($\\sum "
+            "\\hat u_i = 0$), uyum değerlerinin ortalaması $\\bar Y$'ye eşittir ve doğru $(\\bar X, \\bar Y)$ "
+            "noktasından geçer. Ayrıca $\\sum X_i\\hat u_i=0$: açıklayıcı değişken ile artık değerler örneklemde ortogonaldir. "
+            "Önce model tahmin edilir; uyum değeri ve artık değer her çalışan için hesaplanır."
         ),
         controls=(X_CHOICE,),
         build=_properties,
         checks=(
             _scalar("n", 526, "Kod 4.1: gözlem sayısı", 0),
             _scalar("ort_ucret", 5.896103, "Kod 4.1: ortalama ücret", 6),
-            _scalar("artik_toplami", 0.0, "Kod 4.1: artıkların toplamı", 10),
-            _scalar("x_artik_toplami", 0.0, "§4.1: X ile artıkların iç çarpımı", 8),
-            _scalar("ort_tahmin", 5.896103, "Kod 4.1: tahmin edilen değerlerin ortalaması", 6),
+            _scalar("artik_toplami", 0.0, "Kod 4.1: artık değerlerin toplamı", 10),
+            _scalar("x_artik_toplami", 0.0, "§4.1: X ile artık değerlerin iç çarpımı", 8),
+            _scalar("ort_tahmin", 5.896103, "Kod 4.1: uyum değerlerinin ortalaması", 6),
             _scalar("dogru_xbar", 5.896103, "Denklem 4.3: doğru (X̄, Ȳ) noktasından geçer", 6),
         ),
         note_for=lambda state, choices: _properties_note(state, choices),
@@ -512,7 +512,7 @@ STEPS = (
         note=NoteRef("4.3", 0, ("Denklem 4.4",)),
         explanation=(
             "Her gözlemde $Y_i - \\bar Y = (\\hat Y_i - \\bar Y) + \\hat u_i$ (Denklem 4.4): toplam sapma, model "
-            "kaynaklı sapma ile artığın toplamıdır. Notlardaki örnekte örneklem ortalaması 6, modelin tahmini 8, "
+            "kaynaklı sapma ile artık değerin toplamıdır. Notlardaki örnekte örneklem ortalaması 6, modelin tahmini 8, "
             "gözlenen ücret 9,5'tir. Değerleri değiştirerek iki bileşenin toplam sapmayı nasıl paylaştığını görün."
         ),
         controls=(
@@ -535,7 +535,7 @@ STEPS = (
         note=NoteRef("4.4", 0, ("Kod 4.2", "Denklem 4.5", "Şekil 4.2")),
         explanation=(
             "Sapmaların işaretleri birbirini götürebildiği için kareleri toplanır: TKT $= \\sum (Y_i - \\bar Y)^2$, "
-            "MKT $= \\sum (\\hat Y_i - \\bar Y)^2$, HKT $= \\sum \\hat u_i^2$. Sabit terimli EKK modelinde TKT = MKT + "
+            "MKT $= \\sum (\\hat Y_i - \\bar Y)^2$, HKT $= \\sum \\hat u_i^2$. Kesim terimli EKK modelinde TKT = MKT + "
             "HKT (Denklem 4.5), çünkü kare açılımındaki $\\sum (\\hat Y_i - \\bar Y)\\hat u_i$ çapraz terimi sıfırdır. "
             "Bu, Adım 1'deki ortogonalliğin sonucudur; herhangi bir doğrunun otomatik özelliği değildir. Bu adım Adım "
             "1'deki modeli kullanır."
@@ -549,7 +549,7 @@ STEPS = (
             _scalar("capraz_terim_toplami", 0.0, "§4.4: çapraz terim", 8),
             _scalar("mkt_hkt", 7160.414, "Kod 4.2: MKT + HKT", 3),
             _scalar("mkt", 1179.7, "§4.4: doğru boyunca hareket eden kısım", 1),
-            _scalar("hkt", 5980.7, "§4.4: artıklarda kalan kısım", 1),
+            _scalar("hkt", 5980.7, "§4.4: artık değerlerde kalan kısım", 1),
         ),
         note_for=lambda state, choices: _sums_note(state, choices),
     ),
@@ -559,7 +559,7 @@ STEPS = (
         note=NoteRef("4.5", 0, ("Denklem 4.6",)),
         explanation=(
             "$R^2 = \\text{MKT}/\\text{TKT} = 1 - \\text{HKT}/\\text{TKT}$ (Denklem 4.6): bağımlı değişkenin örneklem "
-            "değişkenliğinin doğrusal model tarafından izlenen payı. Sabit terimli basit regresyonda $R^2 = r_{XY}^2$ "
+            "değişkenliğinin doğrusal model tarafından izlenen payı. Kesim terimli basit regresyonda $R^2 = r_{XY}^2$ "
             "(§4.5). Yorumun dört sınırı: örnekleme aittir, bağımlı değişkenin örneklem değişkenliğiyle ilgilidir, "
             "seçilen doğrusal model içindir, nedensel etki oranı "
             "değildir (§4.5–4.6). Bu adım Adım 1'deki modeli kullanır."
@@ -592,7 +592,7 @@ STEPS = (
         ),
         build=_units,
         checks=(
-            _scalar("sabit_birim", 11.204, "§4.9.1: sabit terim", 3),
+            _scalar("sabit_birim", 11.204, "§4.9.1: kesim terimi", 3),
             _scalar("egim_birim", 0.1402, "§4.9.1: eğim (bin dolar / kare fit)", 4),
             _scalar("bir_fit_dolar", 140.2, "§4.9.1: bir kare fit, yaklaşık 140,2 dolar", 1),
             _scalar("yuz_fit_bin", 14.02, "§4.9.1: 100 kare fit, 14,02 bin dolar", 2),
@@ -648,16 +648,16 @@ STEPS = (
         checks=(
             Check("Kod 4.4: gözlem sayısı", ModelTarget("model_log", "nobs"), 526, 0),
             Check("Kod 4.4: R²", ModelTarget("model_log", "r2"), 0.186, 3),
-            Check("Kod 4.4: sabit terim", CoefTarget("model_log", INTERCEPT), 0.5838, 4),
+            Check("Kod 4.4: kesim terimi", CoefTarget("model_log", INTERCEPT), 0.5838, 4),
             Check("Kod 4.4: eğitim katsayısı", CoefTarget("model_log", "educ"), 0.0827, 4),
-            Check("Kod 4.4: sabit terimin standart hatası", CoefTarget("model_log", INTERCEPT, "se"), 0.097, 3),
+            Check("Kod 4.4: kesim teriminin standart hatası", CoefTarget("model_log", INTERCEPT, "se"), 0.097, 3),
             Check("Kod 4.4: eğitim katsayısının standart hatası", CoefTarget("model_log", "educ", "se"), 0.008, 3),
-            Check("Kod 4.4: sabit terimin t değeri", CoefTarget("model_log", INTERCEPT, "t"), 5.998, 3),
+            Check("Kod 4.4: kesim teriminin t değeri", CoefTarget("model_log", INTERCEPT, "t"), 5.998, 3),
             Check("Kod 4.4: eğitim katsayısının t değeri", CoefTarget("model_log", "educ", "t"), 10.935, 3),
-            Check("Kod 4.4: sabit terimin p-değeri", CoefTarget("model_log", INTERCEPT, "p"), 0.000, 3),
+            Check("Kod 4.4: kesim teriminin p-değeri", CoefTarget("model_log", INTERCEPT, "p"), 0.000, 3),
             Check("Kod 4.4: eğitim katsayısının p-değeri", CoefTarget("model_log", "educ", "p"), 0.000, 3),
-            Check("Kod 4.4: sabit terim, %95 GA alt sınır", CoefTarget("model_log", INTERCEPT, "ci_low"), 0.393, 3),
-            Check("Kod 4.4: sabit terim, %95 GA üst sınır", CoefTarget("model_log", INTERCEPT, "ci_high"), 0.775, 3),
+            Check("Kod 4.4: kesim terimi, %95 GA alt sınır", CoefTarget("model_log", INTERCEPT, "ci_low"), 0.393, 3),
+            Check("Kod 4.4: kesim terimi, %95 GA üst sınır", CoefTarget("model_log", INTERCEPT, "ci_high"), 0.775, 3),
             Check("Kod 4.4: eğitim, %95 GA alt sınır", CoefTarget("model_log", "educ", "ci_low"), 0.068, 3),
             Check("Kod 4.4: eğitim, %95 GA üst sınır", CoefTarget("model_log", "educ", "ci_high"), 0.098, 3),
             _scalar("yuzde_log", 8.27, "§4.9.2 ve §4.10: yaklaşık yüzde 8,27", 2),
@@ -701,7 +701,7 @@ STEPS = (
             "Bir regresyon çıktısı veya makale tablosunda uyum ve fonksiyonel biçimi değerlendirirken:\n\n1. Araştırma "
             "sorusu, gözlem birimi ve veri yapısı nedir?\n2. Bağımlı ve açıklayıcı değişkenler hangileridir?\n3. "
             "Değişkenler düzeyde mi, logaritmik mi?\n4. Eğim katsayısının işareti, büyüklüğü ve ölçü birimi nedir?\n5. "
-            "Katsayı birim, yüzde veya esneklik olarak mı yorumlanmalıdır?\n6. Tahmin edilen değer ve artık nasıl "
+            "Katsayı birim, yüzde veya esneklik olarak mı yorumlanmalıdır?\n6. Uyum değeri ve artık değer nasıl "
             "hesaplanır?\n7. R² hangi bağımlı değişkenin örneklem değişkenliğini özetlemektedir?\n8. R² yorumu "
             "nedensellik iddiasına dönüştürülmüş mü?\n9. Farklı modeller aynı bağımlı değişken ve aynı örneklem "
             "üzerinde mi karşılaştırılıyor?\n10. Henüz tanımlanmamış "
@@ -718,9 +718,9 @@ KONU04_LAB = LabSpec(
     steps=STEPS,
     labels=(
         *W.labels(HPRICE, DATA),
-        (INTERCEPT, "Sabit terim"),
-        ("tahmin", "Tahmin edilen değer Ŷᵢ"),
-        ("artik", "Artık ûᵢ"),
+        (INTERCEPT, "Kesim terimi"),
+        ("tahmin", "Uyum değeri Ŷᵢ"),
+        ("artik", "Artık değer ûᵢ"),
         ("toplam_kare", "(Yᵢ − Ȳ)²"),
         ("model_kare", "(Ŷᵢ − Ȳ)²"),
         ("artik_kare", "ûᵢ²"),

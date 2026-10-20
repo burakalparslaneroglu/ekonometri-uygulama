@@ -1196,7 +1196,7 @@ def _step9(case: Case) -> LabStep:
         amount = f"{sayi(abs(b1), digits)} {unit}".strip() if unit else f"{sayi(abs(b1), digits)} birim"
         text = (f"Çıktıdaki eğim {sayi(b1, 4)}; aynı sayı kovaryansın varyansa oranıdır: {sayi(s['kov_yx'], 4)} / "
                 f"{sayi(s['var_x'], 4)} = {sayi(s['egim_formul'], 4)}. R² = {sayi(s['r2'], 3)}, korelasyonun "
-                f"karesiyle aynıdır ({sayi(s['r_kare'], 3)}); bu eşitlik yalnız sabit terimli basit regresyonda "
+                f"karesiyle aynıdır ({sayi(s['r_kare'], 3)}); bu eşitlik yalnız kesim terimli basit regresyonda "
                 "geçerlidir. ")
         subject = case.extra.get("plural_unit", "gözlemlerin")
         y_name = dict(case.extra.get("possessive", {})).get(y) or f"{_phrase(case, y)} değeri"
@@ -1229,16 +1229,16 @@ def _step9(case: Case) -> LabStep:
         controls=(choice,),
         build=build,
         checks=stable_checks((
-            coef(INTERCEPT, "coef", 4, "Sabit terim"),
+            coef(INTERCEPT, "coef", 4, "Kesim terimi"),
             coef(default, "coef", 4, "Eğim katsayısı"),
-            coef(INTERCEPT, "se", 3, "Sabit terimin standart hatası"),
+            coef(INTERCEPT, "se", 3, "Kesim teriminin standart hatası"),
             coef(default, "se", 3, "Eğimin standart hatası"),
-            coef(INTERCEPT, "t", 3, "Sabit terimin t değeri"),
+            coef(INTERCEPT, "t", 3, "Kesim teriminin t değeri"),
             coef(default, "t", 3, "Eğimin t değeri"),
-            coef(INTERCEPT, "p", 3, "Sabit terimin p-değeri"),
+            coef(INTERCEPT, "p", 3, "Kesim teriminin p-değeri"),
             coef(default, "p", 3, "Eğimin p-değeri"),
-            coef(INTERCEPT, "ci_low", 3, "Sabit terim, %95 GA alt sınır"),
-            coef(INTERCEPT, "ci_high", 3, "Sabit terim, %95 GA üst sınır"),
+            coef(INTERCEPT, "ci_low", 3, "Kesim terimi, %95 GA alt sınır"),
+            coef(INTERCEPT, "ci_high", 3, "Kesim terimi, %95 GA üst sınır"),
             coef(default, "ci_low", 3, "Eğim, %95 GA alt sınır"),
             coef(default, "ci_high", 3, "Eğim, %95 GA üst sınır"),
             Check("R²", ModelTarget("model", "r2"), 0.0, 3),
@@ -1261,7 +1261,7 @@ def _labels(case: Case) -> tuple[tuple[str, str], ...]:
         "gozlem": "Gözlem (sıra)" if case.own else "Gözlem (WAGE2'deki sıra)",
         "sapma": "Sapma xᵢ − x̄", "sapma_kare": "Kareli sapma", "A": "Veri seti A", "B": "Veri seti B", "y": "y",
         "x": "x", "x1": "Yeni değer x₁", "tam": "Tam yüzde değişim", "log_fark": "Log farkı ×100", "fark": "Fark",
-        "count": "Gözlem sayısı", "mean": "Ortalama", "deger": "Değer", INTERCEPT: "Sabit terim", "n": "Gözlem sayısı",
+        "count": "Gözlem sayısı", "mean": "Ortalama", "deger": "Değer", INTERCEPT: "Kesim terimi", "n": "Gözlem sayısı",
         "k": "Analitik değişken sayısı",
     })
     code = _code_column(case)

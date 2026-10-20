@@ -2,12 +2,12 @@
 
 Deney 1  Kahve zinciri: sistematik bölüm ve hata terimi          (Notlar §1.3)
 Deney 2  Aynı doğru, farklı sorular: tahmin ve nedensel etki     (Notlar §1.5)
-Deney 3  Sabit terim ve verinin aralığı                           (Notlar §1.6, Adım 5)
+Deney 3  Kesim terimi ve verinin aralığı                           (Notlar §1.6, Adım 5)
 
 Deney 1, Konu 1 sunumundaki kahve zinciri senaryosunun simülasyonudur: son 60 günde reklam harcaması, hafta sonu,
 hava ve diğer etkilerle günlük satış (tohum 305). Sunumun hata terimi slaydı bu deneye yönlendirir. Deney 2 aynı
 zincirde yöneticinin yoğun gün beklediğinde daha çok reklam verdiği durumu, Deney 3 WAGE1 uygulamasındaki negatif
-sabit terimi (Denklem 1.4) kontrollü veriyle inceler. Konu 1'de standart hata ve test yoktur; deneyler katsayıyı,
+kesim terimi (Denklem 1.4) kontrollü veriyle inceler. Konu 1'de standart hata ve test yoktur; deneyler katsayıyı,
 R²'yi ve bilinen gerçeği karşılaştırır. Beklenen değer notlardaki gibi E(· | ·) ile yazılır (LaTeX'te 𝔼).
 """
 
@@ -91,11 +91,11 @@ def _build_coffee(parameters: Parameters) -> tuple:
         Derive("gunler", "satis", E.add(E.add(BASE_SALES, E.mul(slope, E.var("reklam"))), E.var("u")),
                "Günlük satış (TL)"),
         OLS("model", "gunler", "satis", ("reklam",), "Basit regresyon: satış ~ reklam"),
-        ModelValue("b0", "model", "coef", "Tahmin edilen sabit terim β̂₀", term=INTERCEPT, decimals=2),
+        ModelValue("b0", "model", "coef", "Tahmin edilen kesim terimi β̂₀", term=INTERCEPT, decimals=2),
         ModelValue("b1", "model", "coef", "Tahmin edilen eğim β̂₁", term="reklam", decimals=2),
         *r_squared,
         Scalar("sabit_gercek", E.add(BASE_SALES, E.mul(scale, WEEKEND_MEAN)),
-               "Gerçek ortalama ilişkinin sabiti: 3100 + 160·k", decimals=2),
+               "Gerçek ortalama ilişkinin kesim terimi: 3100 + 160·k", decimals=2),
         ScatterPlot("gunler", "reklam", "satis", "Günlük reklam harcaması (TL)", "Günlük satış (TL)",
                     "Kahve zinciri: reklam harcaması ve günlük satış", fit_line=True, size=8, opacity=0.7,
                     lines=(("sabit_gercek", slope, "Gerçek ortalama ilişki E(satış | reklam)"),)),
@@ -122,7 +122,7 @@ def _coffee_metrics(state: LabState, parameters: Parameters) -> tuple[SimMetric,
         SimMetric("Gerçek eğim β₁", plain(slope, 2), "Veri üretim sürecindeki reklam katsayısı: TL satış / TL reklam."),
         SimMetric("Tahmin β̂₁", plain(s["b1"], 2), "Bu örneklemden tahmin edilen eğim."),
         SimMetric("Tahmin β̂₀", plain(s["b0"], 0),
-                  f"Gerçek ortalama ilişkinin sabiti 3100 + 160·k = {plain(s['sabit_gercek'], 0)} TL."),
+                  f"Gerçek ortalama ilişkinin kesim terimi 3100 + 160·k = {plain(s['sabit_gercek'], 0)} TL."),
         SimMetric("R²", plain(s["r2"], 3) if math.isfinite(s.get("r2", math.nan)) else "tanımsız",
                   "Satıştaki değişkenliğin reklamla doğrusal olarak açıklanan payı."),
     )
@@ -139,7 +139,7 @@ def _coffee_takeaway(state: LabState, parameters: Parameters) -> str:
         )
     if scale == 0:
         return (
-            "k = 0: hata terimi yok. Bütün noktalar doğru üzerindedir; tahmin edilen doğru gerçek ilişkiyle aynıdır ve "
+            "k = 0: hata terimi yok. Bütün noktalar doğru üzerindedir; uyum doğrusu gerçek ilişkiyle aynıdır ve "
             "R² = 1. Gerçek verilerde bu durum yoktur: satışı reklam dışında hafta sonu, hava, rakip kampanyaları gibi "
             "birçok faktör etkiler. Ekonometrik model bu etkileri uᵢ hata teriminde toplar (§1.3)."
         )
@@ -165,7 +165,7 @@ COFFEE = SimExperiment(
     number=1,
     title="Kahve zinciri: sistematik bölüm ve hata terimi",
     question="Günlük satışı reklam harcamasıyla açıklayan modelde hata terimi neyi temsil eder ve büyüdükçe veri ile "
-             "tahmin edilen doğru nasıl değişir?",
+             "uyum doğrusu nasıl değişir?",
     note=NoteRef("1.3"),
     parameters=(
         SimParameter("olcek", "Gözlenmeyen etkilerin ölçeği k", 0, 3, 1, 0.25,
@@ -179,11 +179,11 @@ COFFEE = SimExperiment(
     dgp_note=(
         "Hafta sonu, hava ve diğer etkiler araştırmacının basit modelinde yoktur; hepsi hata terimindedir. Reklam bu "
         "etkilerden bağımsız çekilir. Hafta sonu (haftanın 7 gününden 2'si) satışa 560 TL eklediği için u'nun "
-        "ortalaması 560 · 2/7 · k = 160·k TL'dir; gerçek ortalama ilişkinin sabiti bu yüzden 3100 + 160·k'dır."
+        "ortalaması 560 · 2/7 · k = 160·k TL'dir; gerçek ortalama ilişkinin kesim terimi bu yüzden 3100 + 160·k'dır."
     ),
     look_at=(
         "**Saçılım grafiği** — noktaların doğru çevresindeki dağılımı hata terimidir.",
-        "**İki doğru** — kesikli çizgi bilinen gerçek ortalama ilişki, düz çizgi veriden tahmin edilen doğru.",
+        "**İki doğru** — kesikli çizgi bilinen gerçek ortalama ilişki, düz çizgi veriden uyum doğrusu.",
         "**R²** — k büyüdükçe satıştaki değişkenliğin reklamla açıklanan payı.",
     ),
     build=_build_coffee,
@@ -210,7 +210,7 @@ def _questions_settings(parameters: Parameters) -> tuple[float, float, int]:
 
 
 def _conditional_line(rho: float, slope: float) -> tuple[float, float]:
-    """Gerçek koşullu ortalama E(satış | reklam = x) = sabit + eğim·x (yoğunluk ile reklam birlikte normal)."""
+    """Gerçek koşullu ortalama E(satış | reklam = x) = kesim terimi + eğim·x (yoğunluk ile reklam birlikte normal)."""
 
     shift = BUSY_EFFECT * rho / AD_SPREAD
     # Kodda 10,499999999999998 gibi yazımlar olmasın: doğrular altı basamakla yeterince kesindir.
@@ -232,7 +232,7 @@ def _build_questions(parameters: Parameters) -> tuple:
         Derive("gunler", "reklam", advertising, "Reklam harcaması: 120 + 40·(ρ·yoğunluk + √(1 − ρ²)·v)"),
         Derive("gunler", "satis", sales, "Günlük satış: 3100 + β₁·reklam + 600·yoğunluk + e"),
         OLS("model", "gunler", "satis", ("reklam",), "Basit regresyon: satış ~ reklam"),
-        ModelValue("b0", "model", "coef", "Tahmin edilen sabit terim β̂₀", term=INTERCEPT, decimals=2),
+        ModelValue("b0", "model", "coef", "Tahmin edilen kesim terimi β̂₀", term=INTERCEPT, decimals=2),
         ModelValue("b1", "model", "coef", "Tahmin edilen eğim β̂₁", term="reklam", decimals=2),
         Scalar("tahmin", E.add(E.ref("b0"), E.mul(E.ref("b1"), PREDICTION_POINT)),
                "Tahmin: reklam = 160 TL olan günde ortalama satış", decimals=0),
@@ -241,7 +241,7 @@ def _build_questions(parameters: Parameters) -> tuple:
         Scalar("regresyon_cevabi", E.mul(E.ref("b1"), EXTRA_AD), "Regresyonun cevabı: 10 TL ek reklam", decimals=0),
         Scalar("nedensel_cevap", E.mul(slope, EXTRA_AD), "Gerçek etki: 10 TL ek reklam", decimals=0),
         ScatterPlot("gunler", "reklam", "satis", "Günlük reklam harcaması (TL)", "Günlük satış (TL)",
-                    "Reklam ve satış: tahmin edilen doğru ve iki bilinen doğru", fit_line=True, size=7, opacity=0.6,
+                    "Reklam ve satış: uyum doğrusu ve iki bilinen doğru", fit_line=True, size=7, opacity=0.6,
                     lines=((intercept, conditional_slope, "Gerçek koşullu ortalama E(satış | reklam)"),
                            (BASE_SALES, slope, "Yoğunluk sabitken reklamın etkisi (β₁)"))),
     )
@@ -340,7 +340,7 @@ QUESTIONS = SimExperiment(
         "ortalama satış."
     ),
     look_at=(
-        "**Düz çizgi ve birinci kesikli çizgi** — tahmin edilen doğru gerçek koşullu ortalamayı hedefler; n büyüdükçe "
+        "**Düz çizgi ve birinci kesikli çizgi** — uyum doğrusu gerçek koşullu ortalamayı hedefler; n büyüdükçe "
         "ona yaklaşır: tahmin sorusu.",
         "**İkinci kesikli çizgi** — yoğunluk sabitken reklamın etkisi: nedensel soru. ρ > 0 iken daha yatıktır.",
         "**Metrikler** — veriden eğim ile nedensel etki, tahmin ile gerçek ortalama.",
@@ -352,7 +352,7 @@ QUESTIONS = SimExperiment(
 )
 
 
-# --- Deney 3: sabit terim ve verinin aralığı ------------------------------------------------------------
+# --- Deney 3: kesim terimi ve verinin aralığı ------------------------------------------------------------
 
 LOG_INTERCEPT, LOG_SLOPE, LOG_SPREAD = 0.4, 0.1, 0.45
 """ücret = exp(0,4 + 0,1·eğitim + e), e ~ N(0, 0,45²): WAGE1'e benzer düzeyler ve dışbükey ortalama ilişki."""
@@ -378,20 +378,20 @@ def _build_intercept(parameters: Parameters) -> tuple:
         Derive("orneklem", "wage", E.exp(E.add(E.add(LOG_INTERCEPT, E.mul(LOG_SLOPE, E.var("educ"))), E.var("e"))),
                "Saatlik ücret: exp(0,4 + 0,1·eğitim + e)"),
         OLS("model", "orneklem", "wage", ("educ",), "Basit regresyon: wage ~ educ"),
-        ModelValue("b0", "model", "coef", "Tahmin edilen sabit terim β̂₀", term=INTERCEPT, decimals=3),
+        ModelValue("b0", "model", "coef", "Tahmin edilen kesim terimi β̂₀", term=INTERCEPT, decimals=3),
         ModelValue("b1", "model", "coef", "Tahmin edilen eğim β̂₁", term="educ", decimals=3),
         Statistic("orneklem", "educ", "min", "en_dusuk", "Örneklemdeki en düşük eğitim", decimals=0),
         Scalar("gercek_sifir", E.exp(E.add(LOG_INTERCEPT, E.div(E.power(LOG_SPREAD, 2), 2))),
                "Gerçek ortalama ücret, eğitim = 0", decimals=3),
-        ScatterPlot("orneklem", "educ", "wage", "Eğitim (yıl)", "Saatlik ücret", "Örneklem ve tahmin edilen doğru",
+        ScatterPlot("orneklem", "educ", "wage", "Eğitim (yıl)", "Saatlik ücret", "Örneklem ve uyum doğrusu",
                     fit_line=True, size=6, opacity=0.35),
         Support("izgara", "educ", 0, MAX_EDUCATION, "Eğitim ızgarası: 0, 1, …, 18"),
         Derive("izgara", "gercek", mean_curve, "Gerçek ortalama ücret E(ücret | eğitim)"),
         Derive("izgara", "dogru", E.add(E.ref("b0"), E.mul(E.ref("b1"), E.var("educ"))),
-               "Tahmin edilen doğru, eğitim = 0'a uzatılmış"),
+               "Uyum doğrusu, eğitim = 0'a uzatılmış"),
         LineChart("izgara", "educ", "gercek", "Eğitim (yıl)", "Saatlik ücret",
-                  "Sabit terim: doğrunun eğitim = 0'a uzatılması", markers=False,
-                  series=(("dogru", "Tahmin edilen doğru (β̂₀ + β̂₁·eğitim)"),),
+                  "Kesim terimi: doğrunun eğitim = 0'a uzatılması", markers=False,
+                  series=(("dogru", "Uyum doğrusu (β̂₀ + β̂₁·eğitim)"),),
                   legend="Gerçek ortalama ücret E(ücret | eğitim)"),
     )
 
@@ -410,7 +410,7 @@ def _intercept_dgp(parameters: Parameters) -> tuple[str, ...]:
 def _intercept_metrics(state: LabState, parameters: Parameters) -> tuple[SimMetric, ...]:
     s = state.scalars
     return (
-        SimMetric("Sabit terim β̂₀", plain(s["b0"], 3), "Doğrunun eğitim = 0'daki değeri."),
+        SimMetric("Kesim terimi β̂₀", plain(s["b0"], 3), "Doğrunun eğitim = 0'daki değeri."),
         SimMetric("Gerçek E(ücret | 0)", plain(s["gercek_sifir"], 3), "Eğitimi 0 olanların gerçek ortalama ücreti."),
         SimMetric("Eğim β̂₁", plain(s["b1"], 3), "Bir yıl fazla eğitimli çalışanların tahmin edilen ortalama ücret farkı."),
         SimMetric("En düşük eğitim", plain(s["en_dusuk"], 0), "Örneklemdeki en düşük eğitim yılı."),
@@ -421,20 +421,20 @@ def _intercept_takeaway(state: LabState, parameters: Parameters) -> str:
     s = state.scalars
     lowest = int(round(s["en_dusuk"]))
     sign = "negatif" if s["b0"] < 0 else "pozitif"
-    fit = (f"Sabit terim β̂₀ = {plain(s['b0'], 3)}: doğrunun eğitim = 0'daki değeri ({sign}). Gerçek ortalama ücret "
+    fit = (f"Kesim terimi β̂₀ = {plain(s['b0'], 3)}: doğrunun eğitim = 0'daki değeri ({sign}). Gerçek ortalama ücret "
            f"eğitim 0'da {plain(s['gercek_sifir'], 3)}.")
     if lowest > 0:
         return (
-            f"Örneklemde eğitimi {lowest} yıldan az kimse yok. {fit} Eğitim = 0 bu örneklemin dışında olduğu için sabit "
-            "terim doğrunun veri aralığının dışına uzatılmasıyla bulunur. Doğrusal özet verinin aralığında ortalama "
+            f"Örneklemde eğitimi {lowest} yıldan az kimse yok. {fit} Eğitim = 0 bu örneklemin dışında olduğu için kesim "
+            "terimi doğrunun veri aralığının dışına uzatılmasıyla bulunur. Doğrusal özet verinin aralığında ortalama "
             "ilişkiyi yaklaşık olarak özetler; aralığın dışında yanıltabilir. WAGE1'de durum biraz farklıdır: eğitimi 0 "
             "olan yalnız iki çalışan vardır ve bu değer verinin merkezinden (ortalama 12,56 yıl) uzaktır; negatif ücret "
-            "de ekonomik olarak anlamlı değildir. Bu yüzden WAGE1'deki negatif sabit terim (−0,9049) ekonomik olarak "
+            "de ekonomik olarak anlamlı değildir. Bu yüzden WAGE1'deki negatif kesim terimi (−0,9049) ekonomik olarak "
             "yorumlanmaz (§1.6, Adım 5)."
         )
     return (
         f"Örneklemde eğitimi 0 olan çalışanlar var. {fit} Doğru bu kez veri aralığının içindedir; yine de gerçek "
-        "ilişki eğri olduğu için doğrusal özet uçlarda sapar. Sabit terimi yorumlamadan önce eğitim = 0'ın veride "
+        "ilişki eğri olduğu için doğrusal özet uçlarda sapar. Kesim terimi yorumlamadan önce eğitim = 0'ın veride "
         "bulunup bulunmadığına ve ilişkinin o bölgede doğrusal olup olmadığına bakılır (§1.6, Adım 5)."
     )
 
@@ -442,8 +442,8 @@ def _intercept_takeaway(state: LabState, parameters: Parameters) -> str:
 INTERCEPT_RANGE = SimExperiment(
     topic_key=TOPIC,
     number=3,
-    title="Sabit terim ve verinin aralığı",
-    question="Eğitimi 0 olan kimse örneklemde yoksa sabit terim neyi söyler? Tahmin edilen doğru verinin dışına "
+    title="Kesim terimi ve verinin aralığı",
+    question="Eğitimi 0 olan kimse örneklemde yoksa kesim terimi neyi söyler? Uyum doğrusu verinin dışına "
              "uzatıldığında gerçek ortalama ilişkiden ne kadar ayrılır?",
     note=NoteRef("1.6", 5, ("Denklem 1.4",)),
     parameters=(
@@ -454,18 +454,18 @@ INTERCEPT_RANGE = SimExperiment(
     dgp=_intercept_dgp,
     dgp_note=(
         "Ortalama ücret eğitimle dışbükey (hızlanarak) artar ve her eğitim düzeyinde pozitiftir. Araştırmacı bu eğri "
-        "yerine bir doğru tahmin eder; sabit terim doğrunun eğitim = 0'daki değeridir."
+        "yerine bir doğru tahmin eder; kesim terimi doğrunun eğitim = 0'daki değeridir."
     ),
     look_at=(
-        "**Saçılım grafiği** — örneklemin eğitim aralığı ve tahmin edilen doğru.",
+        "**Saçılım grafiği** — örneklemin eğitim aralığı ve uyum doğrusu.",
         "**Çizgi grafiği** — doğru eğitim = 0'a uzatıldığında gerçek ortalama ücretten ne kadar ayrılıyor?",
-        "**Metrikler** — sabit terim ile eğitim = 0'daki gerçek ortalama ücret.",
+        "**Metrikler** — kesim terimi ile eğitim = 0'daki gerçek ortalama ücret.",
     ),
     build=_build_intercept,
     metrics=_intercept_metrics,
     takeaway=_intercept_takeaway,
     labels=(("educ", "Eğitim (yıl)"), ("wage", "Saatlik ücret"), ("gercek", "Gerçek ortalama ücret"),
-            ("dogru", "Tahmin edilen doğru")),
+            ("dogru", "Uyum doğrusu")),
 )
 
 

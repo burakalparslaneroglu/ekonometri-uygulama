@@ -80,6 +80,11 @@ brandRed kullanılır; bilgi yalnız renge dayandırılmaz.
 
 ## Metin ve biçim
 
+- Kullanıcı tercihi: intercept term → **kesim terimi**; fitted value → **uyum değeri**;
+  residual → **artık değer**; forecast ve yeni gözlem prediction → **öngörü**.
+  Parametre estimate/estimation → **tahmin**, estimator → **tahmin edici**, anakütle error term → **hata terimi**.
+  Sabit varyans/diğer değişkenler sabitken/sabit etkiler ifadeleri ve gerçek yazılım API/anahtar adları korunur.
+
 - Arayüz dili Türkçedir. Önemli İngilizce terimler ilk kullanımda parantez içinde verilebilir. Cross-sectional data
   için "yatay kesit verisi" terimi kullanılır.
 - Ondalık virgül, önde yüzde işareti (%16,5) ve tipografik eksi (−) kullanılır. Değişken bir sayıya Türkçe ek

@@ -873,14 +873,14 @@ class ScatterPlot:
     size: float = 11.0
     opacity: float = 1.0
     lines: tuple[tuple["Parameter", "Parameter", str], ...] = ()
-    """(sabit, eğim, etiket): kesikli çizgiyle çizilen bilinen doğrular y = sabit + eğim·x (ör. simülasyonda gerçek
-    ortalama ilişki); sabit ve eğim sayı ya da önceden hesaplanmış bir skalerin adıdır."""
+    """(kesim terimi, eğim, etiket): kesikli çizgiyle çizilen bilinen doğrular y = kesim terimi + eğim·x (ör. simülasyonda gerçek
+    ortalama ilişki); kesim terimi ve eğim sayı ya da önceden hesaplanmış bir skalerin adıdır."""
     means: str = ""
     """Boş değilse aynı x değerindeki gözlemlerin y ortalamaları (koşullu ortalamanın örneklem karşılığı) bu etiketle
     ayrı noktalar olarak çizilir (ör. eğitim düzeylerine göre ortalama ücret)."""
     curves: tuple[tuple[str, str, str, str], ...] = ()
     """(veri çerçevesi, x sütunu, y sütunu, etiket): noktaların üzerine düz çizgiyle çizilen eğriler (ör. karesel
-    modelin tahmin edilen eğrisi); çerçevenin satırları x'e göre sıralı bir ızgaradır."""
+    modelin uyum eğrisi); çerçevenin satırları x'e göre sıralı bir ızgaradır."""
 
 
 @dataclass(frozen=True)
@@ -1076,12 +1076,12 @@ sapması (payda n − 1), en küçük ve en büyük değer."""
 GROUP_STATS = ("count", "mean", "std", "min", "max", "sum")
 MODEL_QUANTITIES = ("r2", "adj_r2", "nobs", "f", "f_p", "ssr", "df_resid")
 """Modelin tek sayıları: R², düzeltilmiş R², gözlem sayısı, genel anlamlılık F istatistiği ve p-değeri,
-artık kareler toplamı, artık serbestlik derecesi."""
+artık değerlerin kareleri toplamı, artık değerlerin serbestlik derecesi."""
 COEF_QUANTITIES = ("coef", "se", "t", "p", "ci_low", "ci_high")
 """Katsayının sayıları: tahmin, klasik standart hata, t istatistiği, iki yönlü p-değeri (t dağılımı, n − k − 1
-serbestlik derecesi; k sabit dışındaki açıklayıcı sayısı) ve %95 güven aralığının alt/üst sınırı."""
+serbestlik derecesi; k kesim terimi dışındaki açıklayıcı sayısı) ve %95 güven aralığının alt/üst sınırı."""
 INTERCEPT = "Intercept"
-"""Sabit terimin adı (statsmodels formül yazımı); R'de ``(Intercept)`` olarak yazılır."""
+"""Kesim teriminin adı (statsmodels formül yazımı); R'de ``(Intercept)`` olarak yazılır."""
 COV_TYPES = ("nonrobust", "HC0", "HC1", "HC2", "HC3")
 """Katsayı kovaryansı: klasik ya da heteroskedastisiteye dayanıklı (White 1980; MacKinnon ve White 1985)."""
 
@@ -1127,11 +1127,11 @@ class PanelSummary:
 
 @dataclass(frozen=True)
 class OLS:
-    """En küçük kareler tahmini (sabit terimli): ``outcome ~ regressors``.
+    """En küçük kareler tahmini (kesim terimli): ``outcome ~ regressors``.
 
     Uygulama ve üretilen Python kodu aynı çağrıyı kullanır (statsmodels ``smf.ols(...).fit()``); R'de
     ``lm()``. Standart hatalar klasik (homoskedastik) standart hatalardır; t istatistiği ve p-değeri
-    n − k − 1 serbestlik dereceli t dağılımından (k: sabit dışındaki açıklayıcı sayısı), güven aralığı aynı dağılımın
+    n − k − 1 serbestlik dereceli t dağılımından (k: kesim terimi dışındaki açıklayıcı sayısı), güven aralığı aynı dağılımın
     kritik değeriyle hesaplanır.
     Tahmin örneklemi modeldeki değişkenlerde eksik değeri olmayan gözlemlerdir (iki dilde aynı).
 
@@ -1148,7 +1148,7 @@ class OLS:
     comment: str
     cov_type: str = "nonrobust"
     """Katsayı kovaryansı: ``nonrobust`` (klasik) ya da heteroskedastisiteye dayanıklı ``HC0``–``HC3`` (Konu 12).
-    Katsayılar, tahmin edilen değerler ve R² değişmez; standart hata, t, p, güven aralığı ve ortak test dayanıklı
+    Katsayılar, uyum değerleri ve R² değişmez; standart hata, t, p, güven aralığı ve ortak test dayanıklı
     kovaryansla hesaplanır (t ve F dağılımı, n − k − 1 serbestlik derecesi; statsmodels ``fit(cov_type=..., use_t=True)``,
     R'de açık sandviç formülü)."""
 
@@ -1204,7 +1204,7 @@ class OLS:
 
 @dataclass(frozen=True)
 class Residuals:
-    """Tahmin edilmiş bir modelin artıkları ûᵢ = Yᵢ − Ŷᵢ, veri çerçevesinde yeni bir sütun (statsmodels ``resid``,
+    """Tahmin edilmiş bir modelin artık değerleri ûᵢ = Yᵢ − Ŷᵢ, veri çerçevesinde yeni bir sütun (statsmodels ``resid``,
     R ``resid()``). Modelin tahmin örneklemi çerçevenin bütün satırlarıdır (modeldeki değişkenlerde eksik değer yok)."""
 
     frame: str
@@ -1271,7 +1271,7 @@ class RegressionTable:
     """Makale tipi regresyon tablosu: her model bir sütun; her terim için katsayı ve altında parantez içinde
     standart hata; en altta gözlem sayısı ve R².
 
-    ``models``: (sütun başlığı, model adı). ``terms``: tablodaki sırayla terimler (sabit terim ``INTERCEPT``).
+    ``models``: (sütun başlığı, model adı). ``terms``: tablodaki sırayla terimler (kesim terimi ``INTERCEPT``).
     Sonuç tablosunun satırları ``terim`` (katsayı), ``terim_sh`` (standart hata), ``n`` ve ``r2``'dir; modelde
     olmayan terimin hücresi boştur. ``stars``: katsayının yanında p-değerine göre yıldız (*** p < 0,01;
     ** p < 0,05; * p < 0,10); eşikler tablonun altında yazılır.
@@ -1296,7 +1296,7 @@ class RegressionTable:
     ortak F istatistiği ve p-değeri; Konu 8). Satır adı ``_p`` ile bitiyorsa değerler p-değeri biçimiyle yazılır. Skaler
     adı yerine boş dize verilirse o sütunun hücresi boştur ("—"; ör. ortak test yalnız bir sütunda)."""
     extra_decimals: int = 2
-    """Ek satırların ekrandaki basamağı (p-değeri satırları hariç; ör. F için 2, artık kareleri toplamı için 3)."""
+    """Ek satırların ekrandaki basamağı (p-değeri satırları hariç; ör. F için 2, artık değerlerin kareleri toplamı için 3)."""
     r2_decimals: int | None = None
     """R² ve düzeltilmiş R² satırlarının basamağı (ör. katsayılar 4, R² 3 basamak); verilmezse ``decimals``."""
     exact: bool = False
@@ -1372,7 +1372,7 @@ class JointTest:
 
     def __post_init__(self) -> None:
         if not self.terms or len(set(self.terms)) != len(self.terms) or INTERCEPT in self.terms:
-            raise ValueError("Ortak testte en az bir, tekil ve sabit terim dışında katsayı sınanır.")
+            raise ValueError("Ortak testte en az bir, tekil ve kesim terimi dışında katsayı sınanır.")
 
 
 HETERO_TESTS = {"bp": "Breusch–Pagan", "white": "White"}
@@ -1383,7 +1383,7 @@ HETERO_TESTS = {"bp": "Breusch–Pagan", "white": "White"}
 class HeteroskedasticityTest:
     """Heteroskedastisite testi (Konu 12): H₀: Var(u | X) = σ² (homoskedastisite).
 
-    Modelin artıklarının kareleri bir yardımcı regresyonla açıklanır; LM = n·R²_yardımcı ve p = P(χ²_q > LM).
+    Modelin artık değerlerinin kareleri bir yardımcı regresyonla açıklanır; LM = n·R²_yardımcı ve p = P(χ²_q > LM).
     ``kind="bp"``: Breusch–Pagan (Koenker 1981 biçimi; statsmodels ``het_breuschpagan`` varsayılanı), yardımcı
     regresyonda modelin açıklayıcıları, q = açıklayıcı sayısı. ``kind="white"``: White (1980), açıklayıcıların
     düzeyleri, kareleri ve çapraz çarpımları; q = yardımcı regresyondaki bağımsız terim sayısı (0/1 kuklanın karesi

@@ -2,7 +2,7 @@
 
 Notlardaki sekiz adım (``core.labs.konu03``) aynı numaralarla ve aynı işlemlerle, verisi değiştirilebilir biçimde
 yazılır: düzey ortalamaları ve EKK doğrusu, koşullu ortalama, beş gözlemle adım adım EKK hesabı, basit regresyon,
-eğim ve sabit terimin yorumu, sıfır–bir açıklayıcı değişken, tahmin edilen değer ile artık ve okuma kontrol listesi.
+eğim ve kesim teriminin yorumu, sıfır–bir açıklayıcı değişken, uyum değeri ile artık değer ve okuma kontrol listesi.
 
 Alternatif örnek WAGE2'dir (935 erkek çalışan, 1980; ücret aylık kazançtır, ABD doları). Küçük EKK hesabının beş
 çalışanı, eğitime göre sıralanmış verinin en küçük, alt çeyrek, medyan, üst çeyrek ve en büyük konumundaki
@@ -133,7 +133,7 @@ def _name(case: Case, column: str) -> str:
 
 
 def _slope(case: Case, x: str) -> tuple[float, float]:
-    """Sonucun ``x`` üzerine basit regresyonunun sabiti ve eğimi (metinler için)."""
+    """Sonucun ``x`` üzerine basit regresyonunun kesim terimi ve eğimi (metinler için)."""
 
     data = case.data[[case.roles[SONUC], x]].astype(float)
     slope, intercept = np.polyfit(data[x], data[case.roles[SONUC]], 1)
@@ -374,19 +374,19 @@ def _step3(case: Case) -> LabStep:
             Statistic(SMALL, "x_kare", "sum", "payda", "Payda Σ(Xᵢ − X̄)²", decimals=digits),
             Scalar("b1_kucuk", E.div(E.ref("pay"), E.ref("payda")), "Eğim β̂₁ = pay / payda (Denklem 3.8)", decimals=4),
             Scalar("b0_kucuk", E.sub(E.ref("ybar"), E.mul(E.ref("b1_kucuk"), E.ref("xbar"))),
-                   "Sabit β̂₀ = Ȳ − β̂₁X̄ (Denklem 3.9)", decimals=4),
+                   "Kesim terimi β̂₀ = Ȳ − β̂₁X̄ (Denklem 3.9)", decimals=4),
             Derive(SMALL, "tahmin", E.add(E.ref("b0_kucuk"), E.mul(E.ref("b1_kucuk"), E.var(x))),
-                   "Tahmin edilen değer Ŷᵢ = β̂₀ + β̂₁Xᵢ"),
-            Derive(SMALL, "artik", E.sub(E.var(y), E.var("tahmin")), "Artık ûᵢ = Yᵢ − Ŷᵢ"),
-            Derive(SMALL, "artik_kare", E.power(E.var("artik"), 2), "Kareli artık ûᵢ²"),
+                   "Uyum değeri Ŷᵢ = β̂₀ + β̂₁Xᵢ"),
+            Derive(SMALL, "artik", E.sub(E.var(y), E.var("tahmin")), "Artık değer ûᵢ = Yᵢ − Ŷᵢ"),
+            Derive(SMALL, "artik_kare", E.power(E.var("artik"), 2), "Artık değerin karesi ûᵢ²"),
             ShowFrame(SMALL, ("gozlem", x, y, "x_sapma", "y_sapma", "carpim", "x_kare", "tahmin", "artik", "artik_kare"),
                       "Hesap tablosu" if same else f"Hesap tablosu (beşinci gözlemin değeri {level_text(y5)})",
                       decimals=2),
-            Statistic(SMALL, "artik", "sum", "artik_toplami", "Artıkların toplamı Σûᵢ", decimals=4),
-            Statistic(SMALL, "artik_kare", "sum", "artik_kare_toplami", "Kareli artıklar toplamı Σûᵢ²", decimals=2),
+            Statistic(SMALL, "artik", "sum", "artik_toplami", "Artık değerlerin toplamı Σûᵢ", decimals=4),
+            Statistic(SMALL, "artik_kare", "sum", "artik_kare_toplami", "Artık değerlerin kareleri toplamı Σûᵢ²", decimals=2),
             OLS("model_kucuk", SMALL, y, (x,), f"Aynı doğru yazılımla: {y} ~ {x}"),
             ModelValue("b1_yazilim", "model_kucuk", "coef", "Yazılımla eğim", term=x),
-            ModelValue("b0_yazilim", "model_kucuk", "coef", "Yazılımla sabit", term=INTERCEPT),
+            ModelValue("b0_yazilim", "model_kucuk", "coef", "Yazılımla kesim terimi", term=INTERCEPT),
         )
 
     def note(state, choices) -> str:
@@ -395,10 +395,10 @@ def _step3(case: Case) -> LabStep:
         b0, b1 = s["b0_kucuk"], s["b1_kucuk"]
         digits = digits_for(b1, 4)
         sign = "−" if b1 < 0 and not at_zero(b1, digits) else "+"
-        text = (f"Tahmin edilen doğru: ŷ = {sayi(b0, 4)} {sign} {sayi(abs(b1), digits)} · x (x: {_coded(case, x)}, "
-                f"y: {_coded(case, y)}). Formüllerle bulunan eğim ve sabit, yazılımın EKK tahminiyle aynıdır. Artıkların "
-                f"toplamı {sayi(s['artik_toplami'], 4)}; kareli artıklar toplamı {sayi(s['artik_kare_toplami'], 2)}. Sabit "
-                f"terimli EKK doğrusunda artıkların toplamı sıfırdır ve doğru (X̄, Ȳ) = ({sayi(s['xbar'], 2)}; "
+        text = (f"Uyum doğrusu: ŷ = {sayi(b0, 4)} {sign} {sayi(abs(b1), digits)} · x (x: {_coded(case, x)}, "
+                f"y: {_coded(case, y)}). Formüllerle bulunan eğim ve kesim terimi, yazılımın EKK tahminiyle aynıdır. Artık değerlerin "
+                f"toplamı {sayi(s['artik_toplami'], 4)}; artık değerlerin kareleri toplamı {sayi(s['artik_kare_toplami'], 2)}. Kesim "
+                f"terimli EKK doğrusunda artık değerlerin toplamı sıfırdır ve doğru (X̄, Ȳ) = ({sayi(s['xbar'], 2)}; "
                 f"{sayi(s['ybar'], 2)}) noktasından geçer.")
         if y5 == float(observed):
             _, slope = _slope(case, x)
@@ -411,12 +411,12 @@ def _step3(case: Case) -> LabStep:
         pivot = xbar - sxx / (len(rows) * (x5 - xbar))
         fixed = b0 + b1 * pivot
         text += (f" Beşinci gözlemin değeri {level_text(y5)} (verideki değer {level_text(observed)}). Yalnız bir gözlem "
-                 f"değişti; eğim ve sabit değişti. Doğru x = {sayi(pivot, 2)} noktası çevresinde döner: o noktadaki "
-                 f"tahmin ({sayi(fixed, 2)}) değişmez, öteki tahminler ve artıklar değişir.")
+                 f"değişti; eğim ve kesim terimi değişti. Doğru x = {sayi(pivot, 2)} noktası çevresinde döner: o noktadaki "
+                 f"tahmin ({sayi(fixed, 2)}) değişmez, öteki tahminler ve artık değerler değişir.")
         on_pivot = [number for number, (_, xv, _) in enumerate(rows, start=1) if abs(float(xv) - pivot) < 1e-9]
         if on_pivot:
-            text += f" Bu noktadaki {on_pivot[0]}. gözlemin tahmini ve artığı değişmez."
-        return text + (" Artıkların toplamı yine sıfırdır ve doğru yine (X̄, Ȳ) noktasından geçer. Eğimdeki değişim "
+            text += f" Bu noktadaki {on_pivot[0]}. gözlemin tahmini ve artık değeri değişmez."
+        return text + (" Artık değerlerin toplamı yine sıfırdır ve doğru yine (X̄, Ȳ) noktasından geçer. Eğimdeki değişim "
                        f"(X₅ − X̄)(Y₅ − {level_text(observed)})/Σ(Xᵢ − X̄)² kadardır; burada X₅ − X̄ = "
                        f"{sayi(x5 - xbar, 2)} ve Σ(Xᵢ − X̄)² = {sayi(sxx, 2)}: X̄'dan uzak bir gözlem eğimi daha çok "
                        "etkiler.")
@@ -431,14 +431,14 @@ def _step3(case: Case) -> LabStep:
     checks += [
         _scalar("toplam_x_sapma", "Σ(Xᵢ − X̄)", digits), _scalar("toplam_y_sapma", "Σ(Yᵢ − Ȳ)", digits),
         _scalar("pay", "Σ(Xᵢ − X̄)(Yᵢ − Ȳ)", digits), _scalar("payda", "Σ(Xᵢ − X̄)²", digits),
-        _scalar("b1_kucuk", "Eğim pay / payda", 4), _scalar("b0_kucuk", "Sabit Ȳ − β̂₁X̄", 4),
+        _scalar("b1_kucuk", "Eğim pay / payda", 4), _scalar("b0_kucuk", "Kesim terimi Ȳ − β̂₁X̄", 4),
     ]
     for column in ("tahmin", "artik", "artik_kare"):
         checks += [_check(f"{_SMALL_NAMES[column]}, {row}. gözlem", CellTarget(SMALL, column, row), 2)
                    for row in range(1, 6)]
     checks += [
         _scalar("artik_toplami", "Σûᵢ", 4), _scalar("artik_kare_toplami", "Σûᵢ²", 2),
-        _scalar("b1_yazilim", "Eğim (yazılımla)", 4), _scalar("b0_yazilim", "Sabit (yazılımla)", 4),
+        _scalar("b1_yazilim", "Eğim (yazılımla)", 4), _scalar("b0_yazilim", "Kesim terimi (yazılımla)", 4),
     ]
     return interactive_step(
         number=3,
@@ -446,7 +446,7 @@ def _step3(case: Case) -> LabStep:
         note=NoteRef("3.9", 0, ("Tablo 3.2", "Tablo 3.3", "Denklem 3.10")),
         explanation=(
             f"{case.extra.get('small_text', _OWN_SMALL)}: X {_coded(case, x)}, Y {_coded(case, y)}. "
-            "Eğim ve sabit formülleri adım adım uygulanır: $\\hat\\beta_1 = \\sum (X_i - \\bar X)(Y_i - \\bar Y) / "
+            "Eğim ve kesim terimi formülleri adım adım uygulanır: $\\hat\\beta_1 = \\sum (X_i - \\bar X)(Y_i - \\bar Y) / "
             "\\sum (X_i - \\bar X)^2$ (Denklem 3.8) ve $\\hat\\beta_0 = \\bar Y - \\hat\\beta_1 \\bar X$ (Denklem 3.9). "
             "Son satırlar aynı doğrunun yazılımla tahminidir. Beşinci gözlemin Y değerini değiştirerek tek bir gözlemin "
             "doğruyu nasıl etkilediğini görün."
@@ -504,7 +504,7 @@ def _step4(case: Case, choice: Choice) -> LabStep:
         digits = digits_for(b1, 4)
         sign = "−" if b1 < 0 and not at_zero(b1, digits) else "+"
         return (f"Örneklem regresyon doğrusu ŷ = {sayi(b0, 4)} {sign} {sayi(abs(b1), digits)} · {x} (Denklem 3.11'in "
-                f"karşılığı); tahmin {sayim(model.nobs)} gözleme dayanır. `Intercept` satırı sabit tahmini β̂₀, `{x}` "
+                f"karşılığı); tahmin {sayim(model.nobs)} gözleme dayanır. `Intercept` satırı kesim terimi tahmini β̂₀, `{x}` "
                 "satırı eğim tahmini β̂₁'dir. Adımın altındaki kodun yazdırdığı tam yazılım çıktısında görünen standart "
                 "hata, t, p-değeri ve güven aralığı bu bölümde yorumlanmaz; R² Konu 4'te, ötekiler Konu 7'de işlenir."
                 + exact)
@@ -514,20 +514,20 @@ def _step4(case: Case, choice: Choice) -> LabStep:
         title=str(case.extra.get("step4_title", "Python ile basit regresyon")),
         note=NoteRef("3.10", 0, ("Kod 3.1", "Kod 3.2", "Denklem 3.11")),
         explanation=(f"`{y} ~ {default}` yazımı `{y}` değişkenini bağımlı, `{default}` değişkenini açıklayıcı değişken "
-                     "yapar. Kod 3.2'deki gibi bu bölümde okunan alanlar: bağımlı değişken, gözlem sayısı, sabit ve "
+                     "yapar. Kod 3.2'deki gibi bu bölümde okunan alanlar: bağımlı değişken, gözlem sayısı, kesim terimi ve "
                      "eğim. Kodun ezberlenmesi beklenmez."),
         controls=(choice,),
         build=build,
         checks=(
             _check("Gözlem sayısı", ModelTarget("model", "nobs"), 0),
-            _check("Sabit terim", CoefTarget("model", INTERCEPT), 4),
+            _check("Kesim terimi", CoefTarget("model", INTERCEPT), 4),
             _check("Eğim katsayısı", CoefTarget("model", default), 4),
         ),
         note_for=lambda state, choices: note(state, choices),
     )
 
 
-# --- Adım 5: eğim ve sabit terimin yorumu --------------------------------------------------------------------
+# --- Adım 5: eğim ve kesim teriminin yorumu --------------------------------------------------------------------
 
 def _step5(case: Case, choice: Choice) -> LabStep:
     y = case.roles[SONUC]
@@ -535,7 +535,7 @@ def _step5(case: Case, choice: Choice) -> LabStep:
     def build(choices) -> tuple:
         x = choices[X_KEY]
         return (
-            ModelValue("b0", "model", "coef", "Sabit terim β̂₀", term=INTERCEPT),
+            ModelValue("b0", "model", "coef", "Kesim terimi β̂₀", term=INTERCEPT),
             ModelValue("b1", "model", "coef", f"Eğim β̂₁ ({x})", term=x),
             Count(case.frame, "x_sifir", x, 0, f"{case.name(x)} değeri sıfır olan gözlem sayısı"),
         )
@@ -560,8 +560,8 @@ def _step5(case: Case, choice: Choice) -> LabStep:
         else:
             where = (f"örneklemde {subject} sıfır olan {case.unit} yok (en küçük değer "
                      f"{level_text(float(values.min()))}): sıfır noktası verinin dışındadır")
-        constant = (f" Sabit terim {sayi(b0, 4)}: {phrase(case, x)} sıfır olduğunda doğrunun verdiği değerdir; {where}. "
-                    "Sabit, doğrunun konumunu belirler; ekonomik yorumu verinin aralığına bağlıdır.")
+        constant = (f" Kesim terimi {sayi(b0, 4)}: {phrase(case, x)} sıfır olduğunda doğrunun verdiği değerdir; {where}. "
+                    "Kesim terimi, doğrunun konumunu belirler; ekonomik yorumu verinin aralığına bağlıdır.")
         if b0 < 0 <= float(case.data[y].min()):
             constant += " Negatif bir tahmin, doğrunun veri aralığının dışına taşınmasından doğar."
         if case.own:
@@ -577,18 +577,18 @@ def _step5(case: Case, choice: Choice) -> LabStep:
 
     return interactive_step(
         number=5,
-        title="Eğim ve sabit terimi doğru yorumlamak",
+        title="Eğim ve kesim terimi doğru yorumlamak",
         note=NoteRef("3.11", 0),
         explanation=(
             "Doğru bir eğim yorumu dört unsuru birlikte verir: sonucun örnekleme ait olduğu, $X$'in değişim birimi, "
-            "$Y$'nin değişim birimi ve nedensel olmayan dil. Sabit terim $X = 0$ noktasındaki tahmindir; anlamı sıfır "
+            "$Y$'nin değişim birimi ve nedensel olmayan dil. Kesim terimi $X = 0$ noktasındaki tahmindir; anlamı sıfır "
             "değerinin veride ne kadar gözlendiğine bağlıdır. Bu adım Adım 4'te kurulan modeli yorumlar."
         ),
         uses=(choice,),
         build=build,
         checks=(
             _scalar("b1", "Eğim", 4),
-            _scalar("b0", "Sabit terim", 4),
+            _scalar("b0", "Kesim terimi", 4),
             _scalar("x_sifir", "Açıklayıcı değişkeni sıfır olan gözlem", 0),
         ),
         note_for=lambda state, choices: note(state, choices),
@@ -599,7 +599,7 @@ def _step5(case: Case, choice: Choice) -> LabStep:
 
 _BINARY_LEAD = (
     "Açıklayıcı değişken yalnız 0 ve 1 değerlerini alırsa $\\mathbb{E}(Y \\mid D = 0) = \\beta_0$ ve "
-    "$\\mathbb{E}(Y \\mid D = 1) = \\beta_0 + \\beta_1$ olur: sabit $D = 0$ grubunun, sabit ile eğimin toplamı $D = 1$ "
+    "$\\mathbb{E}(Y \\mid D = 1) = \\beta_0 + \\beta_1$ olur: kesim terimi $D = 0$ grubunun, kesim terimi ile eğimin toplamı $D = 1$ "
     "grubunun ortalamasıdır; eğim iki grubun ortalama farkıdır. EKK tahmininde aynı eşitlik örneklem ortalamaları için "
     "geçerlidir."
 )
@@ -616,7 +616,7 @@ def _binary_operations(frame: str, y: str, d: str, label: str, setup: tuple = ()
         OLS("model_ikili", frame, y, (d,), f"Basit regresyon: {y} ~ {d}"),
         ShowModel("model_ikili", "Sıfır–bir açıklayıcı değişkenli modelin temel katsayıları (Kod 3.4'teki gibi)",
                   columns=("coef",), stats=("nobs",), stars=False),
-        ModelValue("sabit_j", "model_ikili", "coef", "Sabit β̂₀", term=INTERCEPT),
+        ModelValue("sabit_j", "model_ikili", "coef", "Kesim terimi β̂₀", term=INTERCEPT),
         ModelValue("egim_j", "model_ikili", "coef", f"Eğim β̂₁ ({d})", term=d),
         Scalar("bir_grubu", E.add(E.ref("sabit_j"), E.ref("egim_j")), f"β̂₀ + β̂₁: {d} = 1 için tahmin"),
     )
@@ -628,8 +628,8 @@ _BINARY_CHECKS = (
     _check("D = 0 grubunun ortalaması", TableTarget("grup_ozeti", 0, "mean"), 4),
     _check("D = 1 grubunun ortalaması", TableTarget("grup_ozeti", 1, "mean"), 4),
     _check("Gözlem sayısı", ModelTarget("model_ikili", "nobs"), 0),
-    _check("Sabit terim", CoefTarget("model_ikili", INTERCEPT), 4),
-    _scalar("bir_grubu", "Sabit + eğim", 4),
+    _check("Kesim terimi", CoefTarget("model_ikili", INTERCEPT), 4),
+    _scalar("bir_grubu", "Kesim terimi + eğim", 4),
     _scalar("grup_farki", "Eğim = grup farkı", 4),
 )
 
@@ -645,7 +645,7 @@ def _alt_step6(binary: Case) -> LabStep:
         d = choices["adim6_d"]
         s = state.scalars
         ones, zeros = BINARY_WORDS[d]
-        identity = (f"Sabit {sayi(s['sabit_j'], 4)}, `{d}` = 0 grubunun ({zeros}) ortalamasına; sabit + eğim = "
+        identity = (f"Kesim terimi {sayi(s['sabit_j'], 4)}, `{d}` = 0 grubunun ({zeros}) ortalamasına; kesim terimi + eğim = "
                     f"{sayi(s['bir_grubu'], 4)}, `{d}` = 1 grubunun ({ones}) ortalamasına eşittir. Eğim "
                     f"{sayi(s['egim_j'], 4)}, iki grup ortalamasının farkıdır (bin TL).")
         if d == "program":
@@ -704,7 +704,7 @@ def _own_step6(case: Case) -> LabStep:
 
     def note(state) -> str:
         s = state.scalars
-        return (f"Sabit {sayi(s['sabit_j'], 4)}, 0 grubunun ({md(zero)}) ortalamasına; sabit + eğim = "
+        return (f"Kesim terimi {sayi(s['sabit_j'], 4)}, 0 grubunun ({md(zero)}) ortalamasına; kesim terimi + eğim = "
                 f"{sayi(s['bir_grubu'], 4)}, 1 grubunun ({md(one)}) ortalamasına eşittir. Eğim {sayi(s['egim_j'], 4)}, "
                 "iki grup ortalamasının farkıdır. Gruplar rastgele atandıysa (ör. kurayla) eğim, 1 grubunda olmanın "
                 "ortalama sonuca etkisinin bir tahminidir; atama rastgele değilse eğim yalnız grup farkını özetler ve "
@@ -722,7 +722,7 @@ def _own_step6(case: Case) -> LabStep:
     )
 
 
-# --- Adım 7: gözlenen değer, tahmin edilen değer ve artık --------------------------------------------------
+# --- Adım 7: gözlenen değer, uyum değeri ve artık değer --------------------------------------------------
 
 def _x0_control(case: Case) -> NumberChoice:
     """Kendi verinde tahmin noktası x₀: temel açıklayıcının aralığı, iki yandan aralığın dörtte biri kadar genişletilmiş
@@ -766,14 +766,14 @@ def _step7(case: Case, choice: Choice) -> LabStep:
         b0, b1 = (E.roundto(E.ref("b0"), 4), E.roundto(E.ref("b1"), 4)) if rounded else (E.ref("b0"), E.ref("b1"))
         return (
             Derive(case.frame, "tahmin", E.add(E.ref("b0"), E.mul(E.ref("b1"), E.var(x))),
-                   "Tahmin edilen değer Ŷᵢ = β̂₀ + β̂₁Xᵢ"),
-            Derive(case.frame, "artik", E.sub(E.var(y), E.var("tahmin")), "Artık ûᵢ = Yᵢ − Ŷᵢ"),
-            ShowFrame(case.frame, (y, x, "tahmin", "artik"), f"İlk {rows} gözlem: tahmin edilen değer ve artık",
+                   "Uyum değeri Ŷᵢ = β̂₀ + β̂₁Xᵢ"),
+            Derive(case.frame, "artik", E.sub(E.var(y), E.var("tahmin")), "Artık değer ûᵢ = Yᵢ − Ŷᵢ"),
+            ShowFrame(case.frame, (y, x, "tahmin", "artik"), f"İlk {rows} gözlem: uyum değeri ve artık değer",
                       head=rows, decimals=2),
             Scalar("tahmin_x0", E.add(b0, E.mul(b1, x0)),
                    f"x₀ = {level_text(x0)} için tahmin" + (" (dört basamaklı katsayılarla)" if rounded else ""),
                    decimals=3),
-            Scalar("artik_y0", E.sub(y0, E.ref("tahmin_x0")), f"y₀ = {level_text(y0)} için artık", decimals=3),
+            Scalar("artik_y0", E.sub(y0, E.ref("tahmin_x0")), f"y₀ = {level_text(y0)} için artık değer", decimals=3),
         )
 
     def note(state, choices) -> str:
@@ -781,15 +781,15 @@ def _step7(case: Case, choice: Choice) -> LabStep:
         s = state.scalars
         residual = s["artik_y0"]
         if at_zero(residual, 3):
-            position = "tam doğrunun üzerindedir (artık sıfır)"
+            position = "tam doğrunun üzerindedir (artık değer sıfır)"
         elif residual > 0:
             position = "doğrunun üzerindedir: gözlenen değer tahminden yüksektir"
         else:
             position = "doğrunun altındadır: gözlenen değer tahminden düşüktür"
         unit = short_unit(case, y)
-        text = (f"Tabloda ilk {rows} gözlemin tahmin edilen değeri ve artığı görünür; artık pozitifse gözlem doğrunun "
-                f"üzerindedir. Seçtiğiniz noktada tahmin {sayi(s['tahmin_x0'], 3)}{' ' + unit if unit else ''}, artık "
-                f"{sayi(residual, 3)}{' ' + unit if unit else ''}; gözlem {position}. Büyük bir artık tek başına ölçüm "
+        text = (f"Tabloda ilk {rows} gözlemin uyum değerini ve artık değeri görünür; artık değer pozitifse gözlem doğrunun "
+                f"üzerindedir. Seçtiğiniz noktada tahmin {sayi(s['tahmin_x0'], 3)}{' ' + unit if unit else ''}, artık değer "
+                f"{sayi(residual, 3)}{' ' + unit if unit else ''}; gözlem {position}. Büyük bir artık değer tek başına ölçüm "
                 "hatası anlamına gelmez.")
         low, high = float(case.data[x].min()), float(case.data[x].max())
         if not low <= x0 <= high:
@@ -798,14 +798,14 @@ def _step7(case: Case, choice: Choice) -> LabStep:
         return text
 
     explanation = (
-        "Tahmin edilen değer $\\hat Y_i = \\hat\\beta_0 + \\hat\\beta_1 X_i$, artık $\\hat u_i = Y_i - \\hat Y_i$'dir. "
+        "Uyum değeri $\\hat Y_i = \\hat\\beta_0 + \\hat\\beta_1 X_i$, artık değer $\\hat u_i = Y_i - \\hat Y_i$'dir. "
         f"Tablo ilk {rows} gözlem içindir (yuvarlanmamış katsayılarla, iki ondalık). "
-        + str(case.extra.get("step7_text", "Altta seçtiğiniz bir nokta için tahmin ve artık hesaplanır."))
+        + str(case.extra.get("step7_text", "Altta seçtiğiniz bir nokta için Uyum değeri ve artık değer hesaplanır."))
         + " Bu adım Adım 4'te kurulan modeli kullanır."
     )
     return interactive_step(
         number=7,
-        title="Gözlenen değer, tahmin edilen değer ve artık",
+        title="Gözlenen değer, uyum değeri ve artık değer",
         note=NoteRef("3.12", 0, ("Şekil 3.4", "Tablo 3.4")),
         explanation=explanation,
         uses=(choice,),
@@ -815,7 +815,7 @@ def _step7(case: Case, choice: Choice) -> LabStep:
             *(_check(f"{_SMALL_NAMES[column]}, {row}. gözlem", CellTarget(case.frame, column, row), 2)
               for column in ("tahmin", "artik") for row in range(1, rows + 1)),
             _scalar("tahmin_x0", "x₀ için tahmin", 3),
-            _scalar("artik_y0", "y₀ için artık", 3),
+            _scalar("artik_y0", "y₀ için artık değer", 3),
         ),
         note_for=lambda state, choices: note(state, choices),
     )
@@ -826,8 +826,8 @@ def _step7(case: Case, choice: Choice) -> LabStep:
 _CHECKLIST = (
     "Bir basit regresyon denklemi, Python çıktısı veya makale tablosu gördüğünüzde:\n\n1. Araştırma sorusu nedir?\n2. "
     "Gözlem birimi ve veri yapısı nedir?\n3. $Y$ ve $X$ hangi değişkenlerdir?\n4. Değişkenlerin ölçü birimleri nedir?\n"
-    "5. Anakütle modeli ile örneklem tahmini ayrılmış mı?\n6. Eğim katsayısının işareti ve büyüklüğü nedir?\n7. Sabit "
-    "terimin ekonomik yorumu veri aralığında anlamlı mı?\n8. Tahmin edilen değer ve artık nasıl hesaplanır?\n9. Yorum "
+    "5. Anakütle modeli ile örneklem tahmini ayrılmış mı?\n6. Eğim katsayısının işareti ve büyüklüğü nedir?\n7. Kesim "
+    "teriminin ekonomik yorumu veri aralığında anlamlı mı?\n8. Uyum değeri ve artık değer nasıl hesaplanır?\n9. Yorum "
     "ilişki düzeyinde mi, nedensel düzeyde mi?\n10. Henüz öğrenilmemiş çıktı alanları için hangi sonraki bölüme "
     "bakılmalıdır?\n\nBir çıktıda çok sayıda sayı bulunması, bütün sayıların aynı anda yorumlanması gerektiği anlamına "
     "gelmez: R² Konu 4'te, standart hata, t, p ve güven aralığı Konu 7'de işlenir."
@@ -842,8 +842,8 @@ def _step8() -> LabStep:
 # --- Tanım ------------------------------------------------------------------------------------------------------
 
 _LABELS = {
-    INTERCEPT: "Sabit terim", "gozlem": "Gözlem", "x_sapma": "Xᵢ − X̄", "y_sapma": "Yᵢ − Ȳ", "carpim": "Çarpım",
-    "x_kare": "(Xᵢ − X̄)²", "tahmin": "Tahmin edilen değer Ŷᵢ", "artik": "Artık ûᵢ", "artik_kare": "Kareli artık ûᵢ²",
+    INTERCEPT: "Kesim terimi", "gozlem": "Gözlem", "x_sapma": "Xᵢ − X̄", "y_sapma": "Yᵢ − Ȳ", "carpim": "Çarpım",
+    "x_kare": "(Xᵢ − X̄)²", "tahmin": "Uyum değeri Ŷᵢ", "artik": "Artık değer ûᵢ", "artik_kare": "Artık değerin karesi ûᵢ²",
 }
 
 
@@ -901,7 +901,7 @@ def alternative_case() -> Case:
                          help="Varsayılan örnek: eğitimi 12 yıl, aylık kazancı 900 dolar olan bir çalışan."),
         ),
         step7_text=("Altta bir örnek: eğitimi 12 yıl, aylık kazancı 900 dolar olan bir çalışan için dört basamaklı "
-                    "katsayılarla tahmin ve artık."),
+                    "katsayılarla Uyum değeri ve artık değer."),
         step4_title="Python ile WAGE2 basit regresyonu",
         step1_text=("Aynı eğitim düzeyindeki çalışanların aylık kazançları farklıdır; yine de eğitim yükseldikçe "
                     "**ortalama** kazancın nasıl değiştiğini özetlemek isteriz. Grafikte soluk noktalar tek tek "

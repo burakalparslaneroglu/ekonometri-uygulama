@@ -152,7 +152,7 @@ def _simple(choices) -> tuple:
                             (INTERCEPT, *dict.fromkeys(("female", dummy))), "yan101",
                             "Notlardaki model ve seçtiğiniz model", decimals=4, exact=True),
         )),
-        ModelValue("b0", "m_basit", "coef", f"Sabit terim: {zero} grubunun ortalaması", term=INTERCEPT, decimals=4),
+        ModelValue("b0", "m_basit", "coef", f"Kesim terimi: {zero} grubunun ortalaması", term=INTERCEPT, decimals=4),
         ModelValue("delta", "m_basit", "coef", f"Kukla katsayısı: {one} − {zero} farkı", term=dummy, decimals=4),
         Statistic(frame, outcome, "mean", "ort_0", f"{zero.capitalize()} grubunun örneklem ortalaması",
                   where=(dummy, 0), decimals=4),
@@ -169,12 +169,12 @@ def _simple_note(state, choices) -> str:
     one, zero = DUMMY_WORDS[dummy]
     s = state.scalars
     word, unit = Y_WORDS[outcome]
-    return (f"Sabit terim {plain(s['b0'], 4)}, {zero} çalışanların ortalama {word} değeridir ({unit}). Kukla katsayısı "
+    return (f"Kesim terimi {plain(s['b0'], 4)}, {zero} çalışanların ortalama {word} değeridir ({unit}). Kukla katsayısı "
             f"{plain(s['delta'], 4)}, {one} ve {zero} ortalamaları arasındaki farktır: {plain(s['ort_1'], 4)} − "
             f"{plain(s['ort_0'], 4)} = {plain(s['fark'], 4)}. {one.capitalize()} grubunun tahmin edilen ortalaması "
-            f"sabit ile katsayının toplamıdır: {plain(s['b0'], 4)} + "
+            f"kesim terimi ile katsayının toplamıdır: {plain(s['b0'], 4)} + "
             f"{plain(s['delta'], 4) if s['delta'] >= 0 else '(' + plain(s['delta'], 4) + ')'} = "
-            f"{plain(s['grup1_tahmin'], 4)}. Kodlama ters çevrilirse sabit diğer grubun ortalaması olur ve katsayının "
+            f"{plain(s['grup1_tahmin'], 4)}. Kodlama ters çevrilirse kesim terimi diğer grubun ortalaması olur ve katsayının "
             "işareti değişir; iki grup arasındaki fark aynıdır. Bu fark nedensel bir etki değildir (§10.2).")
 
 
@@ -267,7 +267,7 @@ def _parallel(choices) -> tuple:
     return (
         OLS("m_log", DATA, "lwage", ("female", *CONTROLS), "Kontrollü log ücret modeli: lwage ~ female + educ + exper + "
             "tenure"),
-        ModelValue("b0_log", "m_log", "coef", "Sabit terim", term=INTERCEPT, decimals=4),
+        ModelValue("b0_log", "m_log", "coef", "Kesim terimi", term=INTERCEPT, decimals=4),
         ModelValue("d_log", "m_log", "coef", "Kadın katsayısı", term="female", decimals=4),
         *(ModelValue(f"b_{term}", "m_log", "coef", f"{WORDS[term].capitalize()} katsayısı", term=term, decimals=4)
           for term in CONTROLS),
@@ -275,7 +275,7 @@ def _parallel(choices) -> tuple:
           for term in others),
         Support("dogru", axis, lower, upper, f"{WORDS[axis].capitalize()} ızgarası: {lower}, …, {upper} (örneklemin "
                 "aralığı)"),
-        Derive("dogru", "erkek", line, f"Erkek (female = 0): sabit + {WORDS[axis]} eğimi; "
+        Derive("dogru", "erkek", line, f"Erkek (female = 0): kesim terimi + {WORDS[axis]} eğimi; "
                f"{_listing([WORDS[t] for t in others])} ortalamada"),
         Derive("dogru", "kadin", E.add(E.var("erkek"), E.ref("d_log")), "Kadın (female = 1): erkek doğrusu + δ̂"),
         LineChart("dogru", axis, "erkek", W.variable(DATA, axis).text, "Tahmin edilen ln(saatlik ücret)",
@@ -290,7 +290,7 @@ def _parallel_note(state, choices) -> str:
     s = state.scalars
     return (f"İki doğrunun eğimi aynıdır ({WORDS[axis]} katsayısı {plain(s[f'b_{axis}'], 4)}); aralarındaki dikey "
             f"uzaklık her {WORDS[axis]} düzeyinde kadın katsayısıdır ({plain(s['d_log'], 4)}). Additif kukla modeli "
-            "gruplara farklı sabit verir, farklı eğim vermez: doğrular hangi değişken yatay eksende olursa olsun "
+            "gruplara farklı kesim terimi verir, farklı eğim vermez: doğrular hangi değişken yatay eksende olursa olsun "
             "paraleldir. Eğim farkı için etkileşim terimi gerekir (Konu 11). Log ölçekteki sabit fark, düzeyde sabit bir "
             "yüzde farka karşılık gelir (§10.3).")
 
@@ -423,7 +423,7 @@ def _regions_note(state, choices) -> str:
     s = state.scalars
     name = REGION_NAMES[reference]
     significant = [REGION_NAMES[region] for region in others if s[f"p_{region}"] < 0.05]
-    text = (f"Sabit terimli modelde dört kategori için üç kukla kullanılır; referans kategori {name} modelde yer almaz "
+    text = (f"Kesim terimli modelde dört kategori için üç kukla kullanılır; referans kategori {name} modelde yer almaz "
             "ve her satır bu referansa göre koşullu farktır. ")
     largest = max(others, key=lambda region: abs(s[f"tam_{region}"]))
     percent = s[f"tam_{largest}"]
@@ -466,10 +466,10 @@ def _reference(choices) -> tuple:
                "Kuzeydoğu referanslı katsayılardan Batı − Güney farkı", decimals=4),
         ModelValue("r2_kd", "m_kd", "r2", "Kuzeydoğu referanslı model: R²", decimals=6),
         ModelValue("r2_ref", "m_ref", "r2", f"{name} referanslı model: R²", decimals=6),
-        Residuals("bolge6", "u_kd", "m_kd", "Kuzeydoğu referanslı modelin artıkları"),
-        Residuals("bolge6", "u_ref", "m_ref", f"{name} referanslı modelin artıkları"),
-        Derive("bolge6", "u_fark", E.absolute(E.sub(E.var("u_kd"), E.var("u_ref"))), "İki modelin artık farkı"),
-        Statistic("bolge6", "u_fark", "max", "azami_fark", "Tahmin edilen değerlerin (ve artıkların) azami farkı",
+        Residuals("bolge6", "u_kd", "m_kd", "Kuzeydoğu referanslı modelin artık değerleri"),
+        Residuals("bolge6", "u_ref", "m_ref", f"{name} referanslı modelin artık değerleri"),
+        Derive("bolge6", "u_fark", E.absolute(E.sub(E.var("u_kd"), E.var("u_ref"))), "İki modelin artık değer farkı"),
+        Statistic("bolge6", "u_fark", "max", "azami_fark", "Uyum değerlerinin (ve artık değerlerin) azami farkı",
                   decimals=15),
     )
 
@@ -486,7 +486,7 @@ def _reference_note(state, choices) -> str:
             f"referanslı modelde {REGION_NAMES[other]} − {name} farkı {plain(first, 4)} − "
             f"{plain(base, 4) if base >= 0 else '(' + plain(base, 4) + ')'} = {plain(first - base, 4)}; bu, {name} "
             f"referanslı modeldeki {REGION_NAMES[other]} katsayısıdır ({plain(s[f'k2_{other}'], 4)}). İki modelin R²'si "
-            f"aynıdır ({plain(s['r2_kd'], 6)}) ve tahmin edilen "
+            f"aynıdır ({plain(s['r2_kd'], 6)}) ve uyum "
             "değerleri arasındaki en büyük fark yalnız bilgisayar yuvarlaması düzeyindedir (10⁻¹²'den küçük). Referans "
             "değişikliği modeli değil, katsayıların hangi gruba göre yazıldığını değiştirir (§10.5).")
 
@@ -728,7 +728,7 @@ STEPS = (
         explanation=(
             "Kukla değişken iki kategoriyi 0 ve 1 ile ayırır: $\\text{female} = 1$ kadın, 0 erkek çalışan. "
             "$Y = \\beta_0 + \\delta D + u$ modelinde $\\mathbb{E}(Y \\mid D = 0) = \\beta_0$ ve "
-            "$\\mathbb{E}(Y \\mid D = 1) = \\beta_0 + \\delta$: sabit terim referans grubun ortalaması, kukla katsayısı "
+            "$\\mathbb{E}(Y \\mid D = 1) = \\beta_0 + \\delta$: kesim terimi referans grubun ortalaması, kukla katsayısı "
             "iki grup ortalamasının farkıdır. Bağımlı değişkeni ve kodlama yönünü değiştirin."
         ),
         controls=(Y_1, CODE_1),
@@ -781,7 +781,7 @@ STEPS = (
         controls=(AXIS_3,),
         build=_parallel,
         checks=(
-            _scalar("b0_log", 0.5013, "§10.3: sabit terim", 4),
+            _scalar("b0_log", 0.5013, "§10.3: kesim terimi", 4),
             _scalar("d_log", -0.3011, "§10.3: kadın katsayısı", 4),
             _scalar("b_educ", 0.0875, "§10.3: eğitim katsayısı", 4),
             _scalar("b_exper", 0.0046, "§10.3: deneyim katsayısı", 4),
@@ -814,7 +814,7 @@ STEPS = (
         title="Çok kategorili değişken: bölge kuklaları",
         note=NoteRef("10.5", 0, ("Tablo 10.3", "Şekil 10.3", "Kod 10.5")),
         explanation=(
-            "Kategorik bir değişken m kategori içeriyorsa sabit terimli modelde m − 1 kukla kullanılır; modele girmeyen "
+            "Kategorik bir değişken m kategori içeriyorsa kesim terimli modelde m − 1 kukla kullanılır; modele girmeyen "
             "kategori referanstır. WAGE1'de dört bölge vardır: Kuzeydoğu, Kuzey Merkez, Güney, Batı. Kuzeydoğu "
             "göstergesi diğer üç kukladan kurulur: $D_{KD} = 1 - D_{KM} - D_G - D_B$. Log katsayılar tam yüzde farka "
             "çevrilir: $100(e^{\\hat\\delta} - 1)$. Notlardaki Kod 10.5 aynı modeli metin değişkeniyle kurar: "
@@ -834,8 +834,8 @@ STEPS = (
         title="Referans kategori değişince ne olur?",
         note=NoteRef("10.5", 0),
         explanation=(
-            "Referans kategori değişince sabit terim ve kukla katsayılarının sayısal değerleri ile karşılaştırılan grup "
-            "değişir; tahmin edilen değerler, artıklar, R² ve modelin ortak uyumu değişmez. İlk model Kuzeydoğu "
+            "Referans kategori değişince kesim terimi ve kukla katsayılarının sayısal değerleri ile karşılaştırılan grup "
+            "değişir; uyum değerleri, artık değerler, R² ve modelin ortak uyumu değişmez. İlk model Kuzeydoğu "
             "referanslıdır. İkinci modelin referansını değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(REF_6,),
@@ -846,7 +846,7 @@ STEPS = (
             _scalar("k1_west", 0.0331, "§10.5: Kuzeydoğu referansken Batı katsayısı", 4),
             _scalar("bati_guney", 0.1160, "§10.5: 0,0331 − (−0,0829)", 4),
             _scalar("k2_west", 0.1160, "§10.5: Güney referansken Batı katsayısı", 4),
-            _scalar("azami_fark", 0.0, "§10.5: iki referansla tahmin edilen değerlerin farkı (10⁻¹²'den küçük)", 12),
+            _scalar("azami_fark", 0.0, "§10.5: iki referansla uyum değerlerinin farkı (10⁻¹²'den küçük)", 12),
         ),
         note_for=lambda state, choices: _reference_note(state, choices),
     ),
@@ -855,10 +855,10 @@ STEPS = (
         title="Kukla değişken tuzağı",
         note=NoteRef("10.6", 0),
         explanation=(
-            "Her çalışan tam olarak bir bölgededir: $D_{KD} + D_{KM} + D_G + D_B = 1$ her gözlemde geçerlidir. Sabit "
-            "terim de her gözlemde 1 olan bir sütundur; sabit terim ile dört kuklanın tamamı birlikte kullanılırsa tam "
-            "çoklu doğrusal bağlantı ortaya çıkar. Çözüm: sabit terimi koruyup bir kategoriyi referans bırakmak ya da "
-            "sabit terimi kaldırıp bütün kuklaları kullanmak."
+            "Her çalışan tam olarak bir bölgededir: $D_{KD} + D_{KM} + D_G + D_B = 1$ her gözlemde geçerlidir. Kesim "
+            "terimi de her gözlemde 1 olan bir sütundur; kesim terimi ile dört kuklanın tamamı birlikte kullanılırsa tam "
+            "çoklu doğrusal bağlantı ortaya çıkar. Çözüm: kesim terimini koruyup bir kategoriyi referans bırakmak ya da "
+            "kesim terimini kaldırıp bütün kuklaları kullanmak."
         ),
         operations=_trap(),
         checks=(
@@ -866,8 +866,8 @@ STEPS = (
             _scalar("toplam_max", 1, "§10.6: dört kuklanın toplamı, en büyük değer", 0),
         ),
         takeaway=(
-            "Dört kuklanın toplamı en küçük ve en büyük değerde 1'dir: toplam her gözlemde sabit terimin sütununa eşittir. "
-            "Bu yüzden sabit terimli modelde en fazla üç bölge kuklası kullanılabilir; dört kukla ve sabit birlikte "
+            "Dört kuklanın toplamı en küçük ve en büyük değerde 1'dir: toplam her gözlemde kesim teriminin sütununa eşittir. "
+            "Bu yüzden kesim terimli modelde en fazla üç bölge kuklası kullanılabilir; dört kukla ve sabit birlikte "
             "tam çoklu doğrusal bağlantı yaratır ve katsayılar tek biçimde tahmin edilemez. Yazılım bir kuklayı "
             "kendiliğinden düşürürse hangi kategorinin referans kaldığı kontrol edilir (§10.6)."
         ),
@@ -972,7 +972,7 @@ KONU10_LAB = LabSpec(
     steps=STEPS,
     labels=(
         *W.labels(DATA),
-        (INTERCEPT, "Sabit terim"),
+        (INTERCEPT, "Kesim terimi"),
         ("male", "Erkek (0/1 gösterge)"),
         ("northeast", "Kuzeydoğu bölgesi (0/1 gösterge)"),
         ("northcen", "Kuzey Merkez bölgesi (0/1 gösterge)"),
@@ -988,12 +988,12 @@ KONU10_LAB = LabSpec(
     consistency_notes=(
         "Veri notlardaki gibi WAGE1'dir; notlardaki kod, bölüm betiği, uygulama ve üretilen kod veriyi wooldridge "
         "paketinden okur (Bölüm 10 betiği önceden data/ CSV kopyasını okuyordu; basılı sayıların hiçbiri değişmedi).",
-        "Kod 10.2'de sabit terimin standart hatası 0.2100 ve t istatistiği 33.806'dır (eski metin 0.2117 ve 33.536 "
+        "Kod 10.2'de kesim teriminin standart hatası 0.2100 ve t istatistiği 33.806'dır (eski metin 0.2117 ve 33.536 "
         "yazıyordu; iki veri kaynağında da 0.2100); notlar ve sunum düzeltildi.",
         "Tablo 10.1'e deneyim sütunu eklendi (metin eğitim, deneyim ve kıdemi karşılaştırır). Şekil 10.2 artık tahmin "
         "edilen log ücret doğrularını gösterir; önceki şekil exp(tahmin) çiziyordu ve doğrular paralel değildi.",
         "Bölge kuklaları uygulamada açıkça kurulur (northeast = 1 − northcen − south − west); notlardaki "
-        "C(region, Treatment(...)) yazımıyla katsayılar aynıdır. İki referansla tahmin edilen değerlerin farkı "
+        "C(region, Treatment(...)) yazımıyla katsayılar aynıdır. İki referansla uyum değerlerinin farkı "
         "makineye bağlı yuvarlama düzeyindedir (10⁻¹²'den küçük).",
         "Standart hatalar klasik EKK standart hatalarıdır; heteroskedastisiteye dayanıklı çıkarım Konu 12'de.",
     ),

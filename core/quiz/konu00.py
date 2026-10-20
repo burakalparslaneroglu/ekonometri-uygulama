@@ -257,7 +257,7 @@ QUESTIONS = (
         ),
         answer=FillBlanks((NumberBlank(120, 0.5, "120"), NumberBlank(136, 0.5, "136"))),
         explanation=(
-            "Σ3xᵢ = 3x₁ + … + 3x₈ = 3(x₁ + … + x₈) = 3·40 = 120: sabit çarpan toplamın dışına alınır. Sabit 2 sekiz "
+            "Σ3xᵢ = 3x₁ + … + 3x₈ = 3(x₁ + … + x₈) = 3·40 = 120: sabit çarpan toplamın dışına alınır. Sabit sayı 2 sekiz "
             "gözlemin her birinde bir kez eklenir: Σ2 = 8·2 = 16; bu yüzden Σ(3xᵢ + 2) = 120 + 16 = 136 (§0.3)."
         ),
     ),
@@ -301,7 +301,7 @@ QUESTIONS = (
     Question(
         key="b05", concept="r-kare-korelasyonun-karesi", note=_note("0.9"),
         prompt=(
-            "Sabitli basit regresyonda $R^2$, iki değişkenin korelasyonunun karesidir. Korelasyon 0,5 ise "
+            "Kesim terimli basit regresyonda $R^2$, iki değişkenin korelasyonunun karesidir. Korelasyon 0,5 ise "
             "$R^2 =$ **(1)**; $R^2 = 0{,}36$ ve eğim pozitifse korelasyon **(2)** olur."
         ),
         answer=FillBlanks((NumberBlank(0.25, 0.005, "0,25"), NumberBlank(0.6, 0.005, "0,6"))),
@@ -399,7 +399,7 @@ QUESTIONS = (
     Question(
         key="e05", concept="egim-kovaryans-bolu-varyans", note=_note("0.9"),
         prompt=(
-            "Sabitli basit regresyonda eğim tahmini, bağımlı değişken ile açıklayıcı değişkenin kovaryansının "
+            "Kesim terimli basit regresyonda eğim tahmini, bağımlı değişken ile açıklayıcı değişkenin kovaryansının "
             "açıklayıcı değişkenin varyansına oranıdır. Kovaryans $s_{xy}$, açıklayıcı değişkenin standart sapması "
             "$s_x$ ise eğim tahminini yazın."
         ),

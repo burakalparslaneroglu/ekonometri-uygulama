@@ -380,9 +380,9 @@ def _build_form(parameters: Parameters) -> tuple:
         OLS("karesel", "veri", "y", ("x", "xsq"), "Karesel model: y ~ x + xsq"),
         ModelValue("r2_d", "dogrusal", "r2", "Düz çizgi: R²", decimals=3),
         ModelValue("r2_k", "karesel", "r2", "Karesel model: R²", decimals=3),
-        ModelValue("a0", "dogrusal", "coef", "Düz çizgi: sabit", term="Intercept", decimals=4),
+        ModelValue("a0", "dogrusal", "coef", "Düz çizgi: kesim terimi", term="Intercept", decimals=4),
         ModelValue("a1", "dogrusal", "coef", "Düz çizgi: X katsayısı", term="x", decimals=4),
-        ModelValue("c0", "karesel", "coef", "Karesel model: sabit", term="Intercept", decimals=4),
+        ModelValue("c0", "karesel", "coef", "Karesel model: kesim terimi", term="Intercept", decimals=4),
         ModelValue("c1", "karesel", "coef", "Karesel model: X katsayısı", term="x", decimals=4),
         ModelValue("c2", "karesel", "coef", "Karesel model: X² katsayısı", term="xsq", decimals=4),
         ModelValue("p_kare", "karesel", "p", "X² katsayısının p-değeri (H₀: katsayı = 0)", term="xsq", decimals=4),
@@ -402,7 +402,7 @@ def _build_form(parameters: Parameters) -> tuple:
         Support("izgara", "k", 0, 100, "Izgara: k = 0, 1, …, 100"),
         Derive("izgara", "x", E.div(E.var("k"), 10), "X = k/10: 0, 0,1, …, 10"),
         Derive("izgara", "gercek", truth, "Gerçek ortalama ilişki E(Y | X)"),
-        Derive("izgara", "karesel_tahmin", fitted, "Karesel modelin tahmin edilen eğrisi"),
+        Derive("izgara", "karesel_tahmin", fitted, "Karesel modelin uyum eğrisi"),
         ScatterPlot("veri", "x", "y", "X", "Y", f"Gerçek ilişki, düz çizgi ve karesel model (γ = {_short(gamma)}, n = {n})",
                     fit_line=True, size=6, opacity=0.4,
                     curves=(("izgara", "x", "gercek", "Gerçek ortalama ilişki"),
@@ -488,7 +488,7 @@ FORM = SimExperiment(
     dgp=_form_dgp,
     dgp_note=(
         "Notlarda bu deneyin sayısal karşılığı yoktur. Tek örneklem, tohum 305; sırasıyla X ve u çekilir. Gerçek "
-        "ortalama ilişki bilindiği için iki modelin tahmin edilen değerleri gerçek E(Y | X) ile karşılaştırılır; "
+        "ortalama ilişki bilindiği için iki modelin uyum değerleri gerçek E(Y | X) ile karşılaştırılır; "
         "farklar X'in üç eşit bölgesinde ortalanır. Eğriler 0–10 aralığındaki bir ızgarada çizilir."
     ),
     look_at=(

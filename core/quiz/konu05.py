@@ -255,18 +255,18 @@ QUESTIONS = (
         key="d03", concept="ekk-katsayilari-birlikte-en-kucuk", note=_note("5.4", "(5.6)"),
         prompt=(
             "WAGE1'de Denklem (5.5)'teki katsayılardan yalnız eğitim katsayısı 0,5990 yerine 0,62 alınır, diğer üç "
-            "katsayı aynı bırakılırsa 526 çalışan için kareli artıklar toplamı büyür."
+            "katsayı aynı bırakılırsa 526 çalışan için artık değerlerin kareleri toplamı büyür."
         ),
         answer=TrueFalse(True),
         explanation=(
-            "EKK dört katsayıyı, (5.6)'daki kareli artıklar toplamını birlikte en küçük yapacak biçimde seçer. Bu "
+            "EKK dört katsayıyı, (5.6)'daki artık değerlerin kareleri toplamını birlikte en küçük yapacak biçimde seçer. Bu "
             "katsayılardan herhangi birini tek başına değiştirmek toplamı büyütür: WAGE1'de eğitim katsayısı 0,62 "
             "alınınca toplam yaklaşık 38,4 büyür. Katsayılar tek tek değil, aynı ölçütü birlikte küçültecek biçimde "
             "belirlenir (§5.4)."
         ),
     ),
     Question(
-        key="d04", concept="sabit-tutma-birebir-eslestirme-degil", note=_note("5.5"),
+        key="d04", concept="kesim terimi-tutma-birebir-eslestirme-degil", note=_note("5.5"),
         prompt=(
             "Örneklemde deneyimi ve kıdemi birebir aynı olan hiçbir çalışan çifti bulunmasa da çoklu regresyon "
             "“deneyim ve kıdem sabitken” eğitim katsayısını hesaplayabilir."
@@ -301,14 +301,14 @@ QUESTIONS = (
         key="d06", concept="kirk-bes-derece-cizgisi-ve-artik-isareti", note=_note("5.8", "Şekil 5.4"),
         prompt=(
             "Şekil 5.4'te (yatay eksen gözlenen, dikey eksen tahmin edilen fiyat) 45 derece çizgisinin altında kalan "
-            "bir konutun gözlenen fiyatı tahmin edilen fiyatından yüksektir; yani bu konutun artığı pozitiftir."
+            "bir konutun gözlenen fiyatı tahmin edilen fiyatından yüksektir; yani bu konutun artık değeri pozitiftir."
         ),
         answer=TrueFalse(True),
         explanation=(
             "Çizginin altında dikey eksendeki değer yatay eksendekinden küçüktür: tahmin edilen fiyat gözlenen "
-            "fiyattan düşüktür. Artık gözlenen eksi tahmin edilen fiyat olduğu için pozitiftir; model bu konutu "
+            "fiyattan düşüktür. Artık değer gözlenen eksi tahmin edilen fiyat olduğu için pozitiftir; model bu konutu "
             "olduğundan ucuz tahmin etmiştir. Konum veya yapı kalitesi gibi modelde bulunmayan özellikler böyle "
-            "artıklara yol açabilir (§5.8, Şekil 5.4)."
+            "artık değerlere yol açabilir (§5.8, Şekil 5.4)."
         ),
     ),
     Question(
@@ -318,7 +318,7 @@ QUESTIONS = (
         explanation=(
             "(5.8)'de HKT/TKT oranı $(n-1)/(n-k-1)$ ile büyütülerek birden çıkarılır. Bu çarpan birden büyük olduğu "
             "için uyum zayıf ve açıklayıcı değişken sayısı gözlem sayısına göre büyükse değer sıfırın altına düşer: "
-            "HKT/TKT = 0,98, $n = 30$, $k = 5$ için $1 - 0{,}98 \\times 29/24 \\approx -0{,}18$. R² ise sabit terimli "
+            "HKT/TKT = 0,98, $n = 30$, $k = 5$ için $1 - 0{,}98 \\times 29/24 \\approx -0{,}18$. R² ise kesim terimli "
             "modelde 0 ile 1 arasındadır (§5.9)."
         ),
     ),
@@ -328,28 +328,28 @@ QUESTIONS = (
         prompt=(
             "WAGE1 veri setindeki ilk çalışanın eğitimi 11 yıl, potansiyel deneyimi 2 yıl, kıdemi 0 yıl ve saatlik "
             "ücreti 3,10 dolardır. Denklem (5.5)'e göre bu çalışanın tahmin edilen saatlik ücreti **(1)** dolar, "
-            "artığı **(2)** dolardır. (Virgülden sonra iki basamak yazın.)"
+            "artık değeri **(2)** dolardır. (Virgülden sonra iki basamak yazın.)"
         ),
         answer=FillBlanks((NumberBlank(3.76, 0.005, "3,76"), NumberBlank(-0.66, 0.005, "−0,66"))),
         explanation=(
-            "Tahmin: −2,8727 + 0,5990 × 11 + 0,0223 × 2 + 0,1693 × 0 ≈ 3,76 dolar. Artık: 3,10 − 3,76 = −0,66 "
-            "dolar. Negatif artık, gözlenen ücretin aynı eğitim, deneyim ve kıdeme sahip çalışanlar için modelin "
+            "Tahmin: −2,8727 + 0,5990 × 11 + 0,0223 × 2 + 0,1693 × 0 ≈ 3,76 dolar. Artık değer: 3,10 − 3,76 = −0,66 "
+            "dolar. Negatif artık değer, gözlenen ücretin aynı eğitim, deneyim ve kıdeme sahip çalışanlar için modelin "
             "tahmininden düşük olduğunu gösterir; tek başına modelin yanlış olduğunu göstermez (§5.4)."
         ),
     ),
     Question(
         key="b02", concept="artiklar-regresyonunu-elle-hesaplama", note=_note("5.5", "Şekil 5.2"),
         prompt=(
-            "Dört gözlemlik küçük bir örnekte ücretin ve eğitimin deneyimle açıklanamayan kısımları (sabit terimli iki "
-            "yardımcı regresyonun artıkları) şöyledir: ücret artıkları 0,9; 0,3; −0,5; −0,7; eğitim artıkları 1; 1; "
-            "−1; −1. Ücret artıklarının eğitim artıklarına göre regresyonunun eğimi **(1)** olur. Birinci gözlemin bu "
-            "doğruya göre artığı **(2)** olur. (Virgülden sonra bir basamak yazın.)"
+            "Dört gözlemlik küçük bir örnekte ücretin ve eğitimin deneyimle açıklanamayan kısımları (kesim terimli iki "
+            "yardımcı regresyonun artık değerleri) şöyledir: ücret artık değerleri 0,9; 0,3; −0,5; −0,7; eğitim artık değerleri 1; 1; "
+            "−1; −1. Ücret artık değerlerinin eğitim artıklarına göre regresyonunun eğimi **(1)** olur. Birinci gözlemin bu "
+            "doğruya göre artık değeri **(2)** olur. (Virgülden sonra bir basamak yazın.)"
         ),
         answer=FillBlanks((NumberBlank(0.6, 0.005, "0,6"), NumberBlank(0.3, 0.005, "0,3"))),
         explanation=(
-            "İki artık serisinin de ortalaması sıfırdır; eğim Bölüm 3'teki formülle Σ(eğitim artığı × ücret artığı) / "
-            "Σ(eğitim artığı)² = (0,9 + 0,3 + 0,5 + 0,7)/4 = 0,6 olur. §5.5'e göre bu sayı, ücretin eğitim ve deneyime "
-            "göre çoklu regresyonundaki eğitim katsayısıdır. Doğru (0, 0)'dan geçer; birinci gözlemin artığı 0,9 − "
+            "İki artık değer serisinin de ortalaması sıfırdır; eğim Bölüm 3'teki formülle Σ(eğitim artık değeri × ücret artık değeri) / "
+            "Σ(eğitim artık değeri)² = (0,9 + 0,3 + 0,5 + 0,7)/4 = 0,6 olur. §5.5'e göre bu sayı, ücretin eğitim ve deneyime "
+            "göre çoklu regresyonundaki eğitim katsayısıdır. Doğru (0, 0)'dan geçer; birinci gözlemin artık değeri 0,9 − "
             "0,6 × 1 = 0,3'tür (§5.5)."
         ),
     ),
@@ -357,14 +357,14 @@ QUESTIONS = (
         key="b03", concept="r2-den-hkt", note=_note("5.9", "Tablo 5.1"),
         prompt=(
             "Tablo 5.1'in (2) sütununda R² = 0,3064'tür. Bölüm 4'te WAGE1 için toplam kareler toplamı TKT = 7160,4 ve "
-            "basit modelin artık kareleri toplamı HKT = 5980,7 bulunmuştu. Buna göre çoklu modelin HKT'si yaklaşık "
+            "basit modelin artık değerlerin kareleri toplamı HKT = 5980,7 bulunmuştu. Buna göre çoklu modelin HKT'si yaklaşık "
             "**(1)** olur; deneyim ve kıdemin eklenmesi HKT'yi yaklaşık **(2)** azaltmıştır. (Tam sayıya "
             "yuvarlayın.)"
         ),
         answer=FillBlanks((NumberBlank(4966, 1.0, "4966"), NumberBlank(1014, 1.0, "1014"))),
         explanation=(
             "$R^2 = 1 - \\text{HKT}/\\text{TKT}$ olduğundan HKT = 7160,4 × (1 − 0,3064) ≈ 4966. Bağımlı değişken ve "
-            "örneklem aynı kaldığı için TKT değişmez; artıklarda kalan değişkenlik 5980,7'den 4966'ya, yani yaklaşık "
+            "örneklem aynı kaldığı için TKT değişmez; artık değerlerde kalan değişkenlik 5980,7'den 4966'ya, yani yaklaşık "
             "1014 azalmıştır. R²'nin 0,1648'den 0,3064'e yükselmesi bu azalmanın oranla ifadesidir (§5.6, §5.9)."
         ),
     ),
@@ -410,7 +410,7 @@ QUESTIONS = (
         answer=Equation(
             lhs="\\Delta\\,\\mathbb{E}(Y \\mid X_1, \\ldots, X_k)",
             symbols=(
-                Symbol("b0", "\\beta_0", "sabit parametre", -5, 5, aliases=beta_aliases(0) + _sub("b", 0)),
+                Symbol("b0", "\\beta_0", "kesim terimi", -5, 5, aliases=beta_aliases(0) + _sub("b", 0)),
                 Symbol("b1", "\\beta_1", "X₁'in kısmi eğimi", 0.1, 2, aliases=beta_aliases(1) + _sub("b", 1)),
                 Symbol("b2", "\\beta_2", "X₂'nin kısmi eğimi", -2, -0.1, aliases=beta_aliases(2) + _sub("b", 2)),
                 Symbol("b3", "\\beta_3", "X₃'ün kısmi eğimi", 0.1, 2, aliases=beta_aliases(3) + _sub("b", 3)),
@@ -421,16 +421,16 @@ QUESTIONS = (
             shown="\\beta_1 d_1 + \\beta_2 d_2",
         ),
         explanation=(
-            "(5.3)'te koşullu ortalama parametrelerde doğrusaldır: iki grubun farkında sabit parametre ve değeri aynı "
+            "(5.3)'te koşullu ortalama parametrelerde doğrusaldır: iki grubun farkında kesim terimi ve değeri aynı "
             "olan değişkenlerin terimleri birbirini götürür, geriye $\\beta_1 d_1 + \\beta_2 d_2$ kalır. Her kısmi "
             "eğim, diğer açıklayıcı değişkenler sabitken kendi değişkeninin katkısını verir; birden fazla değişken "
             "farklıysa katkılar toplanır. Örneklemdeki karşılığı katsayı tahminleriyle yazılır (§5.2, §5.3)."
         ),
     ),
     Question(
-        key="e02", concept="sabit-tahmini-ortalamalardan", note=_note("5.4"),
+        key="e02", concept="kesim terimi-tahmini-ortalamalardan", note=_note("5.4"),
         prompt=(
-            "Sabit terimli EKK ile $\\widehat{Y} = b_0 + b_1 X_1 + b_2 X_2$ tahmin edilmiştir. Sabit tahmini $b_0$'ı "
+            "Kesim terimli EKK ile $\\widehat{Y} = b_0 + b_1 X_1 + b_2 X_2$ tahmin edilmiştir. Kesim terimi tahmini $b_0$'ı "
             "$Y$'nin ortalaması, açıklayıcı değişkenlerin ortalamaları ve eğim tahminleri cinsinden yazın."
         ),
         answer=Equation(
@@ -446,8 +446,8 @@ QUESTIONS = (
             shown="\\bar{Y} - b_1 \\bar{X}_1 - b_2 \\bar{X}_2",
         ),
         explanation=(
-            "Sabit terimli çoklu EKK'de artıkların toplamı sıfırdır; tahmin edilen değerlerin ortalaması "
-            "$\\bar{Y}$'dir. Tahmin edilen değerlerin ortalaması $b_0 + b_1\\bar{X}_1 + b_2\\bar{X}_2$ olduğundan "
+            "Kesim terimli çoklu EKK'de artık değerlerin toplamı sıfırdır; uyum değerlerinin ortalaması "
+            "$\\bar{Y}$'dir. Uyum değerlerinin ortalaması $b_0 + b_1\\bar{X}_1 + b_2\\bar{X}_2$ olduğundan "
             "$b_0 = \\bar{Y} - b_1\\bar{X}_1 - b_2\\bar{X}_2$: tahmin denklemi ortalamalar noktasından geçer. WAGE1'de "
             "5,896 − 0,5990 × 12,563 − 0,0223 × 17,017 − 0,1693 × 5,105 ≈ −2,873 (§5.4)."
         ),
@@ -465,7 +465,7 @@ QUESTIONS = (
                 Symbol("x1", "X_1", "eğitim (yıl)", 6, 18, aliases=("X_1", "X₁", "X1", "x_1", "x₁")),
                 Symbol("x2", "X_2", "deneyim (yıl)", 1, 40, aliases=("X_2", "X₂", "X2", "x_2", "x₂")),
                 Symbol("x3", "X_3", "kıdem (yıl)", 0, 20, aliases=("X_3", "X₃", "X3", "x_3", "x₃")),
-                Symbol("g0", "g_0", "yardımcı regresyonun sabiti", 10, 15, aliases=_sub("g", 0)),
+                Symbol("g0", "g_0", "yardımcı regresyonun kesim terimi", 10, 15, aliases=_sub("g", 0)),
                 Symbol("g2", "g_2", "deneyimin yardımcı katsayısı", -0.2, -0.01, aliases=_sub("g", 2)),
                 Symbol("g3", "g_3", "kıdemin yardımcı katsayısı", 0.01, 0.2, aliases=_sub("g", 3)),
             ),
@@ -490,7 +490,7 @@ QUESTIONS = (
         answer=Equation(
             lhs="\\%\\Delta\\,\\widehat{\\text{fiyat}} \\approx",
             symbols=(
-                Symbol("c0", "c_0", "sabit", 5, 8, aliases=_sub("c", 0)),
+                Symbol("c0", "c_0", "kesim terimi", 5, 8, aliases=_sub("c", 0)),
                 Symbol("c1", "c_1", "motor hacmi katsayısı", 0.05, 0.3, aliases=_sub("c", 1)),
                 Symbol("c2", "c_2", "yaş katsayısı", -0.15, -0.02, aliases=_sub("c", 2)),
                 Symbol("a", "a", "yaş farkı (yıl)", 1, 3),
@@ -509,7 +509,7 @@ QUESTIONS = (
     Question(
         key="e05", concept="duzeltilmis-r2-r2-cinsinden", note=_note("5.9", "(5.8)"),
         prompt=(
-            "Sabit terimli, $k$ açıklayıcı değişkenli ve $n$ gözlemli bir modelin düzeltilmiş $R^2$'sini (5.8) "
+            "Kesim terimli, $k$ açıklayıcı değişkenli ve $n$ gözlemli bir modelin düzeltilmiş $R^2$'sini (5.8) "
             "yardımıyla $R^2$, $n$ ve $k$ cinsinden yazın."
         ),
         answer=Equation(
@@ -517,7 +517,7 @@ QUESTIONS = (
             symbols=(
                 Symbol("r2", "R^2", "belirleme katsayısı", 0.05, 0.95, aliases=_R2),
                 Symbol("n", "n", "gözlem sayısı", 30, 1000),
-                Symbol("k", "k", "sabit dışındaki açıklayıcı değişken sayısı", 1, 8),
+                Symbol("k", "k", "kesim terimi dışındaki açıklayıcı değişken sayısı", 1, 8),
             ),
             answer="1 - (1 - r2)*(n - 1)/(n - k - 1)",
             shown="1 - (1 - R^2)\\,\\frac{n-1}{n-k-1}",

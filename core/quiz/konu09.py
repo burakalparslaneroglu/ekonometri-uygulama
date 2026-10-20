@@ -6,7 +6,7 @@ standartlaştırılmış katsayı; β = 0,06, üç birimlik değişim, β = −0
 0,10X² modelinin marjinal etkileri, tam değişimi ve dönüm noktası; WAGE1 karesel modelinin yedi maddesi; 5 + 3X −
 0,05X² modelinin 20'de merkezlenmesi; Tablo 9.7'nin yedi maddesi; Tablo 9.8'in sekiz maddesi (15 yıllık deneyimde
 marjinal etki dahil); reklam–satış örneğinde yanlış biçim; altı yanlış cümlenin düzeltilmesi ve mini quizlerdeki
-sorular. Aynı becerileri yeni bağlamlarla ve yeni sayılarla sınar. Artık grafikleriyle tanı Konu 12'nin, etkileşim
+sorular. Aynı becerileri yeni bağlamlarla ve yeni sayılarla sınar. Artık değer grafikleriyle tanı Konu 12'nin, etkileşim
 terimleri Konu 11'in konusudur; sorular bunları kullanmaz.
 """
 
@@ -151,8 +151,8 @@ QUESTIONS = (
         explanation=(
             "$X = X_c + 10$ yazılırsa $\\beta_1X + \\beta_2X^2 = (\\beta_1 + 20\\beta_2)X_c + \\beta_2X_c^2 + "
             "(10\\beta_1 + 100\\beta_2)$ olur. Kare terimin katsayısı değişmez; merkezleme yalnız doğrusal terimin "
-            "katsayısını (10 yıldaki eğime, 0,01746'ya) ve sabiti değiştirir. Eğrinin bükülme derecesi hangi noktadan "
-            "ölçüldüğüne bağlı değildir; R², HKT ve tahmin edilen değerler de aynı kalır (Tablo 9.6) (§9.6)."
+            "katsayısını (10 yıldaki eğime, 0,01746'ya) ve kesim terimini değiştirir. Eğrinin bükülme derecesi hangi noktadan "
+            "ölçüldüğüne bağlı değildir; R², HKT ve uyum değerleri de aynı kalır (Tablo 9.6) (§9.6)."
         ),
     ),
     Question(
@@ -210,15 +210,15 @@ QUESTIONS = (
         ),
         answer=TrueFalse(True),
         explanation=(
-            "İki değer alan X için $X^2$ her zaman sabit ile X'in doğrusal birleşimidir: burada $X^2 = 7X - 10$ (4 = 14 − "
-            "10; 25 = 35 − 10). Sabit, X ve X² sütunları tam doğrusal bağımlıdır; iki noktadan sonsuz sayıda parabol "
+            "İki değer alan X için $X^2$ her zaman kesim terimi ile X'in doğrusal birleşimidir: burada $X^2 = 7X - 10$ (4 = 14 − "
+            "10; 25 = 35 − 10). Kesim terimi, X ve X² sütunları tam doğrusal bağımlıdır; iki noktadan sonsuz sayıda parabol "
             "geçtiği için $\\beta_1$ ile $\\beta_2$ ayrı ayrı belirlenemez. X en az üç farklı değer aldığında böyle bir "
             "tam ilişki kurulamaz, çünkü $X^2$ X'in doğrusal olmayan bir fonksiyonudur. WAGE1'de deneyim ile karesi "
             "arasındaki ≈ 0,96'lık korelasyon tam bağlantı değildir; yalnız standart hataları büyütür (§9.1)."
         ),
     ),
     Question(
-        key="d02", concept="log-bagimli-degiskende-birim-sabiti-kaydirir", note=_note("9.2", "Kod 9.2"),
+        key="d02", concept="log-bagimli-degiskende-birim-kesim terimi-kaydirir", note=_note("9.2", "Kod 9.2"),
         prompt=(
             "Bağımlı değişkeni $\\ln(\\text{ücret})$ olan WAGE1 modelinde ücret dolar yerine sent cinsinden yazılırsa "
             "(100 ile çarpılırsa) eğitim katsayısı 0,0845'ten 8,45'e çıkar."
@@ -226,7 +226,7 @@ QUESTIONS = (
         answer=TrueFalse(False),
         explanation=(
             "$\\ln(100 \\cdot \\text{ücret}) = \\ln(100) + \\ln(\\text{ücret})$: bağımlı değişkene her gözlemde aynı "
-            "sabit ($\\ln 100 \\approx 4{,}605$) eklenir. Yalnız sabit terim 4,605 artar (Kod 9.2'de 0,2016'dan "
+            "sabit ($\\ln 100 \\approx 4{,}605$) eklenir. Yalnız kesim terimi 4,605 artar (Kod 9.2'de 0,2016'dan "
             "yaklaşık 4,807'ye) ve onun t değeri değişir; eğim katsayıları ile t değerleri, bütün standart hatalar ve R² "
             "aynı kalır. Bağımlı değişkeni ücret olan "
             "düzey modelinde ise bütün katsayılar 100 ile çarpılır. Log modelde eğimler birimden bağımsız yüzde yorumu "
@@ -365,7 +365,7 @@ QUESTIONS = (
             "$X^2$ = 1, 4, 9, 16, 25 değerleri X ile neredeyse doğrusal artar: korelasyon ≈ 0,981. Merkezlenince "
             "$X_c$ = −2, −1, 0, 1, 2 ve $X_c^2$ = 4, 1, 0, 1, 4 olur; kare simetrik olduğu için $\\sum X_c X_c^2 = -8 - "
             "1 + 0 + 1 + 8 = 0$, kovaryans ve korelasyon sıfırdır. Merkezleme X ile X² arasındaki örneklem "
-            "korelasyonunu azaltabilir; tahmin edilen değerleri, R²'yi ve eğriyi değiştirmez, içselliği de gidermez "
+            "korelasyonunu azaltabilir; uyum değerleri, R²'yi ve eğriyi değiştirmez, içselliği de gidermez "
             "(§9.6)."
         ),
     ),
@@ -395,7 +395,7 @@ QUESTIONS = (
         answer=Equation(
             lhs="\\widehat Y(X^{*})",
             symbols=(
-                _estimate(0, 0, 5, "sabit"),
+                _estimate(0, 0, 5, "kesim terimi"),
                 _estimate(1, 0.5, 3, "X'in katsayısı"),
                 _estimate(2, -0.5, -0.05, "X²'nin katsayısı (negatif)"),
             ),
@@ -455,16 +455,16 @@ QUESTIONS = (
         ),
     ),
     Question(
-        key="e04", concept="merkezlenmis-modelin-sabiti", note=_note("9.6", "Tablo 9.6"),
+        key="e04", concept="merkezlenmis-modelin-kesim terimi", note=_note("9.6", "Tablo 9.6"),
         prompt=(
             "Karesel model $\\widehat Y = b_0 + b_1X + b_2X^2$, $X_c = X - c$ ile $\\widehat Y = a_0 + a_1X_c + "
-            "a_2X_c^2$ biçiminde yeniden yazılıyor. Merkezlenmiş modelin sabiti $a_0$'ı $b_0$, $b_1$, $b_2$ ve $c$ "
+            "a_2X_c^2$ biçiminde yeniden yazılıyor. Merkezlenmiş modelin kesim terimi $a_0$'ı $b_0$, $b_1$, $b_2$ ve $c$ "
             "cinsinden yazın."
         ),
         answer=Equation(
             lhs="a_0",
             symbols=(
-                _estimate(0, -2, 5, "ham modelin sabiti"),
+                _estimate(0, -2, 5, "ham modelin kesim terimi"),
                 _estimate(1, 0.5, 3, "X'in katsayısı"),
                 _estimate(2, -0.5, 0.5, "X²'nin katsayısı"),
                 Symbol("c", "c", "merkez noktası", 1, 20),
@@ -474,9 +474,9 @@ QUESTIONS = (
         ),
         explanation=(
             "$X_c = 0$, yani X = c noktasında merkezlenmiş model $a_0$'ı verir; aynı noktada ham model $b_0 + b_1c + "
-            "b_2c^2$'yi verir. İki model aynı tahmin edilen değerleri ürettiği için $a_0$ bu değere eşittir: "
-            "merkezlenmiş sabit, X = c'deki (diğer değişkenler sıfırken) tahmin edilen Y'dir. WAGE1'de deneyim 10 "
-            "yılda merkezlenince sabit $10 \\times 0{,}0293 - 100 \\times 0{,}000592 \\approx 0{,}234$ artar (§9.6)."
+            "b_2c^2$'yi verir. İki model aynı uyum değerleri ürettiği için $a_0$ bu değere eşittir: "
+            "merkezlenmiş kesim terimi, X = c'deki (diğer değişkenler sıfırken) tahmin edilen Y'dir. WAGE1'de deneyim 10 "
+            "yılda merkezlenince kesim terimi $10 \\times 0{,}0293 - 100 \\times 0{,}000592 \\approx 0{,}234$ artar (§9.6)."
         ),
     ),
     Question(

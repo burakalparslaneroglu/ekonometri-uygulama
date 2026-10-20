@@ -3,8 +3,8 @@
 Bölüm 3'ün laboratuvar bölümü yoktur; adımlar bölümün çözümlü örnekleridir ve bölüm sırasıyla alt bölümlere
 bağlanır: eğitim düzeylerine göre ortalama ücret ve EKK doğrusu (§3.1, Şekil 3.1), koşullu ortalama ve eğim
 (§3.3, Denklem 3.2), adım adım küçük EKK hesabı (§3.9, Tablo 3.2–3.3), WAGE1 basit regresyonu (§3.10, Kod 3.1–3.2),
-eğim ve sabit terimin yorumu (§3.11), sıfır–bir açıklayıcı değişken: JTRAIN2 (§3.11, Kod 3.3–3.4), gözlenen değer,
-tahmin edilen değer ve artık (§3.12, Tablo 3.4) ve okuma kontrol listesi (§3.13). Her ``Check`` notlarda basılı bir
+eğim ve kesim teriminin yorumu (§3.11), sıfır–bir açıklayıcı değişken: JTRAIN2 (§3.11, Kod 3.3–3.4), gözlenen değer,
+uyum değeri ve artık değer (§3.12, Tablo 3.4) ve okuma kontrol listesi (§3.13). Her ``Check`` notlarda basılı bir
 sayıdır; değer notlardan kopyalanmıştır, hesaplanmamıştır.
 
 Etkileşim: grafiğin açıklayıcı değişkeni (Adım 1), eğitim düzeyi (Adım 2), küçük örnekte beşinci öğrencinin notu
@@ -189,18 +189,18 @@ def _small(choices) -> tuple:
         Statistic(SMALL, "x_kare", "sum", "payda", "Payda Σ(Xᵢ − X̄)²", decimals=0),
         Scalar("b1_kucuk", E.div(E.ref("pay"), E.ref("payda")), "Eğim β̂₁ = pay / payda (Denklem 3.8)", decimals=1),
         Scalar("b0_kucuk", E.sub(E.ref("ybar"), E.mul(E.ref("b1_kucuk"), E.ref("xbar"))),
-               "Sabit β̂₀ = Ȳ − β̂₁X̄ (Denklem 3.9)", decimals=1),
+               "Kesim terimi β̂₀ = Ȳ − β̂₁X̄ (Denklem 3.9)", decimals=1),
         Derive(SMALL, "tahmin", E.add(E.ref("b0_kucuk"), E.mul(E.ref("b1_kucuk"), E.var("saat"))),
-               "Tahmin edilen değer Ŷᵢ = β̂₀ + β̂₁Xᵢ"),
-        Derive(SMALL, "artik", E.sub(E.var("puan"), E.var("tahmin")), "Artık ûᵢ = Yᵢ − Ŷᵢ"),
-        Derive(SMALL, "artik_kare", E.power(E.var("artik"), 2), "Kareli artık ûᵢ²"),
+               "Uyum değeri Ŷᵢ = β̂₀ + β̂₁Xᵢ"),
+        Derive(SMALL, "artik", E.sub(E.var("puan"), E.var("tahmin")), "Artık değer ûᵢ = Yᵢ − Ŷᵢ"),
+        Derive(SMALL, "artik_kare", E.power(E.var("artik"), 2), "Artık değerin karesi ûᵢ²"),
         ShowFrame(SMALL, _SMALL_COLUMNS, "Tablo 3.2–3.3: hesap tablosu" if notes else
                   f"Hesap tablosu (beşinci öğrencinin notu {y5})"),
-        Statistic(SMALL, "artik", "sum", "artik_toplami", "Artıkların toplamı Σûᵢ", decimals=1),
-        Statistic(SMALL, "artik_kare", "sum", "artik_kare_toplami", "Kareli artıklar toplamı Σûᵢ²", decimals=2),
+        Statistic(SMALL, "artik", "sum", "artik_toplami", "Artık değerlerin toplamı Σûᵢ", decimals=1),
+        Statistic(SMALL, "artik_kare", "sum", "artik_kare_toplami", "Artık değerlerin kareleri toplamı Σûᵢ²", decimals=2),
         OLS("model_kucuk", SMALL, "puan", ("saat",), "Aynı doğru yazılımla: puan ~ saat"),
         ModelValue("b1_yazilim", "model_kucuk", "coef", "Yazılımla eğim", term="saat", decimals=1),
-        ModelValue("b0_yazilim", "model_kucuk", "coef", "Yazılımla sabit", term=INTERCEPT, decimals=1),
+        ModelValue("b0_yazilim", "model_kucuk", "coef", "Yazılımla kesim terimi", term=INTERCEPT, decimals=1),
     )
 
 
@@ -210,17 +210,17 @@ def _small_note(state, choices) -> str:
     b1 = s["b1_kucuk"]
     sign = "+" if b1 >= 0 else "−"
     line = f"not̂ = {plain(s['b0_kucuk'], 1)} {sign} {plain(abs(b1), 1)} · saat"
-    text = (f"Tahmin edilen doğru: {line}. Formüllerle bulunan eğim ve sabit, yazılımın EKK tahminiyle aynıdır. "
-            f"Artıkların toplamı {plain(s['artik_toplami'], 1)}; kareli artıklar toplamı "
+    text = (f"Uyum doğrusu: {line}. Formüllerle bulunan eğim ve kesim terimi, yazılımın EKK tahminiyle aynıdır. "
+            f"Artık değerlerin toplamı {plain(s['artik_toplami'], 1)}; artık değerlerin kareleri toplamı "
             f"{plain(s['artik_kare_toplami'], 2)}.")
     if y5 == SCORES[-1]:
         return text + (" Notlardaki değerlerle Denklem 3.10 elde edilir: bu beş öğrencilik örneklemde bir saat daha "
-                       "fazla çalışan öğrencinin tahmin edilen notu ortalama 2,9 puan daha yüksektir. Sabit terimli "
-                       "EKK doğrusunda artıkların toplamı sıfırdır ve doğru (X̄, Ȳ) = (6, 66) noktasından geçer.")
+                       "fazla çalışan öğrencinin tahmin edilen notu ortalama 2,9 puan daha yüksektir. Kesim terimli "
+                       "EKK doğrusunda artık değerlerin toplamı sıfırdır ve doğru (X̄, Ȳ) = (6, 66) noktasından geçer.")
     return text + (
-        f" Beşinci öğrencinin notu: {y5} (notlarda 78). Yalnız bir gözlem değişti; eğim ve sabit değişti. Doğru "
-        "X = 4 noktası çevresinde döner: ikinci öğrencinin tahmini 60,2'de, artığı −0,2'de kalır, öteki tahminler ve "
-        "artıklar değişir. Artıkların toplamı yine sıfırdır ve doğru yine (X̄, Ȳ) noktasından geçer. Eğimdeki değişim "
+        f" Beşinci öğrencinin notu: {y5} (notlarda 78). Yalnız bir gözlem değişti; eğim ve kesim terimi değişti. Doğru "
+        "X = 4 noktası çevresinde döner: ikinci öğrencinin tahmini 60,2'de, artık değeri −0,2'de kalır, öteki tahminler ve "
+        "artık değerler değişir. Artık değerlerin toplamı yine sıfırdır ve doğru yine (X̄, Ȳ) noktasından geçer. Eğimdeki değişim "
         "(X₅ − X̄)(Y₅ − 78)/Σ(Xᵢ − X̄)² = 4(Y₅ − 78)/40 kadardır: X̄'dan uzak bir gözlem eğimi daha çok etkiler."
     )
 
@@ -250,7 +250,7 @@ def _model_note(state, choices) -> str:
     if x == "educ":
         return (
             "Örneklem regresyon doğrusu ŵage = −0,9049 + 0,5414 · educ (Denklem 3.11); tahmin 526 çalışana dayanır. "
-            "`Intercept` satırı sabit tahmini β̂₀, `educ` satırı eğim tahmini β̂₁'dir. Adımın altındaki kodun "
+            "`Intercept` satırı kesim terimi tahmini β̂₀, `educ` satırı eğim tahmini β̂₁'dir. Adımın altındaki kodun "
             "yazdırdığı tam yazılım çıktısında görünen standart hata, t, p-değeri ve güven aralığı bu bölümde "
             "yorumlanmaz; R² Konu 4'te, ötekiler Konu 7'de işlenir."
         )
@@ -262,7 +262,7 @@ def _model_note(state, choices) -> str:
     )
 
 
-# --- Adım 5: eğim ve sabit terimin yorumu -----------------------------------------------
+# --- Adım 5: eğim ve kesim teriminin yorumu -----------------------------------------------
 
 _ZERO_LABELS = {
     "educ": "Eğitimi sıfır olan çalışan sayısı",
@@ -273,7 +273,7 @@ _ZERO_LABELS = {
 def _interpretation(choices) -> tuple:
     x = choices["adim4_x"]
     return (
-        ModelValue("b0", "model", "coef", "Sabit terim β̂₀", term=INTERCEPT),
+        ModelValue("b0", "model", "coef", "Kesim terimi β̂₀", term=INTERCEPT),
         ModelValue("b1", "model", "coef", f"Eğim β̂₁ ({x})", term=x),
         Count(DATA, "x_sifir", x, 0, _ZERO_LABELS[x]),
     )
@@ -288,8 +288,8 @@ def _interpretation_note(state, choices) -> str:
              "olduğunu, değişimin birimini (bir yıl) ve sonucun birimini (saat başına dolar) söyler.")
     where = (f"örneklemde {words} değeri sıfır olan {zeros} çalışan var" if zeros
              else f"örneklemde {words} değeri sıfır olan çalışan yok")
-    constant = (f" Sabit terim {plain(b0, 4)}: {words} sıfır olduğunda doğrunun verdiği ücrettir; {where}. "
-                "Sabit, doğrunun konumunu belirler; ekonomik yorumu verinin aralığına bağlıdır.")
+    constant = (f" Kesim terimi {plain(b0, 4)}: {words} sıfır olduğunda doğrunun verdiği ücrettir; {where}. "
+                "Kesim terimi, doğrunun konumunu belirler; ekonomik yorumu verinin aralığına bağlıdır.")
     if x == "educ":
         constant += " Negatif bir ücret tahmini, doğrunun veri aralığının kenarına taşınmasından doğar."
     causal = (f" Nedensel dil sınırı: {words} bireylere rastgele atanmadığı için bu eğim, bir çalışanın {words} "
@@ -315,7 +315,7 @@ def _binary(choices) -> tuple:
         OLS("model_jtrain", JTRAIN, "re78", (d,), f"Basit regresyon: re78 ~ {d}" + (" (Kod 3.3)" if notes else "")),
         ShowModel("model_jtrain", "Kod 3.4: temel katsayılar" if notes else "Seçtiğiniz modelin çıktısı",
                   columns=("coef",), stats=("nobs",), stars=False),
-        ModelValue("sabit_j", "model_jtrain", "coef", "Sabit β̂₀", term=INTERCEPT),
+        ModelValue("sabit_j", "model_jtrain", "coef", "Kesim terimi β̂₀", term=INTERCEPT),
         ModelValue("egim_j", "model_jtrain", "coef", f"Eğim β̂₁ ({d})", term=d),
         Scalar("bir_grubu", E.add(E.ref("sabit_j"), E.ref("egim_j")), f"β̂₀ + β̂₁: {d} = 1 ({ones}) için tahmin"),
     )
@@ -325,7 +325,7 @@ def _binary_note(state, choices) -> str:
     d = choices["adim6_d"]
     s = state.scalars
     ones, zeros = BINARY_WORDS[d]
-    identity = (f"Sabit {plain(s['sabit_j'], 4)}, `{d}` = 0 grubunun ({zeros}) ortalamasına; sabit + eğim = "
+    identity = (f"Kesim terimi {plain(s['sabit_j'], 4)}, `{d}` = 0 grubunun ({zeros}) ortalamasına; kesim terimi + eğim = "
                 f"{plain(s['bir_grubu'], 4)}, `{d}` = 1 grubunun ({ones}) ortalamasına eşittir. Eğim "
                 f"{plain(s['egim_j'], 4)}, iki grup ortalamasının farkıdır (bin dolar).")
     if d == "train":
@@ -341,21 +341,21 @@ def _binary_note(state, choices) -> str:
     )
 
 
-# --- Adım 7: gözlenen değer, tahmin edilen değer ve artık -------------------------------
+# --- Adım 7: gözlenen değer, uyum değeri ve artık değer -------------------------------
 
 def _fitted(choices) -> tuple:
     x, x0, y0 = choices["adim4_x"], int(choices["adim7_x0"]), float(choices["adim7_y0"])
     return (
         Derive(DATA, "tahmin", E.add(E.ref("b0"), E.mul(E.ref("b1"), E.var(x))),
-               "Tahmin edilen değer Ŷᵢ = β̂₀ + β̂₁Xᵢ"),
-        Derive(DATA, "artik", E.sub(E.var(OUTCOME), E.var("tahmin")), "Artık ûᵢ = Yᵢ − Ŷᵢ"),
+               "Uyum değeri Ŷᵢ = β̂₀ + β̂₁Xᵢ"),
+        Derive(DATA, "artik", E.sub(E.var(OUTCOME), E.var("tahmin")), "Artık değer ûᵢ = Yᵢ − Ŷᵢ"),
         ShowFrame(DATA, (OUTCOME, x, "tahmin", "artik"),
                   "Tablo 3.4: ilk altı gözlem" if x == "educ" else
-                  "İlk altı gözlem: seçtiğiniz modelle tahmin ve artık",
+                  "İlk altı gözlem: seçtiğiniz modelle Uyum değeri ve artık değer",
                   head=6, decimals=2),
         Scalar("tahmin_x0", E.add(E.roundto(E.ref("b0"), 4), E.mul(E.roundto(E.ref("b1"), 4), x0)),
                f"x₀ = {x0} için tahmin (dört basamaklı katsayılarla)", decimals=3),
-        Scalar("artik_y0", E.sub(y0, E.ref("tahmin_x0")), f"y₀ = {plain(y0, 2)} için artık", decimals=3),
+        Scalar("artik_y0", E.sub(y0, E.ref("tahmin_x0")), f"y₀ = {plain(y0, 2)} için artık değer", decimals=3),
     )
 
 
@@ -366,11 +366,11 @@ def _fitted_note(state, choices) -> str:
     residual = s["artik_y0"]
     position = ("doğrunun üzerindedir: gözlenen ücret tahminden yüksektir" if residual > 0 else
                 "doğrunun altındadır: gözlenen ücret tahminden düşüktür" if residual < 0 else
-                "tam doğrunun üzerindedir (artık sıfır)")
+                "tam doğrunun üzerindedir (artık değer sıfır)")
     low, high = {"educ": (0, 18), "exper": (1, 51), "tenure": (0, 44)}[x]
-    text = (f"Tabloda ilk altı çalışanın tahmin edilen değeri ve artığı görünür; artık pozitifse gözlem doğrunun "
-            f"üzerindedir. Seçtiğiniz noktada tahmin {plain(s['tahmin_x0'], 3)} dolar, artık "
-            f"{plain(residual, 3)} dolar; gözlem {position}. Büyük bir artık tek başına ölçüm hatası anlamına gelmez.")
+    text = (f"Tabloda ilk altı çalışanın uyum değerini ve artık değeri görünür; artık değer pozitifse gözlem doğrunun "
+            f"üzerindedir. Seçtiğiniz noktada tahmin {plain(s['tahmin_x0'], 3)} dolar, artık değer "
+            f"{plain(residual, 3)} dolar; gözlem {position}. Büyük bir artık değer tek başına ölçüm hatası anlamına gelmez.")
     if not low <= x0 <= high:
         text += (f" x₀ verideki {words} aralığının ({low}–{high} yıl) dışında: bu dışa doğru bir tahmindir ve doğrusal "
                  "ilişkinin orada da geçerli olduğu varsayımına dayanır.")
@@ -391,12 +391,12 @@ _SMALL_FITTED = {
     "artik": ((0.6, -0.2, -1.0, 0.2, 0.4), 1),
     "artik_kare": ((0.36, 0.04, 1.00, 0.04, 0.16), 2),
 }
-"""Tablo 3.3: tahmin edilen değerler, artıklar ve kareli artıklar (basılı basamakla)."""
+"""Tablo 3.3: uyum değerleri, artık değerler ve artık değerlerin kareleri (basılı basamakla)."""
 _FIRST_SIX = {
     "tahmin": (5.05, 5.59, 5.05, 3.43, 5.59, 7.76),
     "artik": (-1.95, -2.35, -2.05, 2.57, -0.29, 0.99),
 }
-"""Tablo 3.4: WAGE1'in ilk altı gözleminde tahmin edilen değer ve artık."""
+"""Tablo 3.4: WAGE1'in ilk altı gözleminde uyum değeri ve artık değer."""
 _SMALL_NAMES = {"x_sapma": "Xᵢ − X̄", "y_sapma": "Yᵢ − Ȳ", "carpim": "çarpım", "x_kare": "(Xᵢ − X̄)²",
                 "tahmin": "Ŷᵢ", "artik": "ûᵢ", "artik_kare": "ûᵢ²"}
 
@@ -439,7 +439,7 @@ STEPS = (
         title="Adım adım küçük bir EKK hesabı",
         note=NoteRef("3.9", 0, ("Tablo 3.2", "Tablo 3.3", "Denklem 3.10")),
         explanation=(
-            "Beş öğrencinin haftalık çalışma saati $X$ ve sınav notu $Y$ ile eğim ve sabit formülleri adım adım "
+            "Beş öğrencinin haftalık çalışma saati $X$ ve sınav notu $Y$ ile eğim ve kesim terimi formülleri adım adım "
             "uygulanır: $\\hat\\beta_1 = \\sum (X_i - \\bar X)(Y_i - \\bar Y) / \\sum (X_i - \\bar X)^2$ (Denklem 3.8) "
             "ve $\\hat\\beta_0 = \\bar Y - \\hat\\beta_1 \\bar X$ (Denklem 3.9). Son satırlar aynı doğrunun yazılımla "
             "tahminidir. Beşinci öğrencinin notunu değiştirerek tek bir gözlemin doğruyu nasıl etkilediğini görün."
@@ -461,14 +461,14 @@ STEPS = (
             _scalar("pay", 116, "Tablo 3.2: Σ(Xᵢ − X̄)(Yᵢ − Ȳ)", 0),
             _scalar("payda", 40, "Tablo 3.2: Σ(Xᵢ − X̄)²", 0),
             _scalar("b1_kucuk", 2.9, "§3.9: eğim 116/40", 1),
-            _scalar("b0_kucuk", 48.6, "§3.9: sabit 66 − 2,9 · 6", 1),
+            _scalar("b0_kucuk", 48.6, "§3.9: kesim terimi 66 − 2,9 · 6", 1),
             *(Check(f"Tablo 3.3: {_SMALL_NAMES[column]}, {row}. öğrenci", CellTarget(SMALL, column, row), value,
                     decimals)
               for column, (values, decimals) in _SMALL_FITTED.items() for row, value in enumerate(values, start=1)),
             _scalar("artik_toplami", 0.0, "Tablo 3.3: Σûᵢ", 1),
             _scalar("artik_kare_toplami", 1.60, "Tablo 3.3: Σûᵢ²", 2),
             _scalar("b1_yazilim", 2.9, "Denklem 3.10: eğim (yazılımla)", 1),
-            _scalar("b0_yazilim", 48.6, "Denklem 3.10: sabit (yazılımla)", 1),
+            _scalar("b0_yazilim", 48.6, "Denklem 3.10: kesim terimi (yazılımla)", 1),
         ),
         note_for=lambda state, choices: _small_note(state, choices),
     ),
@@ -478,24 +478,24 @@ STEPS = (
         note=NoteRef("3.10", 0, ("Kod 3.1", "Kod 3.2", "Denklem 3.11")),
         explanation=(
             "`wage ~ educ` yazımı `wage`'i bağımlı, `educ`'u açıklayıcı değişken yapar. Kod 3.2 bu bölümde okunan "
-            "alanları verir: bağımlı değişken, gözlem sayısı, sabit ve eğim. Kodun ezberlenmesi beklenmez."
+            "alanları verir: bağımlı değişken, gözlem sayısı, kesim terimi ve eğim. Kodun ezberlenmesi beklenmez."
         ),
         controls=(X_CHOICE,),
         build=_model,
         checks=(
             Check("Kod 3.2: gözlem sayısı", ModelTarget("model", "nobs"), 526, 0),
-            Check("Kod 3.2: sabit terim", CoefTarget("model", INTERCEPT), -0.9049, 4),
+            Check("Kod 3.2: kesim terimi", CoefTarget("model", INTERCEPT), -0.9049, 4),
             Check("Kod 3.2: eğitim katsayısı", CoefTarget("model", "educ"), 0.5414, 4),
         ),
         note_for=lambda state, choices: _model_note(state, choices),
     ),
     interactive_step(
         number=5,
-        title="Eğim ve sabit terimi doğru yorumlamak",
+        title="Eğim ve kesim terimi doğru yorumlamak",
         note=NoteRef("3.11", 0),
         explanation=(
             "Doğru bir eğim yorumu dört unsuru birlikte verir: sonucun örnekleme ait olduğu, $X$'in değişim birimi, "
-            "$Y$'nin değişim birimi ve nedensel olmayan dil. Sabit terim $X = 0$ noktasındaki tahmindir; anlamı sıfır "
+            "$Y$'nin değişim birimi ve nedensel olmayan dil. Kesim terimi $X = 0$ noktasındaki tahmindir; anlamı sıfır "
             "değerinin veride ne kadar gözlendiğine bağlıdır. Bu adım Adım 4'te kurulan modeli yorumlar."
         ),
         uses=(X_CHOICE,),
@@ -503,7 +503,7 @@ STEPS = (
         checks=(
             _scalar("b1", 0.5414, "§3.11: eğitim katsayısı", 4),
             _scalar("b1", 0.541, "§3.11: yorumdaki yaklaşık eğim", 3),
-            _scalar("b0", -0.9049, "§3.11: sabit terim", 4),
+            _scalar("b0", -0.9049, "§3.11: kesim terimi", 4),
             _scalar("x_sifir", 2, "§3.11: eğitimi sıfır olan çalışan", 0),
         ),
         note_for=lambda state, choices: _interpretation_note(state, choices),
@@ -514,7 +514,7 @@ STEPS = (
         note=NoteRef("3.11", 0, ("Kod 3.3", "Kod 3.4", "Denklem 3.12")),
         explanation=(
             "Açıklayıcı değişken yalnız 0 ve 1 değerlerini alırsa $\\mathbb{E}(Y \\mid D = 0) = \\beta_0$ ve "
-            "$\\mathbb{E}(Y \\mid D = 1) = \\beta_0 + \\beta_1$ olur: sabit $D = 0$ grubunun, sabit ile eğimin toplamı "
+            "$\\mathbb{E}(Y \\mid D = 1) = \\beta_0 + \\beta_1$ olur: kesim terimi $D = 0$ grubunun, kesim terimi ile eğimin toplamı "
             "$D = 1$ grubunun ortalamasıdır; eğim iki grubun ortalama farkıdır. EKK tahmininde aynı eşitlik örneklem "
             "ortalamaları için geçerlidir. Notlarda $D$, eğitim programına atanmayı gösteren `train` değişkenidir."
         ),
@@ -531,7 +531,7 @@ STEPS = (
             Check("§3.11: kontrol grubu ortalaması", TableTarget("grup_ozeti", 0, "mean"), 4.5548, 4),
             Check("§3.11: eğitim grubu ortalaması", TableTarget("grup_ozeti", 1, "mean"), 6.3491, 4),
             Check("Kod 3.4: gözlem sayısı", ModelTarget("model_jtrain", "nobs"), 445, 0),
-            Check("Kod 3.4: sabit terim", CoefTarget("model_jtrain", INTERCEPT), 4.5548, 4),
+            Check("Kod 3.4: kesim terimi", CoefTarget("model_jtrain", INTERCEPT), 4.5548, 4),
             Check("Kod 3.4: train katsayısı", CoefTarget("model_jtrain", "train"), 1.7943, 4),
             _scalar("bir_grubu", 6.3491, "§3.11: 4,5548 + 1,7943", 4),
             _scalar("grup_farki", 1.7943, "§3.11: eğim = grup farkı", 4),
@@ -541,13 +541,13 @@ STEPS = (
     ),
     interactive_step(
         number=7,
-        title="Gözlenen değer, tahmin edilen değer ve artık",
+        title="Gözlenen değer, uyum değeri ve artık değer",
         note=NoteRef("3.12", 0, ("Şekil 3.4", "Tablo 3.4")),
         explanation=(
-            "Tahmin edilen değer $\\hat Y_i = \\hat\\beta_0 + \\hat\\beta_1 X_i$, artık $\\hat u_i = Y_i - \\hat "
+            "Uyum değeri $\\hat Y_i = \\hat\\beta_0 + \\hat\\beta_1 X_i$, artık değer $\\hat u_i = Y_i - \\hat "
             "Y_i$'dir. Tablo 3.4 WAGE1'in ilk altı çalışanı içindir (yuvarlanmamış katsayılarla, iki ondalık). Altta "
             "notlardaki örnek: eğitimi 12 yıl, ücreti 7,00 dolar olan bir çalışan için dört basamaklı katsayılarla "
-            "tahmin ve artık. Bu adım Adım 4'te kurulan modeli kullanır."
+            "Uyum değeri ve artık değer. Bu adım Adım 4'te kurulan modeli kullanır."
         ),
         uses=(X_CHOICE,),
         controls=(
@@ -574,8 +574,8 @@ STEPS = (
             "Bir basit regresyon denklemi, Python çıktısı veya makale tablosu gördüğünüzde:\n\n1. Araştırma sorusu "
             "nedir?\n2. Gözlem birimi ve veri yapısı nedir?\n3. $Y$ ve $X$ hangi değişkenlerdir?\n4. Değişkenlerin "
             "ölçü birimleri nedir?\n5. Anakütle modeli ile örneklem tahmini ayrılmış mı?\n6. Eğim katsayısının işareti "
-            "ve büyüklüğü nedir?\n7. Sabit terimin ekonomik yorumu veri aralığında anlamlı mı?\n8. Tahmin edilen değer "
-            "ve artık nasıl hesaplanır?\n9. Yorum ilişki düzeyinde mi, nedensel düzeyde mi?\n10. Henüz öğrenilmemiş "
+            "ve büyüklüğü nedir?\n7. Kesim teriminin ekonomik yorumu veri aralığında anlamlı mı?\n8. Uyum değeri "
+            "ve artık değer nasıl hesaplanır?\n9. Yorum ilişki düzeyinde mi, nedensel düzeyde mi?\n10. Henüz öğrenilmemiş "
             "çıktı alanları için hangi sonraki bölüme bakılmalıdır?\n\nBir çıktıda çok sayıda sayı bulunması, bütün "
             "sayıların aynı anda yorumlanması gerektiği anlamına gelmez: R² Konu 4'te, standart hata, t, p ve güven "
             "aralığı Konu 7'de işlenir."
@@ -591,7 +591,7 @@ KONU03_LAB = LabSpec(
     steps=STEPS,
     labels=(
         *W.labels(JTRAIN, DATA),
-        (INTERCEPT, "Sabit terim"),
+        (INTERCEPT, "Kesim terimi"),
         ("ogrenci", "Öğrenci i"),
         ("saat", "Çalışma saati X"),
         ("puan", "Sınav notu Y"),
@@ -599,16 +599,16 @@ KONU03_LAB = LabSpec(
         ("y_sapma", "Yᵢ − Ȳ"),
         ("carpim", "Çarpım"),
         ("x_kare", "(Xᵢ − X̄)²"),
-        ("tahmin", "Tahmin edilen değer Ŷᵢ"),
-        ("artik", "Artık ûᵢ"),
-        ("artik_kare", "Kareli artık ûᵢ²"),
+        ("tahmin", "Uyum değeri Ŷᵢ"),
+        ("artik", "Artık değer ûᵢ"),
+        ("artik_kare", "Artık değerin karesi ûᵢ²"),
     ),
     consistency_notes=(
         "Veri notlardaki gibi WAGE1 ve JTRAIN2'dir; notlardaki kod, betikler, uygulama ve üretilen kod onları "
         "wooldridge paketinden okur.",
         "Bölüm 2'nin sözü (JTRAIN2 grup farkı basit regresyonun eğimidir) §3.11'deki JTRAIN2 alt başlığında gösterilir "
         "(Kod 3.3–3.4, Denklem 3.12).",
-        "Tablo 3.4 (ilk altı gözlemde tahmin ve artık) önceden yalnız sunumdaydı; notlara eklendi.",
+        "Tablo 3.4 (ilk altı gözlemde Uyum değeri ve artık değer) önceden yalnız sunumdaydı; notlara eklendi.",
         "Kod 3.2 yalnız bu bölümde okunan alanları yazdırır; üretilen kod yazılımın tam çıktısını da yazdırır.",
     ),
 )

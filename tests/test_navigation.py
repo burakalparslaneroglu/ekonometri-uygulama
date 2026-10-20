@@ -110,12 +110,12 @@ def test_fractional_url_setting_and_slider_change_update_the_result():
     app.run()
     assert not app.exception
     assert app.select_slider(key='konu03_sezgi2_egim').value == 0.5
-    before = {m.label:m.value for m in app.metric}['Aday: Σ(artık)²']
+    before = {m.label:m.value for m in app.metric}['Aday: Σ(artık değer)²']
     app.select_slider(key='konu03_sezgi2_egim').set_value(0.8).run()
     assert not app.exception
     assert app.select_slider(key='konu03_sezgi2_egim').value == 0.8
     assert any('b = 0{,}8' in latex.value for latex in app.latex)
-    assert {m.label:m.value for m in app.metric}['Aday: Σ(artık)²'] != before
+    assert {m.label:m.value for m in app.metric}['Aday: Σ(artık değer)²'] != before
 
 
 def test_own_data_url_keeps_target_and_shows_upload_without_file():

@@ -575,7 +575,7 @@ COLLINEAR = SimExperiment(
     takeaway=_collinear_takeaway,
     tables=(("tablo67", "Tablo 6.7: tekrarlı örneklerde bağlantı ve katsayı değişkenliği", ("n",)),
             ("tablo68", "Tablo 6.8: küçük veri değişikliğine duyarlılık", ("n", "sigma", "delta"))),
-    labels=(("x1", "X₁"), ("x2", "X₂"), ("gurultu", "Gürültü σ·g"), ("u", "u"), ("y", "Y"), (INTERCEPT, "Sabit terim"),
+    labels=(("x1", "X₁"), ("x2", "X₂"), ("gurultu", "Gürültü σ·g"), ("u", "u"), ("y", "Y"), (INTERCEPT, "Kesim terimi"),
             ("ort_korelasyon", "Ort. korelasyon"), ("b1_std", "β̂₁ std. sapma"), ("b2_std", "β̂₂ std. sapma"),
             ("toplam_std", "(β̂₁ + β̂₂) std. sapma"), ("ort_vif", "Ort. VIF")),
 )

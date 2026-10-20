@@ -75,7 +75,7 @@ def _describe_note(state, choices) -> str:
     if tuple(variables) == NOTES_DESCRIBED:
         return (
             "Her değişken için 526 gözlem kullanılır. Ortalama saatlik ücret yaklaşık 5,90 dolar, ortalama "
-            "eğitim süresi yaklaşık 12,56 yıldır. Eğitim 0 ile 18 yıl arasında değişir; bu aralık sabit terimi "
+            "eğitim süresi yaklaşık 12,56 yıldır. Eğitim 0 ile 18 yıl arasında değişir; bu aralık kesim terimi "
             "yorumlarken önem taşır. Deneyim ve kıdem de ücretle ilişkili olabileceği için geniş dağılımları, yalnız "
             "eğitimi kullanan ilk modelin sınırlılığını düşündürür."
         )
@@ -161,7 +161,7 @@ def _model_note(state, choices) -> str:
 def _interpretation(choices) -> tuple:
     x = choices["adim4_x"]
     return (
-        ModelValue("b0", "model", "coef", "Sabit terim β̂₀", term=INTERCEPT),
+        ModelValue("b0", "model", "coef", "Kesim terimi β̂₀", term=INTERCEPT),
         ModelValue("b1", "model", "coef", f"Eğim β̂₁ ({x})", term=x),
         ModelValue("r2", "model", "r2", "R²", decimals=3),
         Scalar("r2_yuzde", E.mul(E.ref("r2"), 100), "R², yüzde olarak", decimals=1, percent=True),
@@ -179,7 +179,7 @@ def _interpretation_note(state, choices) -> str:
            "doğrusal modelde açıklanır. Bu, modelin nedensel olarak doğru olduğunu kanıtlamaz.")
     constant = ""
     if x == "educ":
-        constant = (" Sabit terim negatiftir: eğitim yılı sıfır olduğunda tahmin edilen ücret ekonomik olarak "
+        constant = (" Kesim terimi negatiftir: eğitim yılı sıfır olduğunda tahmin edilen ücret ekonomik olarak "
                     "anlamlı değildir; bu değer verinin merkezinden uzaktır.")
     return f"{equation} {slope} Yorum sonucun örnekleme ait olduğunu, değişimin birimini (bir yıl) ve sonucun " \
            f"birimini (dolar) söyler; nedensel fiil kullanmaz.{constant} {fit}"
@@ -275,16 +275,16 @@ STEPS = (
         controls=(X_CHOICE,),
         build=_model,
         checks=(
-            _coef(INTERCEPT, "coef", -0.9049, 4, "Kod 1.4: sabit terim"),
+            _coef(INTERCEPT, "coef", -0.9049, 4, "Kod 1.4: kesim terimi"),
             _coef("educ", "coef", 0.5414, 4, "Kod 1.4: eğitim katsayısı"),
-            _coef(INTERCEPT, "se", 0.685, 3, "Kod 1.4: sabit terimin standart hatası"),
+            _coef(INTERCEPT, "se", 0.685, 3, "Kod 1.4: kesim teriminin standart hatası"),
             _coef("educ", "se", 0.053, 3, "Kod 1.4: eğitim katsayısının standart hatası"),
-            _coef(INTERCEPT, "t", -1.321, 3, "Kod 1.4: sabit terimin t değeri"),
+            _coef(INTERCEPT, "t", -1.321, 3, "Kod 1.4: kesim teriminin t değeri"),
             _coef("educ", "t", 10.167, 3, "Kod 1.4: eğitim katsayısının t değeri"),
-            _coef(INTERCEPT, "p", 0.187, 3, "Kod 1.4: sabit terimin p-değeri"),
+            _coef(INTERCEPT, "p", 0.187, 3, "Kod 1.4: kesim teriminin p-değeri"),
             _coef("educ", "p", 0.000, 3, "Kod 1.4: eğitim katsayısının p-değeri"),
-            _coef(INTERCEPT, "ci_low", -2.250, 3, "Kod 1.4: sabit terim, %95 GA alt sınır"),
-            _coef(INTERCEPT, "ci_high", 0.441, 3, "Kod 1.4: sabit terim, %95 GA üst sınır"),
+            _coef(INTERCEPT, "ci_low", -2.250, 3, "Kod 1.4: kesim terimi, %95 GA alt sınır"),
+            _coef(INTERCEPT, "ci_high", 0.441, 3, "Kod 1.4: kesim terimi, %95 GA üst sınır"),
             _coef("educ", "ci_low", 0.437, 3, "Kod 1.4: eğitim, %95 GA alt sınır"),
             _coef("educ", "ci_high", 0.646, 3, "Kod 1.4: eğitim, %95 GA üst sınır"),
             Check("Kod 1.4: R²", ModelTarget("model", "r2"), 0.165, 3),
@@ -292,8 +292,8 @@ STEPS = (
             Check("Kod 1.4: gözlem sayısı", ModelTarget("model", "nobs"), 526, 0),
             Check("Tablo 1.3: eğitim katsayısı", TableTarget("makale", "educ", "(1)"), 0.541, 3),
             Check("Tablo 1.3: eğitim standart hatası", TableTarget("makale", "educ_sh", "(1)"), 0.053, 3),
-            Check("Tablo 1.3: sabit terim", TableTarget("makale", INTERCEPT, "(1)"), -0.905, 3),
-            Check("Tablo 1.3: sabit terimin standart hatası", TableTarget("makale", f"{INTERCEPT}_sh", "(1)"),
+            Check("Tablo 1.3: kesim terimi", TableTarget("makale", INTERCEPT, "(1)"), -0.905, 3),
+            Check("Tablo 1.3: kesim teriminin standart hatası", TableTarget("makale", f"{INTERCEPT}_sh", "(1)"),
                   0.685, 3),
             Check("Tablo 1.3: gözlem sayısı", TableTarget("makale", "n", "(1)"), 526, 0),
             Check("Tablo 1.3: R²", TableTarget("makale", "r2", "(1)"), 0.165, 3),
@@ -313,7 +313,7 @@ STEPS = (
         uses=(X_CHOICE,),
         build=_interpretation,
         checks=(
-            Check("Denklem 1.4: sabit terim", ScalarTarget("b0"), -0.9049, 4),
+            Check("Denklem 1.4: kesim terimi", ScalarTarget("b0"), -0.9049, 4),
             Check("Denklem 1.4: eğim", ScalarTarget("b1"), 0.5414, 4),
             Check("Mekanik yorum: yaklaşık eğim", ScalarTarget("b1"), 0.54, 2),
             Check("§1.6: R²", ScalarTarget("r2"), 0.165, 3),
@@ -342,7 +342,7 @@ KONU01_LAB = LabSpec(
     title="Uygulama: Eğitim ve Saatlik Ücret",
     note_section="1",
     steps=STEPS,
-    labels=(*W.labels(DATA), (INTERCEPT, "Sabit terim"), ("n", "Gözlem sayısı"), ("k", "Değişken sayısı")),
+    labels=(*W.labels(DATA), (INTERCEPT, "Kesim terimi"), ("n", "Gözlem sayısı"), ("k", "Değişken sayısı")),
     consistency_notes=(
         "Veri notlardaki gibi WAGE1'dir; notlardaki kod, uygulama ve üretilen kod onu wooldridge paketinden okur.",
     ),

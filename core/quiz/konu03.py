@@ -6,7 +6,7 @@ sorularında Y ile X'i belirleme; E(ücret | eğitim = 16) = 8 gibi koşullu ort
 parametrelere göre doğrusallığı; hata teriminde kalan faktörleri sayma; E(u | X) = 0 ile ilgili dört ifade;
 notasyonun anakütle–örneklem sınıflandırması; EKK ölçütüne ilişkin dört soru; (1, 2), (2, 4), (3, 5) verisiyle EKK
 hesabı; Python çıktısından 12 ve 16 yıllık tahminler; dört yanlış katsayı yorumunun düzeltilmesi; 10 ve 14 yıllık
-tahmin–artık hesabı; satış = 15 + 2,4 reklam uygulaması ve mini quizlerdeki sorular. Aynı becerileri yeni
+uyum değeri–artık değer hesabı; satış = 15 + 2,4 reklam uygulaması ve mini quizlerdeki sorular. Aynı becerileri yeni
 bağlamlarla ve yeni sayılarla sınar. R² ve kareler toplamları Konu 4'ün; standart hata, t, p-değeri ve güven
 aralığı Konu 7'nin konusudur; sorular bunlara başvurmaz.
 """
@@ -110,22 +110,22 @@ QUESTIONS = (
                 "Gözlem X'te ortalamanın üzerinde, Y'de ortalamanın altındadır ya da tam tersi",
                 "X ve Y değerlerinin ikisi de kendi örneklem ortalamalarının altındadır",
                 "Bu gözlem yüzünden tahmin edilen eğim, öteki gözlemler ne olursa olsun negatif çıkacaktır",
-                "Bu gözlemin artığı negatiftir; yani gözlem tahmin edilen doğrunun altındadır",
+                "Bu gözlemin artık değeri negatiftir; yani gözlem uyum doğrusunun altındadır",
             ),
             correct=0,
         ),
         explanation=(
             "Çarpım, iki sapmanın işaretleri farklıyken negatiftir: gözlem X'te ortalamanın bir yanında, Y'de öbür "
             "yanındadır. İkisi de ortalamanın altındaysa çarpım pozitiftir. Böyle gözlemler negatif eğimi destekler; "
-            "eğimin işaretini ise bütün gözlemlerin katkılarının toplamı belirler. Çarpımın işareti artığın işaretini "
-            "söylemez; artık tahmin edilen doğruya göre tanımlanır (§3.8)."
+            "eğimin işaretini ise bütün gözlemlerin katkılarının toplamı belirler. Çarpımın işareti artık değerin işaretini "
+            "söylemez; artık değer uyum doğrusuna göre tanımlanır (§3.8)."
         ),
     ),
     Question(
         key="k05", concept="veri-araligi-disinda-sabit", note=_note("3.11"),
         prompt=(
             "Alanı 60 ile 180 m² arasındaki dairelerden oluşan bir örneklemde $\\widehat{\\text{kira}} = 3{.}200 + "
-            "45\\,\\text{alan}$ tahmin ediliyor (kira TL/ay, alan m²). Sabit terim için en uygun yorum hangisidir?"
+            "45\\,\\text{alan}$ tahmin ediliyor (kira TL/ay, alan m²). Kesim terimi için en uygun yorum hangisidir?"
         ),
         answer=MultipleChoice(
             (
@@ -139,8 +139,8 @@ QUESTIONS = (
             correct=1,
         ),
         explanation=(
-            "Sabit, alan sıfırken modelin tahmin ettiği kiradır. Örneklemdeki en küçük daire 60 m² olduğundan bu nokta "
-            "veri aralığının dışındadır; doğrusal ilişkiyi oraya taşımak ekonomik anlam taşımayabilir. Yine de sabit, "
+            "Kesim terimi, alan sıfırken modelin tahmin ettiği kiradır. Örneklemdeki en küçük daire 60 m² olduğundan bu nokta "
+            "veri aralığının dışındadır; doğrusal ilişkiyi oraya taşımak ekonomik anlam taşımayabilir. Yine de kesim terimi, "
             "regresyon doğrusunun örneklemdeki konumunu belirleyen gerekli bir bileşendir; anlamsız görünmesi eğimi ya "
             "da modeli geçersiz kılmaz. Metrekare başına tahmini kira farkı eğimdir: aylık 45 TL (§3.11)."
         ),
@@ -153,18 +153,18 @@ QUESTIONS = (
         ),
         answer=MultipleChoice(
             (
-                "İki çalışanın artıkları aynıdır; farklı olan tahmin edilen ücretleridir",
+                "İki çalışanın artık değerleri aynıdır; farklı olan tahmin edilen ücretleridir",
                 "Ücreti düşük olan çalışanın tahmin edilen ücreti de daha düşüktür",
                 "Tahmin edilen ücret, iki çalışanın gözlenen ücretlerinin ortalaması olan 7,375 dolardır",
-                "Tahmini ücretleri aynıdır (≈ 7,76 dolar); artıkları 0,99 ve −1,76 dolardır",
+                "Tahmini ücretleri aynıdır (≈ 7,76 dolar); artık değerleri 0,99 ve −1,76 dolardır",
             ),
             correct=3,
         ),
         explanation=(
-            "Tahmin edilen değer yalnız açıklayıcı değişkene bağlıdır: 16 yıl için $\\widehat{Y} = -0{,}9049 + "
-            "0{,}5414 \\times 16 \\approx 7{,}76$ dolar. Artık, gözlenen ücretten tahmin çıkarılarak bulunur: 8,75 − "
+            "Uyum değeri yalnız açıklayıcı değişkene bağlıdır: 16 yıl için $\\widehat{Y} = -0{,}9049 + "
+            "0{,}5414 \\times 16 \\approx 7{,}76$ dolar. Artık değer, gözlenen ücretten tahmin çıkarılarak bulunur: 8,75 − "
             "7,76 = 0,99 (gözlem doğrunun üzerinde) ve 6,00 − 7,76 = −1,76 (altında). Aynı eğitim düzeyindeki "
-            "farklılık artıklarda kalır; regresyon doğrusu bu iki çalışanın "
+            "farklılık artık değerlerde kalır; regresyon doğrusu bu iki çalışanın "
             "ortalamasından geçmek zorunda değildir (§3.12, Tablo 3.4)."
         ),
     ),
@@ -180,7 +180,7 @@ QUESTIONS = (
                 "Gözlem birimi ve veri yapısı nedir?",
                 "Eğim katsayısının işareti ve büyüklüğü nedir?",
                 "Yorum ilişki düzeyinde mi, nedensel düzeyde mi?",
-                "Sabit terimin ekonomik yorumu veri aralığında anlamlı mı?",
+                "Kesim teriminin ekonomik yorumu veri aralığında anlamlı mı?",
             ),
             correct=2,
         ),
@@ -188,7 +188,7 @@ QUESTIONS = (
             "Cümle bir müdahalenin sonucunu anlatır (“artırmak … yükseltir”); bu nedensel bir iddiadır. İl verisinde "
             "kütüphane sayısı rastgele belirlenmez; gelir ya da eğitim düzeyi gibi faktörler hem kütüphane sayısıyla "
             "hem okuma oranıyla ilişkili olabilir (§3.11). Kontrol listesinin dokuzuncu sorusu yorumun hangi düzeyde "
-            "yapıldığını denetler; gözlem birimi, katsayının işareti ve sabit terim soruları katsayıyı doğru okumayı "
+            "yapıldığını denetler; gözlem birimi, katsayının işareti ve kesim terimi soruları katsayıyı doğru okumayı "
             "sağlar ama nedensel iddiayı sınamaz (§3.13)."
         ),
     ),
@@ -207,7 +207,7 @@ QUESTIONS = (
         ),
     ),
     Question(
-        key="d02", concept="duz-dogruda-sabit-egim", note=_note("3.3", "(3.2)"),
+        key="d02", concept="duz-dogruda-kesim terimi-egim", note=_note("3.3", "(3.2)"),
         prompt=(
             "$\\mathbb{E}(Y \\mid X) = \\beta_0 + \\beta_1 X$ biçimindeki (düz doğru) anakütle regresyon fonksiyonunda "
             "$\\mathbb{E}(Y \\mid X = 5) - \\mathbb{E}(Y \\mid X = 4)$ farkı, $\\mathbb{E}(Y \\mid X = 15) - "
@@ -239,15 +239,15 @@ QUESTIONS = (
     Question(
         key="d04", concept="artik-toplami-kosulu-kanitlamaz", note=_note("3.6"),
         prompt=(
-            "WAGE1 regresyonunda EKK artıklarının toplamının sıfır çıkması, $\\mathbb{E}(u \\mid \\text{eğitim}) = 0$ "
+            "WAGE1 regresyonunda EKK artık değerlerinin toplamının sıfır çıkması, $\\mathbb{E}(u \\mid \\text{eğitim}) = 0$ "
             "koşulunun bu veride sağlandığını gösterir."
         ),
         answer=TrueFalse(False),
         explanation=(
-            "Sabit terimli EKK doğrusunda artıkların toplamı her veri setinde sıfırdır; bu, EKK'nin hesaplama "
+            "Kesim terimli EKK doğrusunda artık değerlerin toplamı her veri setinde sıfırdır; bu, EKK'nin hesaplama "
             "yapısından doğan bir özelliktir (§3.9). Koşul ise gözlenemeyen hata terimi u hakkındadır ve her eğitim "
             "düzeyinde u'nun ortalamasının sıfır olmasını ister. Eğitimle ilişkili yetenek u içinde kalıyorsa "
-            "artıkların toplamı yine sıfır çıkar ama koşul bozulur (§3.6)."
+            "artık değerlerin toplamı yine sıfır çıkar ama koşul bozulur (§3.6)."
         ),
     ),
     Question(
@@ -267,13 +267,13 @@ QUESTIONS = (
     Question(
         key="d06", concept="noktalardan-gecmek-ekk-degil", note=_note("3.8", "(3.7)", "Tablo 3.3"),
         prompt=(
-            "Tablo 3.2 verisinde sabiti 48, eğimi 3 olan doğru ($Y = 48 + 3X$) beş gözlemin üçünden tam olarak geçer; "
-            "bu yüzden bu doğrunun kareli artıklar toplamı EKK doğrusununkinden (1,60) küçüktür."
+            "Tablo 3.2 verisinde kesim terimi 48, eğimi 3 olan doğru ($Y = 48 + 3X$) beş gözlemin üçünden tam olarak geçer; "
+            "bu yüzden bu doğrunun artık değerlerin kareleri toplamı EKK doğrusununkinden (1,60) küçüktür."
         ),
         answer=TrueFalse(False),
         explanation=(
-            "Bu doğrunun artıkları 1, 0, −1, 0 ve 0'dır; kareli artıklar toplamı 2,00 olur, EKK doğrusununki ise "
-            "1,60'tır (Tablo 3.3). EKK tek tek noktalardan geçmeye değil, (3.7)'deki kareli artıklar toplamını en "
+            "Bu doğrunun artık değerleri 1, 0, −1, 0 ve 0'dır; artık değerlerin kareleri toplamı 2,00 olur, EKK doğrusununki ise "
+            "1,60'tır (Tablo 3.3). EKK tek tek noktalardan geçmeye değil, (3.7)'deki artık değerlerin kareleri toplamını en "
             "küçük yapmaya bakar: EKK doğrusu hiçbir noktadan tam geçmediği hâlde toplamı daha küçüktür (§3.8)."
         ),
     ),
@@ -322,20 +322,20 @@ QUESTIONS = (
             "(3.4)'e göre hata terimi, gerçekleşen sonuç ile aynı X değerindeki anakütle ortalaması arasındaki "
             "farktır: 6,50 − 7,20 = −0,70 ve 8,10 − 7,20 = 0,90. Aynı eğitim düzeyindeki iki çalışanın koşullu "
             "ortalaması aynıdır; farklı olan hata terimleridir. Gerçekte anakütle regresyon fonksiyonu bilinmediği "
-            "için $u_i$ gözlenemez; veriden yalnız artık hesaplanır (§3.5, §3.7)."
+            "için $u_i$ gözlenemez; veriden yalnız artık değer hesaplanır (§3.5, §3.7)."
         ),
     ),
     Question(
         key="b03", concept="tek-gozlem-degisince-ekk", note=_note("3.9", "Tablo 3.2", "(3.8)", "(3.9)"),
         prompt=(
             "Tablo 3.2'deki beş öğrenciden beşincisinin notu 78 yerine 88 olsaydı (öteki değerler aynı kalsaydı) eğim "
-            "tahmini $\\widehat{\\beta}_1 =$ **(1)**, sabit tahmini $\\widehat{\\beta}_0 =$ **(2)** olurdu."
+            "tahmini $\\widehat{\\beta}_1 =$ **(1)**, kesim terimi tahmini $\\widehat{\\beta}_0 =$ **(2)** olurdu."
         ),
         answer=FillBlanks((NumberBlank(3.9, 0.005, "3,9"), NumberBlank(44.6, 0.005, "44,6"))),
         explanation=(
             "Yeni ortalama $\\bar{Y} = 340/5 = 68$ olur. $Y_i - \\bar{Y}$ sapmaları −13, −8, −3, 4 ve 20; $X_i - "
             "\\bar{X}$ sapmaları değişmez (−4, −2, 0, 2, 4). Çarpımların toplamı 52 + 16 + 0 + 8 + 80 = 156, payda "
-            "yine 40'tır: $\\widehat{\\beta}_1 = 156/40 = 3{,}9$. Sabit $\\widehat{\\beta}_0 = 68 - 3{,}9 \\times 6 = "
+            "yine 40'tır: $\\widehat{\\beta}_1 = 156/40 = 3{,}9$. Kesim terimi $\\widehat{\\beta}_0 = 68 - 3{,}9 \\times 6 = "
             "44{,}6$. X değeri ortalamadan en uzak gözlemlerden birindeki 10 puanlık değişiklik, eğimi saat başına 1 "
             "puan (2,9'dan 3,9'a) artırmıştır (§3.9, (3.8)–(3.9))."
         ),
@@ -352,7 +352,7 @@ QUESTIONS = (
         explanation=(
             "Statsmodels formülünde `~` işaretinin solunda bağımlı, sağında açıklayıcı değişken bulunur. Soru maaşın "
             "özkaynak kârlılığına göre nasıl değiştiğini sorduğu için formül `salary ~ roe` olur. Çıktıda `Intercept` "
-            "sabit tahminini, `roe` satırındaki katsayı eğim tahminini verir; ters yazılan formül (`roe ~ salary`) "
+            "kesim terimi tahminini, `roe` satırındaki katsayı eğim tahminini verir; ters yazılan formül (`roe ~ salary`) "
             "başka bir soruyu cevaplar (§3.10, Kod 3.1)."
         ),
     ),
@@ -367,7 +367,7 @@ QUESTIONS = (
         ),
         answer=FillBlanks((NumberBlank(240, 0.05, "240"), NumberBlank(25, 0.05, "25"))),
         explanation=(
-            "Sıfır–bir açıklayıcı değişkenli modelde sabit tahmini kontrol grubunun (kupon = 0) örneklem ortalamasına, "
+            "Sıfır–bir açıklayıcı değişkenli modelde kesim terimi tahmini kontrol grubunun (kupon = 0) örneklem ortalamasına, "
             "eğim tahmini iki grubun ortalama farkına eşittir: 265 − 240 = 25 TL. Kupon kura ile dağıtıldığı için bu "
             "fark, kuponun ortalama sepet tutarına etkisinin tahmini olarak okunabilir. JTRAIN2'deki 1,794 bin "
             "dolarlık eğim de aynı yapıdadır (§3.11, (3.12))."
@@ -399,11 +399,11 @@ QUESTIONS = (
         ),
     ),
     Question(
-        key="e02", concept="sabit-tahmini-toplamlarla", note=_note("3.9", "(3.8)", "(3.9)"),
+        key="e02", concept="kesim terimi-tahmini-toplamlarla", note=_note("3.9", "(3.8)", "(3.9)"),
         prompt=(
             "Bir örneklemde $S_{XY} = \\sum (X_i - \\bar{X})(Y_i - \\bar{Y})$ ve $S_{XX} = \\sum (X_i - \\bar{X})^2$ "
             "olsun; örneklem ortalamaları $\\bar{X}$ ve $\\bar{Y}$ ile "
-            "gösterilsin. Sabit tahminini bu dört büyüklük cinsinden yazın."
+            "gösterilsin. Kesim terimi tahminini bu dört büyüklük cinsinden yazın."
         ),
         answer=Equation(
             lhs="\\widehat{\\beta}_0",
@@ -417,9 +417,9 @@ QUESTIONS = (
             shown="\\bar{Y} - \\frac{S_{XY}}{S_{XX}}\\,\\bar{X}",
         ),
         explanation=(
-            "Önce (3.8)'e göre eğim $\\widehat{\\beta}_1 = S_{XY}/S_{XX}$, sonra (3.9)'a göre sabit "
+            "Önce (3.8)'e göre eğim $\\widehat{\\beta}_1 = S_{XY}/S_{XX}$, sonra (3.9)'a göre kesim terimi "
             "$\\widehat{\\beta}_0 = \\bar{Y} - \\widehat{\\beta}_1 \\bar{X}$ bulunur. Tablo 3.2'de $S_{XY} = 116$, "
-            "$S_{XX} = 40$, $\\bar{X} = 6$ ve $\\bar{Y} = 66$: $66 - 2{,}9 \\times 6 = 48{,}6$. Sabit formülü, tahmin "
+            "$S_{XX} = 40$, $\\bar{X} = 6$ ve $\\bar{Y} = 66$: $66 - 2{,}9 \\times 6 = 48{,}6$. Kesim terimi formülü, tahmin "
             "edilen doğrunun $(\\bar{X}, \\bar{Y})$ noktasından geçmesini sağlar (§3.9, (3.8)–(3.9))."
         ),
     ),
@@ -461,7 +461,7 @@ QUESTIONS = (
             lhs="\\mathbb{E}(u \\mid X = x)",
             symbols=(
                 Symbol("m", "m", "Y'nin X = x'teki koşullu ortalaması", 1, 20),
-                Symbol("b0", "\\beta_0", "sabit parametre", -5, 5, aliases=beta_aliases(0)),
+                Symbol("b0", "\\beta_0", "kesim terimi", -5, 5, aliases=beta_aliases(0)),
                 Symbol("b1", "\\beta_1", "eğim parametresi", 0.1, 2, aliases=beta_aliases(1)),
                 Symbol("x", "x", "açıklayıcı değişkenin değeri", 0, 20),
             ),
@@ -479,16 +479,16 @@ QUESTIONS = (
     Question(
         key="e05", concept="artik-ile-hata-teriminin-farki", note=_note("3.7", "Tablo 3.1"),
         prompt=(
-            "Anakütle modeli $Y_i = \\beta_0 + \\beta_1 X_i + u_i$, tahmin edilen doğru $\\widehat{Y}_i = "
-            "\\widehat{\\beta}_0 + \\widehat{\\beta}_1 X_i$ olsun. Artık ile hata terimi arasındaki farkı "
+            "Anakütle modeli $Y_i = \\beta_0 + \\beta_1 X_i + u_i$, uyum doğrusu $\\widehat{Y}_i = "
+            "\\widehat{\\beta}_0 + \\widehat{\\beta}_1 X_i$ olsun. Artık değer ile hata terimi arasındaki farkı "
             "($\\widehat{u}_i - u_i$) parametreler, tahminler ve $X_i$ cinsinden yazın."
         ),
         answer=Equation(
             lhs="\\widehat{u}_i - u_i",
             symbols=(
-                Symbol("b0", "\\beta_0", "anakütle sabiti", -5, 5, aliases=beta_aliases(0)),
+                Symbol("b0", "\\beta_0", "anakütle kesim terimi", -5, 5, aliases=beta_aliases(0)),
                 Symbol("b1", "\\beta_1", "anakütle eğimi", 0.1, 2, aliases=beta_aliases(1)),
-                Symbol("bh0", "\\widehat{\\beta}_0", "sabit tahmini", -5, 5, aliases=beta_hat_aliases(0)),
+                Symbol("bh0", "\\widehat{\\beta}_0", "kesim terimi tahmini", -5, 5, aliases=beta_hat_aliases(0)),
                 Symbol("bh1", "\\widehat{\\beta}_1", "eğim tahmini", 0.1, 2, aliases=beta_hat_aliases(1)),
                 Symbol("x", "X_i", "gözlemin X değeri", 0, 20, aliases=("X_i", "x_i", "Xi", "xi")),
             ),
@@ -497,7 +497,7 @@ QUESTIONS = (
         ),
         explanation=(
             "$\\widehat{u}_i = Y_i - \\widehat{\\beta}_0 - \\widehat{\\beta}_1 X_i$ ve $u_i = Y_i - \\beta_0 - "
-            "\\beta_1 X_i$ olduğundan $Y_i$ farkta birbirini götürür. Artık, hata teriminden tahmin edilen doğrunun "
+            "\\beta_1 X_i$ olduğundan $Y_i$ farkta birbirini götürür. Artık değer, hata teriminden uyum doğrusunun "
             "anakütle doğrusundan sapması kadar ayrılır; tahminler parametrelere eşit olsaydı ikisi aynı olurdu. "
             "Tahminler örneklemden örnekleme değiştiği için bu fark da "
             "değişir; Tablo 3.1'deki ayrım bu yüzden önemlidir (§3.7)."

@@ -155,7 +155,7 @@ def _time_series_note(state, choices) -> str:
     if "inf" in series:
         effects.append("enflasyonun zaman içindeki hareketi kaybolur")
     return (
-        f"Satırlar işsizlik oranına göre sıralandığında ilk altı satırın yılları {shown} olur; yıllar artık ardışık "
+        f"Satırlar işsizlik oranına göre sıralandığında ilk altı satırın yılları {shown} olur; yıllar artık değer ardışık "
         f"değildir. Grafiğin yatay ekseni yıl değil satır sırasıdır: {', '.join(effects)}. Zaman sırası bozulduğunda "
         "veri setinin önemli bir özelliği kaybolur; yatay kesitte (Adım 1) sıralama veri yapısını değiştirmez."
     )

@@ -2,7 +2,7 @@
 
 Bölüm 5'in çözümlü örnekleri bölüm sırasıyla: basit ve çoklu ücret modeli ile katsayı yorumları (§5.1, §5.3,
 Denklem 5.5), birden fazla birimlik fark, iki çalışanın karşılaştırılması ve ceteris paribus çizgileri (§5.3,
-Şekil 5.1), tahmin edilen değer ve artık (§5.4), kontrollerin doğrusal katkısını ayırma (§5.5, Şekil 5.2), Python
+Şekil 5.1), uyum değeri ve artık değer (§5.4), kontrollerin doğrusal katkısını ayırma (§5.5, Şekil 5.2), Python
 çıktısı ve Tablo 5.1 (§5.6, Kod 5.1–5.2), katsayı değişimi (§5.7, Şekil 5.3), HPRICE1 (§5.8, Tablo 5.2–5.3,
 Şekil 5.4), R² ve düzeltilmiş R² (§5.9, Denklem 5.8), makale tablosu (§5.10, Tablo 5.4) ve kontrol değişkeni seçimi
 (§5.11). §5.2'de hesap yoktur; §5.12'deki bütünleşik uygulama bir egzersizdir (cevapları eklerde). Her ``Check``
@@ -114,7 +114,7 @@ def _ordered(names, options=WAGE_OPTIONS) -> tuple[str, ...]:
 
 
 def _predict(regressors, values: dict, prefix: str = "b_") -> E.Expr:
-    """Tahmin edilen değer: sabit + Σ katsayı × değer; katsayılar ``prefix``le adlandırılmış skalerlerdir."""
+    """Uyum değeri: kesim terimi + Σ katsayı × değer; katsayılar ``prefix``le adlandırılmış skalerlerdir."""
 
     expression = E.ref(f"{prefix}sabit")
     for name in regressors:
@@ -129,7 +129,7 @@ def _notes_model(state, name: str = "coklu_notlar"):
 
 
 def _interpretation(name: str, value: float, others: list[str]) -> str:
-    """Bir katsayının ceteris paribus cümlesi (notlardaki üç unsur: değişen değişken, tahmin edilen fark, sabitler)."""
+    """Bir katsayının ceteris paribus cümlesi (notlardaki üç unsur: değişen değişken, tahmin edilen fark, kesim terimleri)."""
 
     phrase = WORDS[name][1]
     if others:
@@ -150,11 +150,11 @@ def _models(choices) -> tuple:
     operations: list = [
         LoadWooldridge(DATA, "WAGE1 veri seti (Wooldridge, 2020): 526 çalışan"),
         OLS("basit", DATA, OUTCOME, ("educ",), "Basit regresyon (§5.1): wage ~ educ"),
-        ModelValue("basit_sabit", "basit", "coef", "Basit model: sabit terim", term=INTERCEPT),
+        ModelValue("basit_sabit", "basit", "coef", "Basit model: kesim terimi", term=INTERCEPT),
         ModelValue("basit_egitim", "basit", "coef", "Basit model: eğitim katsayısı", term="educ"),
         OLS("coklu", DATA, OUTCOME, tuple(chosen),
             f"Çoklu regresyon: wage ~ {formula}" + (" (Denklem 5.5)" if notes else "")),
-        ModelValue("b_sabit", "coklu", "coef", "Çoklu model: sabit terim", term=INTERCEPT),
+        ModelValue("b_sabit", "coklu", "coef", "Çoklu model: kesim terimi", term=INTERCEPT),
         *(ModelValue(f"b_{name}", "coklu", "coef", f"Çoklu model: {WORDS[name][0]} katsayısı", term=name)
           for name in chosen),
     ]
@@ -269,7 +269,7 @@ def _comparison_note(state, choices) -> str:
     return text
 
 
-# --- Adım 3: tahmin edilen değer ve artık -----------------------------------------------------
+# --- Adım 3: uyum değeri ve artık değer -----------------------------------------------------
 
 def _fitted(choices) -> tuple:
     chosen = choices["adim1_x"]
@@ -278,11 +278,11 @@ def _fitted(choices) -> tuple:
     observed = float(choices["adim3_ucret"])
     return (
         Scalar("birey_tahmin", _predict(chosen, profile), "Tahmin edilen ücret Ŷ (dolar)", decimals=3),
-        Scalar("birey_artik", E.sub(observed, E.ref("birey_tahmin")), "Artık û = Y − Ŷ (dolar)", decimals=3),
-        Derive(DATA, "tahmin", _predict(chosen, {name: E.var(name) for name in chosen}), "Tahmin edilen değer Ŷᵢ"),
-        Derive(DATA, "artik", E.sub(E.var(OUTCOME), E.var("tahmin")), "Artık ûᵢ = Yᵢ − Ŷᵢ"),
-        Statistic(DATA, "artik", "sum", "artik_toplami", "Örneklemde artıkların toplamı Σûᵢ", decimals=10),
-        Statistic(DATA, "tahmin", "mean", "ort_tahmin", "Tahmin edilen değerlerin ortalaması", decimals=6),
+        Scalar("birey_artik", E.sub(observed, E.ref("birey_tahmin")), "Artık değer û = Y − Ŷ (dolar)", decimals=3),
+        Derive(DATA, "tahmin", _predict(chosen, {name: E.var(name) for name in chosen}), "Uyum değeri Ŷᵢ"),
+        Derive(DATA, "artik", E.sub(E.var(OUTCOME), E.var("tahmin")), "Artık değer ûᵢ = Yᵢ − Ŷᵢ"),
+        Statistic(DATA, "artik", "sum", "artik_toplami", "Örneklemde artık değerlerin toplamı Σûᵢ", decimals=10),
+        Statistic(DATA, "tahmin", "mean", "ort_tahmin", "Uyum değerlerinin ortalaması", decimals=6),
         Statistic(DATA, OUTCOME, "mean", "ort_ucret", "Ortalama ücret Ȳ", decimals=6),
     )
 
@@ -292,18 +292,18 @@ def _fitted_note(state, choices) -> str:
     observed = float(choices["adim3_ucret"])
     residual = s["birey_artik"]
     if residual > 0:
-        sign = ("Pozitif artık: gözlenen ücret model tahmininden yüksektir. Fark modelde bulunmayan özelliklerden, "
+        sign = ("Pozitif artık değer: gözlenen ücret model tahmininden yüksektir. Fark modelde bulunmayan özelliklerden, "
                 "doğrusal biçimin sınırlılığından veya ölçüm hatasından kaynaklanabilir.")
     elif residual < 0:
-        sign = "Negatif artık: gözlenen ücret model tahmininden düşüktür."
+        sign = "Negatif artık değer: gözlenen ücret model tahmininden düşüktür."
     else:
-        sign = "Artık sıfır: gözlenen ücret tahminle aynıdır."
+        sign = "Artık değer sıfır: gözlenen ücret tahminle aynıdır."
     chosen = choices["adim1_x"]
-    definitions = ("Tanımlar basit regresyondakiyle aynıdır; yalnız tahmin edilen değerde daha fazla açıklayıcı "
+    definitions = ("Tanımlar basit regresyondakiyle aynıdır; yalnız uyum değerinde daha fazla açıklayıcı "
                    "değişken vardır." if len(chosen) > 1 else
                    "Modelde tek açıklayıcı değişken var; tanımlar basit regresyondakiyle aynıdır.")
     text = (f"Seçilen özelliklerdeki çalışan için tahmin {plain(s['birey_tahmin'], 3)} dolar; gözlenen ücret "
-            f"{plain(observed, 1)} dolar ise artık {plain(residual, 3)} dolardır. {sign} {definitions}")
+            f"{plain(observed, 1)} dolar ise artık değer {plain(residual, 3)} dolardır. {sign} {definitions}")
     unused = [WORDS[name][0] for name in ("educ", "exper", "tenure") if name not in chosen]
     if unused:
         text += (f" Modelde olmayan değişkenin ({unused[0]}) değeri tahmini etkilemez." if len(unused) == 1 else
@@ -319,8 +319,8 @@ def _fitted_note(state, choices) -> str:
         params = _notes_model(state).params
         notes = params[INTERCEPT] + sum(params[name] * value for name, value in profile.items())
         text += f" Notlardaki modelle (eğitim, deneyim, kıdem) aynı çalışanın tahmini {plain(notes, 3)} dolardır."
-    return text + (f" Sabit terimli EKK'de artıkların toplamı sıfırdır ({plain(s['artik_toplami'], 10)}, hesap "
-                   f"hassasiyeti içinde) ve tahmin edilen değerlerin ortalaması ({plain(s['ort_tahmin'], 6)}) "
+    return text + (f" Kesim terimli EKK'de artık değerlerin toplamı sıfırdır ({plain(s['artik_toplami'], 10)}, hesap "
+                   f"hassasiyeti içinde) ve uyum değerlerinin ortalaması ({plain(s['ort_tahmin'], 6)}) "
                    "ortalama ücrete eşittir.")
 
 
@@ -337,17 +337,17 @@ def _partial(choices) -> tuple:
     return (
         LoadWooldridge(DATA, RELOAD),
         OLS("yardimci_ucret", DATA, OUTCOME, others, f"1. adım: ücreti kontrollere göre tahmin et (wage ~ {controls})"),
-        Residuals(DATA, "ucret_artik", "yardimci_ucret", "Ücretin kontrollerle açıklanamayan kısmı (artık)"),
+        Residuals(DATA, "ucret_artik", "yardimci_ucret", "Ücretin kontrollerle açıklanamayan kısmı (artık değer)"),
         OLS("yardimci_x", DATA, focus, others, f"2. adım: {short} değişkenini kontrollere göre tahmin et "
                                                f"({focus} ~ {controls})"),
         Residuals(DATA, "x_artik", "yardimci_x", f"{TITLES[focus]} değişkeninin kontrollerle açıklanamayan kısmı"),
-        OLS("kismi", DATA, "ucret_artik", ("x_artik",), "3. adım: artıkların artıklara göre regresyonu"),
-        ModelValue("kismi_egim", "kismi", "coef", "Artıklar regresyonunun eğimi", term="x_artik", decimals=6),
+        OLS("kismi", DATA, "ucret_artik", ("x_artik",), "3. adım: artık değerlerin artık değerlere göre regresyonu"),
+        ModelValue("kismi_egim", "kismi", "coef", "Artık değerler regresyonunun eğimi", term="x_artik", decimals=6),
         OLS("tam", DATA, OUTCOME, NOTES_X, "Çoklu regresyon: wage ~ educ + exper + tenure"),
         ModelValue("tam_katsayi", "tam", "coef", f"Çoklu regresyonda {short} katsayısı", term=focus, decimals=6),
         Scalar("kismi_fark", E.sub(E.ref("kismi_egim"), E.ref("tam_katsayi")), "Aradaki sayısal fark", decimals=12),
         ScatterPlot(DATA, "x_artik", "ucret_artik", f"Kontrollerden arındırılmış {short} (yıl)",
-                    "Arındırılmış ücret (ABD doları/saat)", f"{TITLES[focus]} değişkeninin kısmi ilişkisi: artıklar "
+                    "Arındırılmış ücret (ABD doları/saat)", f"{TITLES[focus]} değişkeninin kısmi ilişkisi: artık değerler "
                     "üzerinden", fit_line=True, size=6, opacity=0.4),
     )
 
@@ -356,7 +356,7 @@ def _partial_note(state, choices) -> str:
     focus = choices["adim4_x"]
     s = state.scalars
     others = _listing([WORDS[name][0] for name in NOTES_X if name != focus])
-    return (f"Artıklar regresyonunun eğimi {plain(s['kismi_egim'], 6)}, çoklu regresyondaki {WORDS[focus][0]} "
+    return (f"Artık değerler regresyonunun eğimi {plain(s['kismi_egim'], 6)}, çoklu regresyondaki {WORDS[focus][0]} "
             f"katsayısı {plain(s['tam_katsayi'], 6)}: aynı sayıdır (fark {plain(s['kismi_fark'], 12)}). "
             f"Yatay eksen, {WORDS[focus][0]} değişkeninin {others} ile açıklanamayan kısmıdır; dikey eksen ücretin "
             "aynı kontrollerle açıklanamayan kısmıdır. “Sabit tutma” birebir eşleştirme değildir; kontrollerin "
@@ -477,7 +477,7 @@ def _houses(choices) -> tuple:
         OLS("fiyat_basit", HPRICE, "price", ("sqrft",), "Basit model: price ~ sqrft"),
         OLS("fiyat_coklu", HPRICE, "price", tuple(chosen),
             f"Çoklu model: price ~ {formula}" + (" (Denklem 5.7)" if notes else "")),
-        ModelValue("f_sabit", "fiyat_coklu", "coef", "Sabit terim (bin dolar)", term=INTERCEPT),
+        ModelValue("f_sabit", "fiyat_coklu", "coef", "Kesim terimi (bin dolar)", term=INTERCEPT),
         *(ModelValue(f"f_{name}", "fiyat_coklu", "coef", f"{HOUSE_WORDS[name].capitalize()} katsayısı",
                      term=name, decimals=6 if name == "lotsize" else 4) for name in chosen),
     ]
@@ -555,7 +555,7 @@ def _houses_note(state, choices) -> str:
     else:
         text += " B ile C yalnız büyüklük ve arsada farklıdır; ikisi de modelde olmadığı için tahminleri aynıdır."
     return text + (" Şekilde noktalar 45 derece çizgisine yaklaştıkça tahmin gözlenen fiyata yaklaşır; çizgiden uzaklık "
-                   "artıktır. Konum ve yapı kalitesi gibi modelde bulunmayan özellikler artıkta kalır.")
+                   "artık değerdir. Konum ve yapı kalitesi gibi modelde bulunmayan özellikler artıkta kalır.")
 
 
 # --- Adım 8: çoklu R² ve düzeltilmiş R² ---------------------------------------------------
@@ -684,7 +684,7 @@ _KOD52 = (
     ("tenure", (0.1693, 0.022, 7.820, 0.000, 0.127, 0.212)),
 )
 """Kod 5.2: katsayı, standart hata, t, p, %95 GA alt ve üst sınır (basılı basamakla)."""
-_TERM_NAMES = {INTERCEPT: "sabit terim", "educ": "eğitim", "exper": "deneyim", "tenure": "kıdem"}
+_TERM_NAMES = {INTERCEPT: "kesim terimi", "educ": "eğitim", "exper": "deneyim", "tenure": "kıdem"}
 _QUANTITY_NAMES = {"coef": "katsayı", "se": "standart hata", "t": "t", "p": "p-değeri", "ci_low": "%95 GA alt",
                    "ci_high": "%95 GA üst"}
 _TABLE51 = (
@@ -706,7 +706,7 @@ _TABLE52 = (
     ("(2) Fiyat", {"sqrft": 0.1228, "bdrms": 13.8525, "lotsize": 0.002068, INTERCEPT: -21.7703, "n": 88,
                    "r2": 0.6724, "adj_r2": 0.6607}),
 )
-_ROW_NAMES = {"n": "gözlem sayısı", "r2": "R²", "adj_r2": "düzeltilmiş R²", INTERCEPT: "sabit",
+_ROW_NAMES = {"n": "gözlem sayısı", "r2": "R²", "adj_r2": "düzeltilmiş R²", INTERCEPT: "kesim terimi",
               "educ": "eğitim", "exper": "deneyim", "tenure": "kıdem", "sqrft": "konut büyüklüğü",
               "bdrms": "yatak odası", "lotsize": "arsa büyüklüğü"}
 
@@ -738,10 +738,10 @@ STEPS = (
         controls=(X_MULTI,),
         build=_models,
         checks=(
-            Check("§5.1: basit model, sabit terim", CoefTarget("basit", INTERCEPT), -0.9049, 4),
+            Check("§5.1: basit model, kesim terimi", CoefTarget("basit", INTERCEPT), -0.9049, 4),
             Check("§5.1: basit model, eğitim katsayısı", CoefTarget("basit", "educ"), 0.5414, 4),
             _scalar("basit_egitim", 0.541, "§5.1: yaklaşık 0,541 dolar", 3),
-            Check("Denklem 5.5: sabit terim", CoefTarget("coklu", INTERCEPT), -2.8727, 4),
+            Check("Denklem 5.5: kesim terimi", CoefTarget("coklu", INTERCEPT), -2.8727, 4),
             Check("Denklem 5.5: eğitim katsayısı", CoefTarget("coklu", "educ"), 0.5990, 4),
             Check("Denklem 5.5: deneyim katsayısı", CoefTarget("coklu", "exper"), 0.0223, 4),
             Check("Denklem 5.5: kıdem katsayısı", CoefTarget("coklu", "tenure"), 0.1693, 4),
@@ -777,11 +777,11 @@ STEPS = (
     ),
     interactive_step(
         number=3,
-        title="Tahmin edilen değer ve artık",
+        title="Uyum değeri ve artık değer",
         note=NoteRef("5.4", 0, ("Denklem 5.6",)),
         explanation=(
-            "Bir çalışan için tahmin edilen değer $\\widehat Y = \\hat\\beta_0 + \\hat\\beta_1 X_1 + \\cdots + "
-            "\\hat\\beta_k X_k$, artık $\\hat u = Y - \\widehat Y$'dir. Çoklu EKK, kareli artıklar toplamını en küçük "
+            "Bir çalışan için uyum değeri $\\widehat Y = \\hat\\beta_0 + \\hat\\beta_1 X_1 + \\cdots + "
+            "\\hat\\beta_k X_k$, artık değer $\\hat u = Y - \\widehat Y$'dir. Çoklu EKK, artık değerlerin kareleri toplamını en küçük "
             "yapan katsayıları birlikte seçer (Denklem 5.6). Notlardaki çalışanın eğitimi 16, deneyimi 20, kıdemi 10 "
             "yıl; gözlenen ücreti 10 dolardır. Değerleri değiştirin. Bu adım Adım 1'deki modeli kullanır."
         ),
@@ -806,8 +806,8 @@ STEPS = (
         title="“Sabit tutma”: kontrollerin doğrusal katkısını ayırmak",
         note=NoteRef("5.5", 0, ("Şekil 5.2",)),
         explanation=(
-            "Üç adım: (1) ücreti kontrollere göre tahmin edip artığını al; (2) incelenen değişkeni aynı kontrollere göre "
-            "tahmin edip artığını al; (3) birinci artıkları ikinci artıklara göre regresyona tabi tut. Üçüncü adımdaki "
+            "Üç adım: (1) ücreti kontrollere göre tahmin edip artık değerini al; (2) incelenen değişkeni aynı kontrollere göre "
+            "tahmin edip artık değerini al; (3) birinci artık değerleri ikinci artık değerlere göre regresyona tabi tut. Üçüncü adımdaki "
             "eğim çoklu regresyondaki katsayıyla aynıdır (§5.5). Notlarda incelenen değişken eğitim, kontroller deneyim "
             "ve kıdemdir; değişkeni değiştirin."
         ),
@@ -815,7 +815,7 @@ STEPS = (
                          "educ", help="Notlarda eğitim."),),
         build=_partial,
         checks=(
-            _scalar("kismi_egim", 0.598965, "§5.5: artıklar regresyonunun eğimi", 6),
+            _scalar("kismi_egim", 0.598965, "§5.5: artık değerler regresyonunun eğimi", 6),
             _scalar("tam_katsayi", 0.598965, "§5.5: çoklu regresyondaki eğitim katsayısı", 6),
             _scalar("kismi_egim", 0.599, "§5.5: doğrunun eğimi 0,599", 3),
         ),
@@ -881,9 +881,9 @@ STEPS = (
                               help="Notlardaki model: üç değişken birlikte (Denklem 5.7)."),),
         build=_houses,
         checks=(
-            Check("§5.8: basit model, sabit terim", CoefTarget("fiyat_basit", INTERCEPT), 11.2041, 4),
+            Check("§5.8: basit model, kesim terimi", CoefTarget("fiyat_basit", INTERCEPT), 11.2041, 4),
             Check("§5.8: basit model, konut büyüklüğü", CoefTarget("fiyat_basit", "sqrft"), 0.1402, 4),
-            Check("Denklem 5.7: sabit terim", CoefTarget("fiyat_coklu", INTERCEPT), -21.7703, 4),
+            Check("Denklem 5.7: kesim terimi", CoefTarget("fiyat_coklu", INTERCEPT), -21.7703, 4),
             Check("Denklem 5.7: konut büyüklüğü", CoefTarget("fiyat_coklu", "sqrft"), 0.1228, 4),
             Check("Denklem 5.7: yatak odası sayısı", CoefTarget("fiyat_coklu", "bdrms"), 13.8525, 4),
             Check("Denklem 5.7: arsa büyüklüğü", CoefTarget("fiyat_coklu", "lotsize"), 0.002068, 6),
@@ -966,11 +966,11 @@ KONU05_LAB = LabSpec(
     steps=STEPS,
     labels=(
         *W.labels(DATA, HPRICE),
-        (INTERCEPT, "Sabit terim"),
+        (INTERCEPT, "Kesim terimi"),
         ("calisan", "Çalışan"),
         ("konut", "Konut"),
-        ("tahmin", "Tahmin edilen değer Ŷᵢ"),
-        ("artik", "Artık ûᵢ"),
+        ("tahmin", "Uyum değeri Ŷᵢ"),
+        ("artik", "Artık değer ûᵢ"),
         ("ucret_artik", "Arındırılmış ücret"),
         ("x_artik", "Arındırılmış açıklayıcı değişken"),
         ("fiyat_tahmin", "Tahmin edilen fiyat (bin ABD doları)"),

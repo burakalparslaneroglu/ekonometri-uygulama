@@ -29,7 +29,7 @@ TOPICS: tuple[TopicMetadata, ...] = (
     TopicMetadata(
         "konu04", 4, "EKK Tahminini Değerlendirme: Uyum, Ölçü Birimleri ve Temel Fonksiyonel Biçimler",
         "EKK Çıktısı, Uyum ve Fonksiyonel Biçimler",
-        "Tahmin edilen doğru örneklemdeki gözlemlere ne ölçüde uyuyor; değişkenleri farklı ölçülerde yazdığımızda "
+        "Uyum doğrusu örneklemdeki gözlemlere ne ölçüde uyuyor; değişkenleri farklı ölçülerde yazdığımızda "
         "katsayıyı nasıl yorumlamalıyız?",
     ),
     TopicMetadata(
@@ -66,7 +66,7 @@ TOPICS: tuple[TopicMetadata, ...] = (
         "katsayıları hangi karşılaştırmayı anlatır?",
     ),
     TopicMetadata(
-        "konu11", 11, "Etkileşim Terimleri ve Gruplar Arasında Sabit ile Eğim Farklılıkları",
+        "konu11", 11, "Etkileşim Terimleri ve Gruplar Arasında Kesim terimi ile Eğim Farklılıkları",
         "Etkileşimler ve Grup Farkları",
         "Bir nicel değişkenin sonuçla ilişkisi, ait olunan gruba göre değişebilir mi?",
     ),

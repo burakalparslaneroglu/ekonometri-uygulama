@@ -342,7 +342,7 @@ def _step1(case: Case) -> LabStep:
     title = "İki grup ortalaması ve basit kukla modeli"
     note_ref = NoteRef("10.2", 0, ("Tablo 10.1", "Kod 10.1", "Kod 10.2", "Şekil 10.1"))
     lead = ("Kukla değişken iki kategoriyi 0 ve 1 ile ayırır. $Y = \\beta_0 + \\delta D + u$ modelinde "
-            "$\\mathbb{E}(Y \\mid D = 0) = \\beta_0$ ve $\\mathbb{E}(Y \\mid D = 1) = \\beta_0 + \\delta$: sabit terim "
+            "$\\mathbb{E}(Y \\mid D = 0) = \\beta_0$ ve $\\mathbb{E}(Y \\mid D = 1) = \\beta_0 + \\delta$: kesim terimi "
             "referans grubun ortalaması, kukla katsayısı iki grup ortalamasının farkıdır.")
     dummy = _dummy(case)
     if dummy is None:  # veri (ve log sonuç) yine bu adımda kurulur: sonraki adımlar onu kullanır
@@ -398,7 +398,7 @@ def _step1(case: Case) -> LabStep:
                                 (INTERCEPT, *dict.fromkeys((dummy.column, column))), "yan101",
                                 "Varsayılan model ve seçtiğiniz model", decimals=4),
             )),
-            ModelValue("b0", "m_basit", "coef", f"Sabit terim: {zero} grubunun ortalaması", term=INTERCEPT, decimals=4),
+            ModelValue("b0", "m_basit", "coef", f"Kesim terimi: {zero} grubunun ortalaması", term=INTERCEPT, decimals=4),
             ModelValue("delta", "m_basit", "coef", f"Kukla katsayısı: {one} − {zero} farkı", term=column, decimals=4),
             Statistic(frame, outcome, "mean", "ort_0", f"{_cap(case, zero)} grubunun örneklem ortalaması",
                       where=(column, 0), decimals=4),
@@ -415,11 +415,11 @@ def _step1(case: Case) -> LabStep:
         d = max(4, digits_for(max(abs(s["b0"]), abs(s["delta"])), 4))
         unit = f" ({short_unit(case, outcome)})" if outcome != ly and short_unit(case, outcome) else ""
         delta = sayi(s["delta"], d) if s["delta"] >= 0 else f"({sayi(s['delta'], d)})"
-        return (f"Sabit terim {sayi(s['b0'], d)}, {zero} grubunun ortalama {phrase(case, outcome)} değeridir{unit}. Kukla "
+        return (f"Kesim terimi {sayi(s['b0'], d)}, {zero} grubunun ortalama {phrase(case, outcome)} değeridir{unit}. Kukla "
                 f"katsayısı {sayi(s['delta'], d)}, {one} ve {zero} ortalamaları arasındaki farktır: {sayi(s['ort_1'], d)} − "
-                f"{sayi(s['ort_0'], d)} = {sayi(s['fark'], d)}. {capital(one)} grubunun tahmin edilen ortalaması sabit ile "
+                f"{sayi(s['ort_0'], d)} = {sayi(s['fark'], d)}. {capital(one)} grubunun tahmin edilen ortalaması kesim terimi ile "
                 f"katsayının toplamıdır: {sayi(s['b0'], d)} + {delta} = {sayi(s['grup1_tahmin'], d)}. Kodlama ters "
-                "çevrilirse sabit diğer grubun ortalaması olur ve katsayının işareti değişir; iki grup arasındaki fark "
+                "çevrilirse kesim terimi diğer grubun ortalaması olur ve katsayının işareti değişir; iki grup arasındaki fark "
                 "aynıdır. Bu fark nedensel bir etki değildir (§10.2).")
 
     checks = [
@@ -427,7 +427,7 @@ def _step1(case: Case) -> LabStep:
         _check(f"Tablo: {dummy.one_raw}, gözlem sayısı", TableTarget("tablo101", _cap(case, dummy.one_raw), "n"), 0),
         *(_check(f"Tablo: {group}, {case.name(column)} ortalaması", TableTarget("tablo101", _cap(case, group), column), 2)
           for group in (dummy.zero_raw, dummy.one_raw) for _, column, _ in summary[1:]),
-        *(_check(f"Model: {'sabit terim' if term == INTERCEPT else 'kukla'}, {label}", CoefTarget("m_basit", term, quantity),
+        *(_check(f"Model: {'kesim terimi' if term == INTERCEPT else 'kukla'}, {label}", CoefTarget("m_basit", term, quantity),
                  3 if quantity == "t" else 4)
           for term in (INTERCEPT, dummy.column) for quantity, label in (("coef", "coef"), ("se", "std err"), ("t", "t"),
                                                                         ("p", "P>|t|"))),
@@ -619,14 +619,14 @@ def _step3(case: Case) -> LabStep:
         held = listing([_name(case, term) for term in others])
         return (
             OLS("m_log", case.frame, ly, (column, *controls), f"Kontrollü log sonuç modeli: {_formula(ly, (column, *controls))}"),
-            ModelValue("b0_log", "m_log", "coef", "Sabit terim", term=INTERCEPT, decimals=4),
+            ModelValue("b0_log", "m_log", "coef", "Kesim terimi", term=INTERCEPT, decimals=4),
             ModelValue("d_log", "m_log", "coef", "Kukla katsayısı", term=column, decimals=4),
             *(ModelValue(f"b_{term}", "m_log", "coef", f"{capital(_name(case, term))} katsayısı", term=term,
                          decimals=max(4, digits_for(float(fit.params[term]), 4))) for term in controls),
             *(Statistic(case.frame, term, "mean", f"ort_{term}", f"{capital(_name(case, term))}: örneklem ortalaması",
                         decimals=4) for term in others),
             support,
-            Derive("dogru", "grup0", line, f"{_cap(case, dummy.zero_raw)} ({column} = 0): sabit + eğim"
+            Derive("dogru", "grup0", line, f"{_cap(case, dummy.zero_raw)} ({column} = 0): kesim terimi + eğim"
                    + (f"; {held} ortalamada" if others else "")),
             Derive("dogru", "grup1", E.add(E.var("grup0"), E.ref("d_log")),
                    f"{_cap(case, dummy.one_raw)} ({column} = 1): önceki doğru + δ̂"),
@@ -641,7 +641,7 @@ def _step3(case: Case) -> LabStep:
         s = state.scalars
         return (f"İki doğrunun eğimi aynıdır ({phrase(case, axis)} katsayısı "
                 f"{sayi(s[f'b_{axis}'], max(4, digits_for(s[f'b_{axis}'], 4)))}); aralarındaki dikey uzaklık her düzeyde "
-                f"kukla katsayısıdır ({sayi(s['d_log'], 4)}). Additif kukla modeli gruplara farklı sabit verir, farklı eğim "
+                f"kukla katsayısıdır ({sayi(s['d_log'], 4)}). Additif kukla modeli gruplara farklı kesim terimi verir, farklı eğim "
                 "vermez: doğrular hangi değişken yatay eksende olursa olsun paraleldir. Eğim farkı için etkileşim terimi "
                 "gerekir (Konu 11). Log ölçekteki sabit fark, düzeyde sabit bir yüzde farka karşılık gelir (§10.3).")
 
@@ -654,7 +654,7 @@ def _step3(case: Case) -> LabStep:
         controls=(Choice("adim3_x", "Yatay eksendeki değişken", options_of(case, controls), controls[0],
                          help="Diğer kontroller örneklem ortalamasında tutulur (Şekil 10.2'deki gibi)."),),
         build=build,
-        checks=(_scalar("b0_log", "Sabit terim", 4), _scalar("d_log", "Kukla katsayısı", 4),
+        checks=(_scalar("b0_log", "Kesim terimi", 4), _scalar("d_log", "Kukla katsayısı", 4),
                 *(_scalar(f"b_{term}", f"{case.name(term)} katsayısı", max(4, digits_for(float(fit.params[term]), 4)))
                   for term in controls)),
         note_for=lambda state, choices: note(state, choices),
@@ -795,7 +795,7 @@ def _group_table(groups: Groups, model: str, reference: str, prefix: str, title:
 def _step5(case: Case) -> LabStep:
     title = "Çok kategorili değişken ve referans kategori"
     note_ref = NoteRef("10.5", 0, ("Tablo 10.3", "Şekil 10.3", "Kod 10.5"))
-    lead = ("Kategorik bir değişken m kategori içeriyorsa sabit terimli modelde m − 1 kukla kullanılır; modele girmeyen "
+    lead = ("Kategorik bir değişken m kategori içeriyorsa kesim terimli modelde m − 1 kukla kullanılır; modele girmeyen "
             "kategori referanstır. Log katsayılar tam yüzde farka çevrilir: $100(e^{\\hat\\delta} - 1)$.")
     groups = _groups(case, KATEGORI)
     if groups is None:
@@ -834,7 +834,7 @@ def _step5(case: Case) -> LabStep:
         others = [code for code in groups.codes if code != chosen]
         s = state.scalars
         m = len(groups.codes)
-        text = (f"Sabit terimli modelde {m} kategori için {m - 1} kukla kullanılır; referans kategori "
+        text = (f"Kesim terimli modelde {m} kategori için {m - 1} kukla kullanılır; referans kategori "
                 f"{groups.words(chosen)} modelde yer almaz ve her satır bu referansa göre koşullu farktır. ")
         if exact:
             return text + "Uyum tam olduğu için p-değerleri ve güven aralıkları yuvarlama hatasıdır (§10.5)." + _exact_note(True)
@@ -874,8 +874,8 @@ def _step5(case: Case) -> LabStep:
 def _step6(case: Case) -> LabStep:
     title = "Referans kategori değişince ne olur?"
     note_ref = NoteRef("10.5", 0)
-    lead = ("Referans kategori değişince sabit terim ve kukla katsayılarının sayısal değerleri ile karşılaştırılan grup "
-            "değişir; tahmin edilen değerler, artıklar, R² ve modelin ortak uyumu değişmez.")
+    lead = ("Referans kategori değişince kesim terimi ve kukla katsayılarının sayısal değerleri ile karşılaştırılan grup "
+            "değişir; uyum değerleri, artık değerler, R² ve modelin ortak uyumu değişmez.")
     groups = _groups(case, KATEGORI)
     if groups is None:
         return _need(6, title, note_ref, lead, _GROUP_NEED)
@@ -911,10 +911,10 @@ def _step6(case: Case) -> LabStep:
                    f"Varsayılan katsayılardan {groups.label(other)} − {groups.label(chosen)} farkı", decimals=4),
             ModelValue("r2_kd", "m_kd", "r2", "Varsayılan referanslı model: R²", decimals=6),
             ModelValue("r2_ref", "m_ref", "r2", "Seçilen referanslı model: R²", decimals=6),
-            Residuals("bolge6", "u_kd", "m_kd", "Varsayılan referanslı modelin artıkları"),
-            Residuals("bolge6", "u_ref", "m_ref", "Seçilen referanslı modelin artıkları"),
-            Derive("bolge6", "u_fark", E.absolute(E.sub(E.var("u_kd"), E.var("u_ref"))), "İki modelin artık farkı"),
-            Statistic("bolge6", "u_fark", "max", "azami_fark", "Tahmin edilen değerlerin (ve artıkların) azami farkı",
+            Residuals("bolge6", "u_kd", "m_kd", "Varsayılan referanslı modelin artık değerleri"),
+            Residuals("bolge6", "u_ref", "m_ref", "Seçilen referanslı modelin artık değerleri"),
+            Derive("bolge6", "u_fark", E.absolute(E.sub(E.var("u_kd"), E.var("u_ref"))), "İki modelin artık değer farkı"),
+            Statistic("bolge6", "u_fark", "max", "azami_fark", "Uyum değerlerinin (ve artık değerlerin) azami farkı",
                       decimals=noise),
         )
 
@@ -929,7 +929,7 @@ def _step6(case: Case) -> LabStep:
                 "değiştirmiş hâli. Diğer katsayılar da yeni referansa göre yazılır: varsayılan modelde "
                 f"{groups.words(other)} − {groups.words(chosen)} farkı {sayi(s['k1_diger'], 4)} − {shown} = "
                 f"{sayi(s['fark6'], 4)}; bu, yeni modeldeki {groups.words(other)} katsayısıdır "
-                f"({sayi(s['k2_diger'], 4)}). İki modelin R²'si aynıdır ({sayi(s['r2_kd'], 6)}) ve tahmin edilen "
+                f"({sayi(s['k2_diger'], 4)}). İki modelin R²'si aynıdır ({sayi(s['r2_kd'], 6)}) ve uyum "
                 "değerleri arasındaki en büyük fark yalnız bilgisayar yuvarlaması düzeyindedir. Referans değişikliği "
                 "modeli değil, katsayıların hangi gruba göre yazıldığını değiştirir (§10.5).")
 
@@ -949,7 +949,7 @@ def _step6(case: Case) -> LabStep:
             _scalar("k1_diger", "Varsayılan modelde üçüncü kategorinin katsayısı", 4),
             _scalar("fark6", "Katsayı farkı", 4),
             _scalar("k2_diger", "Yeni referansa göre üçüncü kategorinin katsayısı", 4),
-            _scalar("azami_fark", "Tahmin edilen değerlerin farkı (yuvarlama düzeyinde)", noise),
+            _scalar("azami_fark", "Uyum değerlerinin farkı (yuvarlama düzeyinde)", noise),
         ),
         note_for=lambda state, choices: note(state, choices),
     )
@@ -960,9 +960,9 @@ def _step6(case: Case) -> LabStep:
 def _step7(case: Case) -> LabStep:
     title = "Kukla değişken tuzağı"
     note_ref = NoteRef("10.6", 0)
-    lead = ("Her gözlem tam olarak bir kategoridedir: bütün kuklaların toplamı her gözlemde 1'dir. Sabit terim de her "
-            "gözlemde 1 olan bir sütundur; sabit terim ile bütün kuklalar birlikte kullanılırsa tam çoklu doğrusal "
-            "bağlantı ortaya çıkar. Çözüm: sabit terimi koruyup bir kategoriyi referans bırakmak ya da sabit terimi "
+    lead = ("Her gözlem tam olarak bir kategoridedir: bütün kuklaların toplamı her gözlemde 1'dir. Kesim terimi de her "
+            "gözlemde 1 olan bir sütundur; kesim terimi ile bütün kuklalar birlikte kullanılırsa tam çoklu doğrusal "
+            "bağlantı ortaya çıkar. Çözüm: kesim terimini koruyup bir kategoriyi referans bırakmak ya da kesim terimini "
             "kaldırıp bütün kuklaları kullanmak.")
     groups = _groups(case, KATEGORI)
     if groups is None:
@@ -989,8 +989,8 @@ def _step7(case: Case) -> LabStep:
         checks=(_scalar("toplam_min", "Kuklaların toplamı, en küçük değer", 0),
                 _scalar("toplam_max", "Kuklaların toplamı, en büyük değer", 0),
                 *(_scalar(f"sayi_{code}", f"{groups.label(code)}: gözlem sayısı", 0) for code in groups.codes)),
-        takeaway=(f"{m} kuklanın toplamı en küçük ve en büyük değerde 1'dir: toplam her gözlemde sabit terimin sütununa "
-                  f"eşittir. Bu yüzden sabit terimli modelde en fazla {m - 1} kategori kuklası kullanılabilir; {m} kukla "
+        takeaway=(f"{m} kuklanın toplamı en küçük ve en büyük değerde 1'dir: toplam her gözlemde kesim teriminin sütununa "
+                  f"eşittir. Bu yüzden kesim terimli modelde en fazla {m - 1} kategori kuklası kullanılabilir; {m} kukla "
                   "ve sabit birlikte tam çoklu doğrusal bağlantı yaratır ve katsayılar tek biçimde tahmin edilemez. "
                   "Yazılım bir kuklayı kendiliğinden düşürürse hangi kategorinin referans kaldığı kontrol edilir (§10.6)."),
     )
@@ -1077,7 +1077,7 @@ def _step8(case: Case) -> LabStep:
 
     terms = (default, *_without(controls, default))
     checks = [
-        *(_check(f"Model: {'sabit terim' if term == INTERCEPT else case.name(term) if term in case.data.columns else term}, "
+        *(_check(f"Model: {'kesim terimi' if term == INTERCEPT else case.name(term) if term in case.data.columns else term}, "
                  f"{label}", CoefTarget("m_yuzde", term, quantity), 3 if quantity == "t" else 4)
           for term in (INTERCEPT, *terms) for quantity, label in (("coef", "coef"), ("se", "std err"), ("t", "t"),
                                                                   ("p", "P>|t|"))),
@@ -1317,7 +1317,7 @@ def build(case: Case) -> LabSpec:
     y = case.roles[SONUC]
     labels = labels_of(case)
     labels[_ly(case)] = labels.get(_ly(case)) or log_label(case, y)
-    labels[INTERCEPT] = "Sabit terim"
+    labels[INTERCEPT] = "Kesim terimi"
     dummy = _dummy(case)
     if dummy is not None:
         labels.setdefault(dummy.column, f"{dummy.title} (1 = {dummy.one_raw}, 0 = {dummy.zero_raw})")

@@ -2,7 +2,7 @@
 
 Her soru tek bir kavramı sınar ve notlardaki bir bölüme bağlıdır. Sorular notların Egzersiz ve Mini Quiz maddelerini
 tekrar etmez: reklam harcamasıyla artan yayılım; altı olası kaynağın ayırt edilmesi; E(u | X) = 0 iken ne değişir, ne
-değişmez; 20–50, 50–100 ve 100 üzeri tahminlerde artık aralıkları; BP LM = 9,8 ve White LM = 18,5 kararları; HC1
+değişmez; 20–50, 50–100 ve 100 üzeri tahminlerde artık değer aralıkları; BP LM = 9,8 ve White LM = 18,5 kararları; HC1
 seçimi ve tablo notu; HPRICE1 düzey çıktısının yedi maddesi (arsa ve konut büyüklüğü); F = 5,40 ve 2,10'luk ortak
 testler; Tablo 12.6'nın altı maddesi; 0,080'lik eğitim katsayısıyla bütünleşik raporlama ve mini quizlerdeki sorular.
 Aynı becerileri yeni bağlamlarla ve yeni sayılarla sınar: yatak odası katsayısının HC1 aralığı, dayanıklı Wald
@@ -42,7 +42,7 @@ QUESTIONS = (
         key="k01", concept="yanlis-bicim-heteroskedastisiteye-benzer", note=_note("12.2"),
         prompt=(
             "Gerçek ilişki $Y = 1 + 2X - 0{,}3X^2 + u$ iken $Y$ yalnız $X$ üzerine regresyona "
-            "sokuluyor. Artıklar X aralığının iki ucunda çoğunlukla negatif ve mutlak değerce büyük, ortada çoğunlukla "
+            "sokuluyor. Artık değerler X aralığının iki ucunda çoğunlukla negatif ve mutlak değerce büyük, ortada çoğunlukla "
             "pozitif ve küçük çıkıyor. İlk yapılması gereken nedir?"
         ),
         answer=MultipleChoice(
@@ -50,36 +50,36 @@ QUESTIONS = (
                 "Heteroskedastisite kesinleştiği için HC3 ile çıkarım yapıp modeli olduğu gibi raporlamak",
                 "White testi reddederse modeli terk edip başka bir veri seti aramak",
                 "Uçlardaki büyük artıklı gözlemleri aykırı değer sayıp örneklemden çıkarmak",
-                "Koşullu ortalamayı yeniden düşünmek: X² eklemek ve artık grafiğini yeniden incelemek",
+                "Koşullu ortalamayı yeniden düşünmek: X² eklemek ve artık değer grafiğini yeniden incelemek",
             ),
             correct=3,
         ),
         explanation=(
-            "Hata varyansı sabit olsa bile dışlanan bir karesel terim, artıkların belirli bölgelerde sistematik olarak "
+            "Hata varyansı sabit olsa bile dışlanan bir karesel terim, artık değerlerin belirli bölgelerde sistematik olarak "
             "büyümesine yol açar; bu örüntü "
             "heteroskedastisiteye benzer ama kaynağı yanlış kurulmuş koşullu ortalamadır. Dayanıklı standart hata "
             "yanlış ortalama fonksiyonunu düzeltmez; gözlem silmek de gerekçesizdir. Önce fonksiyonel biçim "
-            "düzeltilir, sonra artık grafiği ve testler yeniden değerlendirilir (Modelde dışlanan yapı, madde 7) (§12.2)."
+            "düzeltilir, sonra artık değer grafiği ve testler yeniden değerlendirilir (Modelde dışlanan yapı, madde 7) (§12.2)."
         ),
     ),
     Question(
         key="k02", concept="log-artigin-fiyat-duzeyinde-anlami", note=_note("12.4", "Şekil 12.5"),
         prompt=(
-            "HPRICE1 log modelinde iki konutun artığı da 0,10'dur. Tahmin edilen log fiyatlarına karşılık gelen "
-            "fiyatlar ($e^{\\widehat{\\text{lprice}}}$) 200 ve 500 bin dolardır. Bu artıklar fiyat düzeyinde ne "
+            "HPRICE1 log modelinde iki konutun artık değeri da 0,10'dur. Tahmin edilen log fiyatlarına karşılık gelen "
+            "fiyatlar ($e^{\\widehat{\\text{lprice}}}$) 200 ve 500 bin dolardır. Bu artık değerler fiyat düzeyinde ne "
             "anlama gelir?"
         ),
         answer=MultipleChoice(
             (
                 "İki konut da tahminin yaklaşık %10,5 üstündedir: yaklaşık 21 ve 53 bin dolar",
                 "İki konut da tahminin 0,10 bin dolar, yani 100 dolar üstündedir; fark iki konutta aynıdır",
-                "Pahalı konutun yüzde sapması daha küçüktür; aynı log artık fiyat büyüdükçe küçülen bir yüzdedir",
-                "Log artıklar fiyat düzeyine çevrilemez; yalnız işaretleri yorumlanabilir",
+                "Pahalı konutun yüzde sapması daha küçüktür; aynı log artık değer fiyat büyüdükçe küçülen bir yüzdedir",
+                "Log artık değerler fiyat düzeyine çevrilemez; yalnız işaretleri yorumlanabilir",
             ),
             correct=0,
         ),
         explanation=(
-            "Log artık, fiyatın tahmine oranının logaritmasıdır: $e^{0{,}10} \\approx 1{,}105$, iki konut da tahminin "
+            "Log artık değer, fiyatın tahmine oranının logaritmasıdır: $e^{0{,}10} \\approx 1{,}105$, iki konut da tahminin "
             "yaklaşık %10,5 üstündedir. Bin dolar cinsinden sapma $200 \\times 0{,}105 \\approx 21$ ve "
             "$500 \\times 0{,}105 \\approx 53$'tür. Yüzde olarak benzer sapmalar yüksek fiyatlarda daha büyük mutlak "
             "sapmalara dönüşür (Ölçek ile varyans arasındaki sezgisel bağlantı, §12.2): log modelde dengeli görünen "
@@ -103,7 +103,7 @@ QUESTIONS = (
         ),
         explanation=(
             "İki test aynı sıfır hipotezini sınar ama farklı alternatiflere duyarlıdır. BP'nin yardımcı regresyonu "
-            "kareli artıkları yalnız X'in düzeyiyle açıklar; White X²'yi de içerir. Varyans X aralığının ortasında "
+            "artık değerlerin karelerini yalnız X'in düzeyiyle açıklar; White X²'yi de içerir. Varyans X aralığının ortasında "
             "küçük, uçlarında büyükse doğrusal eğilim zayıftır ve BP reddetmeyebilir, White ise çoğu zaman reddeder. White yanlış "
             "fonksiyonel biçime de duyarlıdır. Konu 12 Sezgi Deney 2'nin varsayılan ayarında (U biçimli varyans, "
             "n = 100) BP örneklemlerin %17,9'unda, White %97,0'ında reddeder (§12.5)."
@@ -118,7 +118,7 @@ QUESTIONS = (
         answer=MultipleChoice(
             (
                 "Log modelde katsayılar küçük olduğu için standart hatalar da küçüktür; oran farkı ölçekten gelir",
-                "Log modelde heteroskedastisite zayıf görünür: testler reddetmez, artık yayılımı daha dengelidir",
+                "Log modelde heteroskedastisite zayıf görünür: testler reddetmez, artık değerlerin yayılımı daha dengelidir",
                 "Oran yalnız HC1'in serbestlik derecesi düzeltmesini yansıtır; iki modelde aynı olmalıydı, fark "
                 "yuvarlamadan gelir",
                 "Log dönüşümü heteroskedastisiteyi kesin olarak ortadan kaldırmıştır; dayanıklı standart hata gereksizdir",
@@ -131,7 +131,7 @@ QUESTIONS = (
             "birbirine yakın çıkar; oran 1'den uzaklaştıkça heteroskedastisitenin çıkarıma etkisi büyür. Düzey "
             "modelinde testler reddeder ve oran yaklaşık 2'dir; log modelde testler reddetmez (Tablo 12.2) ve oran 1'e "
             "yakındır. HC1/HC0 oranı iki modelde de $\\sqrt{88/84} \\approx 1{,}024$'tür; HC1/geleneksel oranı ise "
-            "artıkların yapısına bağlıdır. Reddetmemek homoskedastisiteyi kanıtlamaz; oran bir tanı ipucudur (§12.7)."
+            "artık değerlerin yapısına bağlıdır. Reddetmemek homoskedastisiteyi kanıtlamaz; oran bir tanı ipucudur (§12.7)."
         ),
     ),
     Question(
@@ -145,7 +145,7 @@ QUESTIONS = (
                 "Evet: 4.000 tekrarın ortalaması 1,971 olup gerçek değer 2'den farklı olduğu için EKK yanlıdır",
                 "Hayır: 4.000 tekrarın ortalamasının standart hatası yaklaşık 0,024'tür; −0,029'luk fark bununla "
                 "uyumludur",
-                "Hayır: heteroskedastisite yalnız sabit terimi etkiler; eğim tahminleri her zaman tam 2'de kalır",
+                "Hayır: heteroskedastisite yalnız kesim terimi etkiler; eğim tahminleri her zaman tam 2'de kalır",
                 "Evet: güçlü heteroskedastisite eğimi aşağı çeker; c büyüdükçe yanlılık da büyür",
             ),
             correct=1,
@@ -240,7 +240,7 @@ QUESTIONS = (
     Question(
         key="d03", concept="dayanikli-f-ssr-ile-hesaplanmaz", note=_note("12.8"),
         prompt=(
-            "Heteroskedastisiteye dayanıklı ortak test, kısıtlı ve kısıtsız modellerin artık kareleri toplamlarının "
+            "Heteroskedastisiteye dayanıklı ortak test, kısıtlı ve kısıtsız modellerin artık değerlerin kareleri toplamlarının "
             "farkından hesaplanan F istatistiğiyle yapılır."
         ),
         answer=TrueFalse(False),
@@ -302,15 +302,15 @@ QUESTIONS = (
     Question(
         key="d07", concept="artik-ile-hata-ayni-degildir", note=_note("12.4"),
         prompt=(
-            "EKK artığı $\\hat u_i = Y_i - \\widehat Y_i$ ile hata terimi $u_i = Y_i - \\mathbb{E}(Y_i \\mid X_i)$ aynı "
-            "büyüklüktür; artık, hatanın gözlenmiş değeridir."
+            "EKK artık değeri $\\hat u_i = Y_i - \\widehat Y_i$ ile hata terimi $u_i = Y_i - \\mathbb{E}(Y_i \\mid X_i)$ aynı "
+            "büyüklüktür; artık değer, hatanın gözlenmiş değeridir."
         ),
         answer=TrueFalse(False),
         explanation=(
-            "Hata gerçek koşullu ortalamadan sapmadır ve gözlenemez; artık tahmin edilen doğrudan sapmadır ve tahmin "
+            "Hata gerçek koşullu ortalamadan sapmadır ve gözlenemez; artık değer uyum doğrusundan sapmadır ve tahmin "
             "edilen katsayılara bağlıdır: basit regresyonda $\\hat u_i = u_i - (\\widehat\\beta_0 - \\beta_0) - "
-            "(\\widehat\\beta_1 - \\beta_1)X_i$. Bu yüzden artık grafiği hata varyansı için bir tanı aracıdır, doğrudan "
-            "ölçüm değildir; model yanlış kurulmuşsa artıklar dışlanan yapıyı da taşır (Artık grafiğini okuma "
+            "(\\widehat\\beta_1 - \\beta_1)X_i$. Bu yüzden artık değer grafiği hata varyansı için bir tanı aracıdır, doğrudan "
+            "ölçüm değildir; model yanlış kurulmuşsa artık değerler dışlanan yapıyı da taşır (Artık değer grafiğini okuma "
             "sırası) (§12.4)."
         ),
     ),
@@ -397,7 +397,7 @@ QUESTIONS = (
         key="e01", concept="white-yardimci-regresyon-terim-sayisi", note=_note("12.5"),
         prompt=(
             "Modelde hiçbiri 0/1 kukla olmayan k açıklayıcı vardır. White testinin yardımcı regresyonu düzeyleri, "
-            "kareleri ve bütün ikili çapraz çarpımları içeriyorsa sabit dışındaki terim sayısı q'yu k cinsinden yazın."
+            "kareleri ve bütün ikili çapraz çarpımları içeriyorsa kesim terimi dışındaki terim sayısı q'yu k cinsinden yazın."
         ),
         answer=Equation(
             lhs="q",
@@ -415,7 +415,7 @@ QUESTIONS = (
     Question(
         key="e02", concept="hc1-ve-hc0-iliskisi", note=_note("12.6", "Tablo 12.3"),
         prompt=(
-            "Bir katsayının HC0 standart hatası $s_0$'dır. Modelde n gözlem ve sabit dışında k açıklayıcı varsa HC1 "
+            "Bir katsayının HC0 standart hatası $s_0$'dır. Modelde n gözlem ve kesim terimi dışında k açıklayıcı varsa HC1 "
             "standart hatasını $s_0$, n ve k cinsinden yazın."
         ),
         answer=Equation(
@@ -423,13 +423,13 @@ QUESTIONS = (
             symbols=(
                 Symbol("s0", "s_0", "HC0 standart hatası", 0.1, 3, aliases=("s_0", "s0", "se_HC0", "seHC0", "SE_HC0", "SEHC0")),
                 Symbol("n", "n", "gözlem sayısı", 20, 500),
-                Symbol("k", "k", "sabit dışındaki açıklayıcı sayısı", 1, 6),
+                Symbol("k", "k", "kesim terimi dışındaki açıklayıcı sayısı", 1, 6),
             ),
             answer="s0*sqrt(n/(n - k - 1))",
             shown="s_0\\sqrt{\\frac{n}{n - k - 1}}",
         ),
         explanation=(
-            "HC1 her kareli artığı $n/(n - k - 1)$ ile çarpar; varyans bu oranla, standart hata onun kareköküyle "
+            "HC1 her artık değerin karesii $n/(n - k - 1)$ ile çarpar; varyans bu oranla, standart hata onun kareköküyle "
             "büyür. HPRICE1 düzey modelinde n = 88, k = 3: $1{,}22265 \\times \\sqrt{88/84} \\approx 1{,}2514$ (HC0 değeri "
             "Uygulama, Adım 3'te; HC1 değeri Kod 12.3'te). "
             "Örneklem büyüdükçe oran 1'e yaklaşır ve HC0 ile HC1 birbirine yaklaşır (§12.6)."

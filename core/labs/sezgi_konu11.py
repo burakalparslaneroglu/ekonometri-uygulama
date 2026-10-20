@@ -45,7 +45,7 @@ CLOSE_SD = 1.15
 """Deney 1: merkez c'deki ve 13'teki standart sapmaların oranı bundan küçükse ikisi neredeyse aynı sayılır."""
 """X ~ U(8, 18): ortalaması 13, varyansı 100/12."""
 BETA_0, BETA_1 = 1.0, 0.1
-"""Referans grubun (D = 0) sabiti ve eğimi."""
+"""Referans grubun (D = 0) kesim terimi ve eğimi."""
 GAP_MID = -0.45
 """X = 13'teki gerçek grup farkı (Deney 1 ve 2)."""
 SIGMA = 0.4
@@ -290,8 +290,8 @@ def _centering_takeaway(state: LabState, parameters: Parameters) -> str:
     c, slope_gap, _ = _centering_settings(parameters)
     s = state.scalars
     truth = gap(slope_gap, c)
-    same = ("Merkezleme tahmin edilen değerleri, R²'yi ve iki grubun eğimlerini (tablodaki Merkezlenmiş X ve D × "
-            "Merkezlenmiş X satırları) değiştirmez; yalnız sabit terimin ve D katsayısının referans noktasını "
+    same = ("Merkezleme uyum değerleri, R²'yi ve iki grubun eğimlerini (tablodaki Merkezlenmiş X ve D × "
+            "Merkezlenmiş X satırları) değiştirmez; yalnız kesim teriminin ve D katsayısının referans noktasını "
             "değiştirir (§11.5). ")
     if c == X_MID:
         text = ("Merkez c = 13: iki model aynıdır ve D katsayısı verinin ortasındaki farkı tahmin eder; bu noktada "
@@ -357,7 +357,7 @@ CENTERING = SimExperiment(
     tables=(("merkezleme", "İlk örneklem: aynı model, iki merkezleme noktası"),
             ("fark_ozet", "Tekrarlı örneklemede iki noktadaki fark tahmini")),
     labels=(("x", "X"), ("v", "V"), ("u", "u"), ("d", "D (grup kuklası)"), ("y", "Y"), ("xc", "X − c"),
-            ("x13", "X − 13"), ("xm", "Merkezlenmiş X"), (INTERCEPT, "Sabit terim"),
+            ("x13", "X − 13"), ("xm", "Merkezlenmiş X"), (INTERCEPT, "Kesim terimi"),
             ("fark_c", "D katsayısı (merkez c)"), ("fark_13", "D katsayısı (merkez 13)"), ("sh_c", "SH (merkez c)"),
             ("sh_13", "SH (merkez 13)"), ("kapsar_c", "GA kapsar (merkez c)"), ("kapsar_13", "GA kapsar (merkez 13)"),
             ("reddet_c", "H₀ reddedildi (merkez c)"), ("reddet_13", "H₀ reddedildi (merkez 13)"),
@@ -509,7 +509,7 @@ OMITTED = SimExperiment(
         "tekrarıdır."
     ),
     look_at=(
-        "**Çizgi grafiği** — additif modelin sabit farkı gerçek fark doğrusunu (kesikli) nerede kesiyor?",
+        "**Çizgi grafiği** — additif modelin kesim terimi farkı gerçek fark doğrusunu (kesikli) nerede kesiyor?",
         "**Farklar tablosu** — X = 8, 13 ve 18'de additif ve etkileşimli model gerçek farka ne kadar yakın?",
         "**Eğimler tablosu** — additif ortak eğim iki grubun eğimlerinin arasında mı? p ile nasıl değişiyor?",
     ),
@@ -672,7 +672,7 @@ JOINT = SimExperiment(
     takeaway=_joint_takeaway,
     tables=(("ilk_tablo", "İlk örneklem: etkileşimli model ve ortak F testi"),),
     labels=(("x", "X"), ("v", "V"), ("u", "u"), ("d", "D (grup kuklası)"), ("y", "Y"), ("xc", "X − c"),
-            ("xm", "Merkezlenmiş X"), (INTERCEPT, "Sabit terim"), ("p_d", "γ₀ t testi p"), ("p_dx", "γ₁ t testi p"),
+            ("xm", "Merkezlenmiş X"), (INTERCEPT, "Kesim terimi"), ("p_d", "γ₀ t testi p"), ("p_dx", "γ₁ t testi p"),
             ("F_ist", "Ortak F"), ("p_F", "Ortak F p"), ("reddet_d", "γ₀ reddedildi"), ("reddet_dx", "γ₁ reddedildi"),
             ("reddet_f", "F reddedildi"), ("yalniz_f", "Yalnız F reddetti")),
 )

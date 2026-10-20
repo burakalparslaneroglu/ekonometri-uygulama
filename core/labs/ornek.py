@@ -199,7 +199,7 @@ def usable_pair(data: pd.DataFrame, first: str, second: str, minimum: int = 3) -
 
 
 EXACT_FIT = 1e-9
-"""Artık kareler toplamı, toplam kareler toplamının bu oranından küçükse uyum (neredeyse) tamdır."""
+"""Artık değerlerin kareleri toplamı, toplam kareler toplamının bu oranından küçükse uyum (neredeyse) tamdır."""
 
 
 def exact_fit(data: pd.DataFrame, y: str, x: str) -> bool:

@@ -104,7 +104,7 @@ def _build_coverage(parameters: Parameters) -> tuple:
         OLS("model", "orneklem", "y", ("x",), "EKK: y ~ x"),
         ModelValue("egim", "model", "coef", "Eğim tahmini β̂₁", term="x"),
         ModelValue("sh", "model", "se", "Raporlanan standart hata se(β̂₁)", term="x"),
-        ModelValue("sd_artik", "model", "df_resid", "Artık serbestlik derecesi n − 2", decimals=0),
+        ModelValue("sd_artik", "model", "df_resid", "Artık değerlerin serbestlik derecesi n − 2", decimals=0),
         Scalar("kritik", E.tinv(critical_level(level), E.ref("sd_artik")),
                f"Kritik değer t(n − 2), yüzde {level} iki taraflı"),
         Scalar("alt", E.sub(E.ref("egim"), E.mul(E.ref("kritik"), E.ref("sh"))), "Güven aralığının alt sınırı"),

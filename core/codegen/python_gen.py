@@ -196,12 +196,12 @@ _BOX_SUMMARY = [
 ]
 _WHITE_TEST = [
     "def white_testi(model):",
-    '    """White (1980) LM testi: kareli artıklar, açıklayıcıların düzeyleri, kareleri ve çapraz çarpımları üzerine',
-    "    regrese edilir; LM = n·R², serbestlik derecesi = yardımcı regresyondaki bağımsız terim sayısı (sabit hariç).",
+    '    """White (1980) LM testi: artık değerlerin kareleri, açıklayıcıların düzeyleri, kareleri ve çapraz çarpımları üzerine',
+    "    regrese edilir; LM = n·R², serbestlik derecesi = yardımcı regresyondaki bağımsız terim sayısı (kesim terimi hariç).",
     "    0/1 kuklanın karesi kendisidir: yinelenen sütun rankla ayıklanır ve bir kez sayılır. statsmodels het_white",
     "    aynı sayıyı verir; ancak rank denetimi kukla varken sayısal gürültüyle AssertionError verebildiği için",
     '    yardımcı regresyon burada açıkça kurulur."""',
-    "    duzey = model.model.exog[:, 1:]  # sabit terim dışındaki sütunlar",
+    "    duzey = model.model.exog[:, 1:]  # kesim terimi dışındaki sütunlar",
     "    i, j = np.triu_indices(duzey.shape[1])  # (i ≤ j) çiftleri: kareler ve çapraz çarpımlar",
     "    tasarim = np.column_stack([np.ones(len(duzey)), duzey, duzey[:, i] * duzey[:, j]])",
     "    tasarim = tasarim[:, tasarim.any(axis=0)]  # yalnız sıfırdan oluşan sütun varsa atılır",
@@ -210,7 +210,7 @@ _WHITE_TEST = [
     "    katsayi, _, rank, _ = np.linalg.lstsq(tasarim, e2, rcond=1e-10)  # yinelenen sütunlar rankla ayıklanır",
     "    r2 = 1 - np.sum((e2 - tasarim @ katsayi) ** 2) / np.sum((e2 - e2.mean()) ** 2)",
     "    lm = len(e2) * r2  # LM = n·R²",
-    "    return lm, stats.chi2.sf(lm, rank - 1)  # rank sabit terimi de sayar",
+    "    return lm, stats.chi2.sf(lm, rank - 1)  # rank kesim terimi de sayar",
 ]
 
 
@@ -485,7 +485,7 @@ class PythonGenerator(Generator):
         flat = flatten(operations)
         if self._small_sample_note(flat):
             lines = [
-                "# statsmodels, 8'den az gözlemli bir regresyonun çıktısında (summary) alt bölümdeki artıkların",
+                "# statsmodels, 8'den az gözlemli bir regresyonun çıktısında (summary) alt bölümdeki artık değerlerin",
                 "# normallik testi için uyarı yazar; bu uygulamada o bölüm okunmaz.",
                 'warnings.filterwarnings("ignore", message="omni_normtest is not valid")',
                 "",
@@ -592,7 +592,7 @@ class PythonGenerator(Generator):
             return [
                 f"# {op.comment}",
                 f"# Katsayılar EKK ile aynı; standart hata, t, p, güven aralığı ve F {op.cov_type} dayanıklı kovaryansla.",
-                "# use_t=True: t ve F dağılımı (n − k − 1 serbestlik derecesi, k: sabit dışındaki açıklayıcı sayısı);",
+                "# use_t=True: t ve F dağılımı (n − k − 1 serbestlik derecesi, k: kesim terimi dışındaki açıklayıcı sayısı);",
                 "# yazılmazsa statsmodels normal dağılım kullanır.",
                 f'{op.name} = smf.ols("{op.formula}", data={op.frame}).fit(cov_type="{op.cov_type}", use_t=True)',
             ]
@@ -919,7 +919,7 @@ class PythonGenerator(Generator):
     def _hetero_test(op: HeteroskedasticityTest) -> list[str]:
         if op.kind == "bp":
             call = [
-                "# Breusch–Pagan testi (Koenker'in n·R² biçimi): H0 homoskedastisite. Artık kareleri modelin",
+                "# Breusch–Pagan testi (Koenker'in n·R² biçimi): H0 homoskedastisite. Artık değerlerin kareleri modelin",
                 "# açıklayıcılarına regrese edilir; LM = n·R², serbestlik derecesi = açıklayıcı sayısı.",
                 f"{op.name}_test = het_breuschpagan({op.model}.resid, {op.model}.model.exog)",
                 f"{op.name} = {op.name}_test[0]  # LM istatistiği",
@@ -927,7 +927,7 @@ class PythonGenerator(Generator):
             ]
         else:
             call = [
-                "# White testi: H0 homoskedastisite. Artık kareleri açıklayıcıların düzeyleri, kareleri ve çapraz",
+                "# White testi: H0 homoskedastisite. Artık değerlerin kareleri açıklayıcıların düzeyleri, kareleri ve çapraz",
                 "# çarpımları üzerine regrese edilir; LM = n·R², serbestlik derecesi = bağımsız terim sayısı",
                 "# (yardımcı regresyon yukarıdaki white_testi işlevinde).",
                 f"{op.name}, {op.p_value} = white_testi({op.model})  # LM istatistiği ve p-değeri (χ² dağılımı)",
@@ -1564,10 +1564,10 @@ class PythonGenerator(Generator):
             lines.append(f'x_dogru = np.linspace(nokta["{op.x}"].min(), nokta["{op.x}"].max(), 100)')
         if op.fit_line:
             lines += [
-                "# Tahmin edilen doğru: eğim ve sabit terim veriden (birinci dereceden polinom)",
+                "# Uyum doğrusu: eğim ve kesim terimi veriden (birinci dereceden polinom)",
                 f'egim, sabit = np.polyfit(nokta["{op.x}"], nokta["{op.y}"], 1)',
                 f'ax.plot(x_dogru, sabit + egim * x_dogru, color="{PALETTE[1]}", linewidth=2.5, '
-                'label="Tahmin edilen doğru")',
+                'label="Uyum doğrusu")',
             ]
         for index, (first, second, label) in enumerate(op.lines):
             color = REFERENCE_COLORS[index % len(REFERENCE_COLORS)]
@@ -1576,7 +1576,7 @@ class PythonGenerator(Generator):
             else:  # "+ -0.5 * x" yazılmasın
                 line = f"{_parameter(first)} - {_parameter(-second)} * x_dogru"
             lines += [
-                f"# {label}: y = sabit + eğim · x (kesikli çizgi)",
+                f"# {label}: y = kesim terimi + eğim · x (kesikli çizgi)",
                 f"ax.plot(x_dogru, {line}, color=\"{color}\", "
                 f'linestyle="--", linewidth=2.5, label={text(label)})',
             ]

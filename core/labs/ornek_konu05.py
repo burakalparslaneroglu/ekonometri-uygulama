@@ -1,8 +1,8 @@
 """Konu 5 genel uygulaması: çoklu regresyon modeli ve ceteris paribus yorumu.
 
 Notlardaki on adım (``core.labs.konu05``) aynı numaralarla ve aynı işlemlerle, verisi değiştirilebilir biçimde
-yazılır: basit ve çoklu model, birden fazla birimlik fark ve iki gözlemin karşılaştırılması, tahmin edilen değer ve
-artık, kontrollerin doğrusal katkısını ayırma (kısmi regresyon), yazılım çıktısı ve basit–çoklu model tablosu,
+yazılır: basit ve çoklu model, birden fazla birimlik fark ve iki gözlemin karşılaştırılması, uyum değeri ve
+artık değer, kontrollerin doğrusal katkısını ayırma (kısmi regresyon), yazılım çıktısı ve basit–çoklu model tablosu,
 katsayı değişimi, ikinci bir veriyle çoklu model (konut fiyatı), R² ve düzeltilmiş R², makale tablosu ve kontrol
 değişkeni seçimi.
 
@@ -139,7 +139,7 @@ def _ordered(case: Case, names) -> tuple[str, ...]:
 
 
 def _predict(regressors, values: dict, prefix: str = "b_") -> E.Expr:
-    """Tahmin edilen değer: sabit + Σ katsayı × değer; katsayılar ``prefix``le adlandırılmış skalerlerdir."""
+    """Uyum değeri: kesim terimi + Σ katsayı × değer; katsayılar ``prefix``le adlandırılmış skalerlerdir."""
 
     expression = E.ref(f"{prefix}sabit")
     for name in regressors:
@@ -197,10 +197,10 @@ def _step1(case: Case, choice: MultiChoice) -> LabStep:
         operations: list = [
             *case.load,
             OLS("basit", case.frame, y, (x,), f"Basit regresyon: {y} ~ {x}"),
-            ModelValue("basit_sabit", "basit", "coef", "Basit model: sabit terim", term=INTERCEPT),
+            ModelValue("basit_sabit", "basit", "coef", "Basit model: kesim terimi", term=INTERCEPT),
             ModelValue("basit_x", "basit", "coef", f"Basit model: {_name(case, x)} katsayısı", term=x),
             OLS("coklu", case.frame, y, tuple(chosen), f"Çoklu regresyon: {y} ~ {formula}"),
-            ModelValue("b_sabit", "coklu", "coef", "Çoklu model: sabit terim", term=INTERCEPT),
+            ModelValue("b_sabit", "coklu", "coef", "Çoklu model: kesim terimi", term=INTERCEPT),
             *(ModelValue(f"b_{name}", "coklu", "coef", f"Çoklu model: {_name(case, name)} katsayısı", term=name)
               for name in chosen),
         ]
@@ -250,9 +250,9 @@ def _step1(case: Case, choice: MultiChoice) -> LabStep:
         controls=(choice,),
         build=build,
         checks=(
-            _check("Basit model: sabit terim", CoefTarget("basit", INTERCEPT), 4),
+            _check("Basit model: kesim terimi", CoefTarget("basit", INTERCEPT), 4),
             _check("Basit model: eğim", CoefTarget("basit", x), 4),
-            _check("Çoklu model: sabit terim", CoefTarget("coklu", INTERCEPT), 4),
+            _check("Çoklu model: kesim terimi", CoefTarget("coklu", INTERCEPT), 4),
             *(_check(f"Çoklu model: {case.name(name)} katsayısı", CoefTarget("coklu", name), 4) for name in default),
             *(_scalar(f"b_{name}", f"Yorumdaki {case.name(name)} katsayısı", 3) for name in default),
         ),
@@ -333,7 +333,7 @@ def _step2(case: Case, choice: MultiChoice) -> LabStep:
             InlineData("calisanlar", ("calisan", *names), rows,
                        f"İki gözlem: {_name(case, x)} dışındaki özellikler aynı"),
             Derive("calisanlar", "tahmin", _predict(chosen, {name: E.var(name) for name in chosen}),
-                   "Tahmin edilen değer Ŷ"),
+                   "Uyum değeri Ŷ"),
             Statistic("calisanlar", "tahmin", "value", "tahmin_A", "A'nın tahmini", where=("calisan", "A"), decimals=2),
             Statistic("calisanlar", "tahmin", "value", "tahmin_B", "B'nin tahmini", where=("calisan", "B"), decimals=2),
             Scalar("fark_BA", E.sub(E.ref("tahmin_B"), E.ref("tahmin_A")), "Tahmin farkı B − A", decimals=3),
@@ -350,7 +350,7 @@ def _step2(case: Case, choice: MultiChoice) -> LabStep:
                 InlineData("izgara", (x,), tuple((value,) for value in grid),
                            f"{case.name(x)} ızgarası: verideki aralık"),
                 *(Derive("izgara", f"tahmin_d{index}", _predict(chosen, {**held, line: level}),
-                         f"{case.name(line)} = {level_text(level)}: tahmin edilen değer")
+                         f"{case.name(line)} = {level_text(level)}: uyum değeri")
                   for index, level in enumerate(line_levels, start=1)),
                 LineChart("izgara", x, "tahmin_d1", display(case, x), f"Tahmin edilen {_name(case, y)}", title,
                           markers=False, legend=f"{case.name(line)} = {level_text(line_levels[0])}",
@@ -415,7 +415,7 @@ def _step2(case: Case, choice: MultiChoice) -> LabStep:
     )
 
 
-# --- Adım 3: tahmin edilen değer ve artık -------------------------------------------------------------------
+# --- Adım 3: uyum değeri ve artık değer -------------------------------------------------------------------
 
 def _profile_controls(case: Case) -> tuple[NumberChoice, ...]:
     if "adim3" in case.extra:
@@ -447,14 +447,14 @@ def _step3(case: Case, choice: MultiChoice) -> LabStep:
         profile = {name: float(choices[keys[name]]) for name in names}
         observed = float(choices[observed_key])
         return (
-            Scalar("birey_tahmin", _predict(chosen, profile), "Tahmin edilen değer Ŷ", decimals=3),
-            Scalar("birey_artik", E.sub(observed, E.ref("birey_tahmin")), "Artık û = Y − Ŷ", decimals=3),
+            Scalar("birey_tahmin", _predict(chosen, profile), "Uyum değeri Ŷ", decimals=3),
+            Scalar("birey_artik", E.sub(observed, E.ref("birey_tahmin")), "Artık değer û = Y − Ŷ", decimals=3),
             Derive(case.frame, "tahmin", _predict(chosen, {name: E.var(name) for name in chosen}),
-                   "Tahmin edilen değer Ŷᵢ"),
-            Derive(case.frame, "artik", E.sub(E.var(y), E.var("tahmin")), "Artık ûᵢ = Yᵢ − Ŷᵢ"),
-            Statistic(case.frame, "artik", "sum", "artik_toplami", "Örneklemde artıkların toplamı Σûᵢ",
+                   "Uyum değeri Ŷᵢ"),
+            Derive(case.frame, "artik", E.sub(E.var(y), E.var("tahmin")), "Artık değer ûᵢ = Yᵢ − Ŷᵢ"),
+            Statistic(case.frame, "artik", "sum", "artik_toplami", "Örneklemde artık değerlerin toplamı Σûᵢ",
                       decimals=noise_decimals(case, regressors=chosen)),
-            Statistic(case.frame, "tahmin", "mean", "ort_tahmin", "Tahmin edilen değerlerin ortalaması", decimals=6),
+            Statistic(case.frame, "tahmin", "mean", "ort_tahmin", "Uyum değerlerinin ortalaması", decimals=6),
             Statistic(case.frame, y, "mean", "ort_y", "Sonucun ortalaması Ȳ", decimals=6),
         )
 
@@ -464,17 +464,17 @@ def _step3(case: Case, choice: MultiChoice) -> LabStep:
         observed = float(choices[observed_key])
         residual = s["birey_artik"]
         if residual > 0:
-            sign = ("Pozitif artık: gözlenen değer model tahmininden yüksektir. Fark modelde bulunmayan özelliklerden, "
+            sign = ("Pozitif artık değer: gözlenen değer model tahmininden yüksektir. Fark modelde bulunmayan özelliklerden, "
                     "doğrusal biçimin sınırlılığından veya ölçüm hatasından kaynaklanabilir.")
         elif residual < 0:
-            sign = "Negatif artık: gözlenen değer model tahmininden düşüktür."
+            sign = "Negatif artık değer: gözlenen değer model tahmininden düşüktür."
         else:
-            sign = "Artık sıfır: gözlenen değer tahminle aynıdır."
-        definitions = ("Tanımlar basit regresyondakiyle aynıdır; yalnız tahmin edilen değerde daha fazla açıklayıcı "
+            sign = "Artık değer sıfır: gözlenen değer tahminle aynıdır."
+        definitions = ("Tanımlar basit regresyondakiyle aynıdır; yalnız uyum değerinde daha fazla açıklayıcı "
                        "değişken vardır." if len(chosen) > 1 else
                        "Modelde tek açıklayıcı değişken var; tanımlar basit regresyondakiyle aynıdır.")
         text = (f"Seçilen özelliklerdeki gözlem için tahmin {sayi(s['birey_tahmin'], 3)}{unit}; gözlenen değer "
-                f"{level_text(observed)}{unit} ise artık {sayi(residual, 3)}{unit}. {sign} {definitions}")
+                f"{level_text(observed)}{unit} ise artık değer {sayi(residual, 3)}{unit}. {sign} {definitions}")
         unused = [phrase(case, name) for name in names if name not in chosen]
         if unused:
             text += (f" Modelde olmayan değişkenin ({unused[0]}) değeri tahmini etkilemez." if len(unused) == 1 else
@@ -483,17 +483,17 @@ def _step3(case: Case, choice: MultiChoice) -> LabStep:
             text += (" Tahmin sıfırın altında: bu özellikler veride çok nadirdir ve doğrusal model verinin kenarında "
                      "anlamsız değerler üretebilir (§3.11).")
         noise = noise_decimals(case, regressors=chosen)
-        return text + (f" Sabit terimli EKK'de artıkların toplamı sıfırdır ({sayi(s['artik_toplami'], noise)}, hesap "
-                       f"hassasiyeti içinde) ve tahmin edilen değerlerin ortalaması ({sayi(s['ort_tahmin'], 6)}) "
+        return text + (f" Kesim terimli EKK'de artık değerlerin toplamı sıfırdır ({sayi(s['artik_toplami'], noise)}, hesap "
+                       f"hassasiyeti içinde) ve uyum değerlerinin ortalaması ({sayi(s['ort_tahmin'], 6)}) "
                        "sonucun ortalamasına eşittir.")
 
     return interactive_step(
         number=3,
-        title="Tahmin edilen değer ve artık",
+        title="Uyum değeri ve artık değer",
         note=NoteRef("5.4", 0, ("Denklem 5.6",)),
         explanation=(
-            "Bir gözlem için tahmin edilen değer $\\widehat Y = \\hat\\beta_0 + \\hat\\beta_1 X_1 + \\cdots + "
-            "\\hat\\beta_k X_k$, artık $\\hat u = Y - \\widehat Y$'dir. Çoklu EKK, kareli artıklar toplamını en küçük "
+            "Bir gözlem için uyum değeri $\\widehat Y = \\hat\\beta_0 + \\hat\\beta_1 X_1 + \\cdots + "
+            "\\hat\\beta_k X_k$, artık değer $\\hat u = Y - \\widehat Y$'dir. Çoklu EKK, artık değerlerin kareleri toplamını en küçük "
             "yapan katsayıları birlikte seçer (Denklem 5.6). "
             + str(case.extra.get("profile3_text", "Varsayılan özellikler değişkenlerin medyanlarıdır."))
             + " Değerleri değiştirin. Bu adım Adım 1'deki modeli kullanır."
@@ -501,7 +501,7 @@ def _step3(case: Case, choice: MultiChoice) -> LabStep:
         uses=(choice,),
         controls=controls,
         build=build,
-        checks=(_scalar("birey_tahmin", "Tahmin edilen değer", 3), _scalar("birey_artik", "Artık", 3)),
+        checks=(_scalar("birey_tahmin", "Uyum değeri", 3), _scalar("birey_artik", "Artık değer", 3)),
         note_for=lambda state, choices: note(state, choices),
     )
 
@@ -513,8 +513,8 @@ def _step4(case: Case) -> LabStep:
     default = _default(case)
     title = "“Sabit tutma”: kontrollerin doğrusal katkısını ayırmak"
     note_ref = NoteRef("5.5", 0, ("Şekil 5.2",))
-    lead = ("Üç adım: (1) sonucu kontrollere göre tahmin edip artığını al; (2) incelenen değişkeni aynı kontrollere göre "
-            "tahmin edip artığını al; (3) birinci artıkları ikinci artıklara göre regresyona tabi tut. Üçüncü adımdaki "
+    lead = ("Üç adım: (1) sonucu kontrollere göre tahmin edip artık değerini al; (2) incelenen değişkeni aynı kontrollere göre "
+            "tahmin edip artık değerini al; (3) birinci artık değerleri ikinci artık değerlere göre regresyona tabi tut. Üçüncü adımdaki "
             "eğim çoklu regresyondaki katsayıyla aynıdır (§5.5).")
     if len(default) < 2:
         return LabStep(number=4, title=title, note=note_ref,
@@ -530,20 +530,20 @@ def _step4(case: Case) -> LabStep:
         return (
             *reload(case),
             OLS("yardimci_y", case.frame, y, others, f"1. adım: sonucu kontrollere göre tahmin et ({y} ~ {controls_text})"),
-            Residuals(case.frame, "y_artik", "yardimci_y", "Sonucun kontrollerle açıklanamayan kısmı (artık)"),
+            Residuals(case.frame, "y_artik", "yardimci_y", "Sonucun kontrollerle açıklanamayan kısmı (artık değer)"),
             OLS("yardimci_x", case.frame, focus, others,
                 f"2. adım: {_name(case, focus)} değişkenini kontrollere göre tahmin et ({focus} ~ {controls_text})"),
             Residuals(case.frame, "x_artik", "yardimci_x",
                       f"{capital(_name(case, focus))} değişkeninin kontrollerle açıklanamayan kısmı"),
-            OLS("kismi", case.frame, "y_artik", ("x_artik",), "3. adım: artıkların artıklara göre regresyonu"),
-            ModelValue("kismi_egim", "kismi", "coef", "Artıklar regresyonunun eğimi", term="x_artik", decimals=digits),
+            OLS("kismi", case.frame, "y_artik", ("x_artik",), "3. adım: artık değerlerin artık değerlere göre regresyonu"),
+            ModelValue("kismi_egim", "kismi", "coef", "Artık değerler regresyonunun eğimi", term="x_artik", decimals=digits),
             OLS("tam", case.frame, y, default, f"Çoklu regresyon: {y} ~ {' + '.join(default)}"),
             ModelValue("tam_katsayi", "tam", "coef", f"Çoklu regresyonda {_name(case, focus)} katsayısı", term=focus,
                        decimals=digits),
             Scalar("kismi_fark", E.sub(E.ref("kismi_egim"), E.ref("tam_katsayi")), "Aradaki sayısal fark", decimals=12),
             ScatterPlot(case.frame, "x_artik", "y_artik", f"Kontrollerden arındırılmış {_name(case, focus)}",
                         f"Arındırılmış {_name(case, y)}", f"{capital(_name(case, focus))} değişkeninin kısmi ilişkisi: "
-                        "artıklar üzerinden", fit_line=True, size=6, opacity=0.4),
+                        "artık değerler üzerinden", fit_line=True, size=6, opacity=0.4),
         )
 
     def note(state, choices) -> str:
@@ -554,7 +554,7 @@ def _step4(case: Case) -> LabStep:
         gap = s["kismi_fark"]
         tiny = abs(gap) <= 1e-9 * max(abs(s["tam_katsayi"]), abs(s["kismi_egim"]), np.finfo(float).tiny)
         gap_text = "fark hesap hassasiyetinde sıfırdır" if tiny else f"fark {sayi(gap, digits_for(gap, 12))}"
-        return (f"Artıklar regresyonunun eğimi {sayi(s['kismi_egim'], digits)}, çoklu regresyondaki {phrase(case, focus)} "
+        return (f"Artık değerler regresyonunun eğimi {sayi(s['kismi_egim'], digits)}, çoklu regresyondaki {phrase(case, focus)} "
                 f"katsayısı {sayi(s['tam_katsayi'], digits)}: aynı sayıdır ({gap_text}). Yatay eksen, "
                 f"{phrase(case, focus)} değişkeninin {others} ile açıklanamayan kısmıdır; dikey eksen sonucun aynı "
                 "kontrollerle açıklanamayan kısmıdır. “Sabit tutma” birebir eşleştirme değildir; kontrollerin doğrusal "
@@ -570,7 +570,7 @@ def _step4(case: Case) -> LabStep:
         controls=(Choice("adim4_x", "Kısmi ilişkisi incelenen değişken (diğerleri kontroldür)", options(case, default),
                          x if x in default else default[0], help=f"Varsayılan: {case.name(x)}."),),
         build=build,
-        checks=(_scalar("kismi_egim", "Artıklar regresyonunun eğimi", 6),
+        checks=(_scalar("kismi_egim", "Artık değerler regresyonunun eğimi", 6),
                 _scalar("tam_katsayi", "Çoklu regresyondaki katsayı", 6)),
         note_for=lambda state, choices: note(state, choices),
     )
@@ -645,7 +645,7 @@ def _step5(case: Case, choice: MultiChoice) -> LabStep:
         return text + (EXACT_MULTI_NOTE if case.own and exact_multi(case, case.roles[SONUC], tuple(chosen)) else "")
 
     coefficient_checks = [
-        _check(f"{case.name(term) if term != INTERCEPT else 'Sabit terim'}: {label}", CoefTarget("coklu", term, quantity),
+        _check(f"{case.name(term) if term != INTERCEPT else 'Kesim terimi'}: {label}", CoefTarget("coklu", term, quantity),
                4 if quantity == "coef" else 3)
         for term in (INTERCEPT, *default)
         for quantity, label in (("coef", "katsayı"), ("se", "standart hata"), ("t", "t"), ("p", "p-değeri"),
@@ -654,9 +654,9 @@ def _step5(case: Case, choice: MultiChoice) -> LabStep:
     heading1, heading2 = f"(1) {_title(case, y)}", f"(2) {_title(case, y)}"
     table = [
         *(_check(f"Tablo (1): {case.name(x)}", TableTarget("tablo51", x, heading1), 4),),
-        _check("Tablo (1): sabit", TableTarget("tablo51", INTERCEPT, heading1), 4),
+        _check("Tablo (1): kesim terimi", TableTarget("tablo51", INTERCEPT, heading1), 4),
         *(_check(f"Tablo (2): {case.name(name)}", TableTarget("tablo51", name, heading2), 4) for name in default),
-        _check("Tablo (2): sabit", TableTarget("tablo51", INTERCEPT, heading2), 4),
+        _check("Tablo (2): kesim terimi", TableTarget("tablo51", INTERCEPT, heading2), 4),
         *(_check(f"Tablo ({i}): {label}", TableTarget("tablo51", row, heading), digits)
           for i, heading in ((1, heading1), (2, heading2))
           for row, label, digits in (("n", "gözlem sayısı", 0), ("r2", "R²", 4), ("adj_r2", "düzeltilmiş R²", 4))),
@@ -795,7 +795,7 @@ def _step7(house: Case) -> LabStep:
             *house.load,
             OLS("fiyat_basit", house.frame, y, (x,), f"Basit model: {y} ~ {x}"),
             OLS("fiyat_coklu", house.frame, y, tuple(chosen), f"Çoklu model: {y} ~ {' + '.join(chosen)}"),
-            ModelValue("f_sabit", "fiyat_coklu", "coef", "Sabit terim", term=INTERCEPT),
+            ModelValue("f_sabit", "fiyat_coklu", "coef", "Kesim terimi", term=INTERCEPT),
             *(ModelValue(f"f_{name}", "fiyat_coklu", "coef", f"{capital(_name(house, name))} katsayısı", term=name,
                          decimals=6 if name in house.extra.get("fine", ()) else 4) for name in chosen),
         ]
@@ -819,15 +819,15 @@ def _step7(house: Case) -> LabStep:
                             term_decimals=tuple((name, 6) for name in terms if name in house.extra.get("fine", ()))),
             InlineData("konutlar", ("konut", *columns), rows, "Tahmin edilecek üç gözlem (Tablo 5.3'teki gibi)"),
             Derive("konutlar", "tahmin", _predict(chosen, {name: E.var(name) for name in chosen}, "f_"),
-                   "Tahmin edilen değer"),
+                   "Uyum değeri"),
             *(Statistic("konutlar", "tahmin", "value", f"konut_{label}", f"{label} gözleminin tahmini",
                         where=("konut", label), decimals=2) for label, *_ in rows),
             Scalar("konut_fark", E.sub(E.ref("konut_B"), E.ref("konut_A")), "Tahmin farkı B − A", decimals=2),
             Derive(house.frame, "fiyat_tahmin", _predict(chosen, {name: E.var(name) for name in chosen}, "f_"),
-                   "Tahmin edilen değer Ŷᵢ"),
+                   "Uyum değeri Ŷᵢ"),
             ScatterPlot(house.frame, y, "fiyat_tahmin", f"Gözlenen {_name(house, y)}", f"Tahmin edilen {_name(house, y)}",
-                        f"{house.extra.get('data_name', 'Verileriniz')}: gözlenen ve tahmin edilen değer (Şekil 5.4'teki "
-                        "gibi)" if same else "Seçtiğiniz modelle: gözlenen ve tahmin edilen değer", size=8, opacity=0.7,
+                        f"{house.extra.get('data_name', 'Verileriniz')}: gözlenen ve uyum değeri (Şekil 5.4'teki "
+                        "gibi)" if same else "Seçtiğiniz modelle: gözlenen ve uyum değeri", size=8, opacity=0.7,
                         lines=((0, 1, "45 derece çizgisi"),)),
         ]
         return tuple(operations)
@@ -873,12 +873,12 @@ def _step7(house: Case) -> LabStep:
         else:
             text += " B ile C'nin farklı olduğu özellikler modelde olmadığı için tahminleri aynıdır."
         return text + (" Şekilde noktalar 45 derece çizgisine yaklaştıkça tahmin gözlenen değere yaklaşır; çizgiden "
-                       "uzaklık artıktır. Modelde bulunmayan özellikler artıkta kalır.")
+                       "uzaklık artık değerdir. Modelde bulunmayan özellikler artıkta kalır.")
 
     checks = [
-        _check("Basit model: sabit terim", CoefTarget("fiyat_basit", INTERCEPT), 4),
+        _check("Basit model: kesim terimi", CoefTarget("fiyat_basit", INTERCEPT), 4),
         _check("Basit model: eğim", CoefTarget("fiyat_basit", x), 4),
-        _check("Çoklu model: sabit terim", CoefTarget("fiyat_coklu", INTERCEPT), 4),
+        _check("Çoklu model: kesim terimi", CoefTarget("fiyat_coklu", INTERCEPT), 4),
         *(_check(f"Çoklu model: {house.name(name)}", CoefTarget("fiyat_coklu", name),
                  6 if name in house.extra.get("fine", ()) else 4) for name in default),
     ]
@@ -896,7 +896,7 @@ def _step7(house: Case) -> LabStep:
         explanation=str(house.extra.get("house_text") or (
             f"Aynı veride sonuç ({phrase(house, y)}) birden fazla açıklayıcı değişkenle tahmin edilir. Tablo 5.3'teki gibi "
             "üç gözlem için tahmin üretilir: A değişkenlerin medyanlarıdır, B yalnız bir değişkende A'dan farklıdır, C "
-            "birden fazla değişkende B'den farklıdır. Şekil gözlenen ve tahmin edilen değerleri karşılaştırır. Modelin "
+            "birden fazla değişkende B'den farklıdır. Şekil gözlenen ve uyum değerleri karşılaştırır. Modelin "
             "açıklayıcı değişkenlerini seçin.")),
         controls=(MultiChoice("adim7_x", f"Modelin açıklayıcı değişkenleri (bağımlı değişken: {house.name(y)})",
                               options(house, regressors), default,
@@ -1097,7 +1097,7 @@ def _step9(case: Case) -> LabStep:
         checks += [_check(f"Tablo ({number}): {case.name(name)}", TableTarget("makale", name, column), 3)
                    for name in regressors]
         checks += [_check(f"Tablo ({number}): {label}", TableTarget("makale", row, column), digits)
-                   for row, label, digits in ((INTERCEPT, "sabit", 3), ("n", "gözlem sayısı", 0), ("r2", "R²", 3),
+                   for row, label, digits in ((INTERCEPT, "kesim terimi", 3), ("n", "gözlem sayısı", 0), ("r2", "R²", 3),
                                               ("adj_r2", "düzeltilmiş R²", 3))]
     return interactive_step(
         number=9,
@@ -1140,9 +1140,9 @@ def _step10(case: Case) -> LabStep:
 # --- Tanım ------------------------------------------------------------------------------------------------------
 
 _LABELS = {
-    INTERCEPT: "Sabit terim", "calisan": "Gözlem", "konut": "Gözlem", "tahmin": "Tahmin edilen değer Ŷᵢ",
-    "artik": "Artık ûᵢ", "y_artik": "Arındırılmış sonuç", "x_artik": "Arındırılmış açıklayıcı değişken",
-    "fiyat_tahmin": "Tahmin edilen değer Ŷᵢ", "sapma_kare": "(Yᵢ − Ȳ)²",
+    INTERCEPT: "Kesim terimi", "calisan": "Gözlem", "konut": "Gözlem", "tahmin": "Uyum değeri Ŷᵢ",
+    "artik": "Artık değer ûᵢ", "y_artik": "Arındırılmış sonuç", "x_artik": "Arındırılmış açıklayıcı değişken",
+    "fiyat_tahmin": "Uyum değeri Ŷᵢ", "sapma_kare": "(Yᵢ − Ȳ)²",
 }
 
 

@@ -86,7 +86,7 @@ def _inference(covariances: tuple, truth: float) -> tuple[list, list]:
     göstergeleri."""
 
     body = [ModelValue("egim", "model", "coef", "Eğim tahmini β̂₁", term="x"),
-            ModelValue("sd_artik", "model", "df_resid", "Artık serbestlik derecesi n − 2", decimals=0),
+            ModelValue("sd_artik", "model", "df_resid", "Artık değerlerin serbestlik derecesi n − 2", decimals=0),
             Scalar("kritik", E.tinv(0.975, E.ref("sd_artik")), "Kritik değer t(0,975; n − 2)")]
     collect = [("b1", E.ref("egim"))]
     for suffix, label, cov in covariances:
@@ -379,8 +379,8 @@ def _build_tests(parameters: Parameters) -> tuple:
         *_draws("tekrar_orneklem"),
         Derive("tekrar_orneklem", "y", _test_outcome(gamma, center), _test_outcome_text(gamma, center)),
         OLS("model", "tekrar_orneklem", "y", ("x",), "EKK: y ~ x"),
-        Residuals("tekrar_orneklem", "artik", "model", "Artıklar û"),
-        Derive("tekrar_orneklem", "artik2", E.power(E.var("artik"), 2), "Kareli artık û²"),
+        Residuals("tekrar_orneklem", "artik", "model", "Artık değerler û"),
+        Derive("tekrar_orneklem", "artik2", E.power(E.var("artik"), 2), "Artık değerin karesi û²"),
         Derive("tekrar_orneklem", "x2", E.power(E.var("x"), 2), "X²"),
         OLS("yardimci_bp", "tekrar_orneklem", "artik2", ("x",), "Breusch–Pagan yardımcı regresyonu: û² ~ X"),
         OLS("yardimci_white", "tekrar_orneklem", "artik2", ("x", "x2"), "White yardımcı regresyonu: û² ~ X + X²"),
@@ -400,11 +400,11 @@ def _build_tests(parameters: Parameters) -> tuple:
         *_draws("orneklem"),
         Derive("orneklem", "y", _test_outcome(gamma, center), _test_outcome_text(gamma, center)),
         OLS("ilk_model", "orneklem", "y", ("x",), "İlk örneklemde EKK: y ~ x"),
-        Residuals("orneklem", "artik", "ilk_model", "İlk örneklemin artıkları û"),
+        Residuals("orneklem", "artik", "ilk_model", "İlk örneklemin artık değerleri û"),
         HeteroskedasticityTest("lm_bp_ilk", "p_bp_ilk", "ilk_model", "bp", "İlk örneklem: Breusch–Pagan testi"),
         HeteroskedasticityTest("lm_white_ilk", "p_white_ilk", "ilk_model", "white", "İlk örneklem: White testi"),
-        ScatterPlot("orneklem", "x", "artik", "X", "Artık û",
-                    f"İlk örneklemde artıklar ve X (γ = {_short(gamma)}, m = {_short(center, 1)}, n = {n})",
+        ScatterPlot("orneklem", "x", "artik", "X", "Artık değer û",
+                    f"İlk örneklemde artık değerler ve X (γ = {_short(gamma)}, m = {_short(center, 1)}, n = {n})",
                     size=9, opacity=0.8, lines=((0.0, 0.0, "Sıfır çizgisi"),)),
         MonteCarlo("tekrarlar", REPS_2, SEED, body, collect,
                    f"{_thousands(REPS_2)} örneklem, her birinde {n} gözlem: Breusch–Pagan ve White testleri"),
@@ -467,19 +467,19 @@ def _tests_takeaway(state: LabState, parameters: Parameters) -> str:
     text = (f"Hata varyansı X ile değişir (γ = {_short(gamma)}): H₀ yanlıştır. BP testi örneklemlerin {bp} kadarında, "
             f"White testi {white} kadarında homoskedastisiteyi reddeder. ")
     if center in (0.0, 4.0):
-        text += ("Varyans X aralığında tek yönde değişir (m aralığın ucunda): kareli artıklarda doğrusal bir eğilim "
+        text += ("Varyans X aralığında tek yönde değişir (m aralığın ucunda): artık değerin karesilerde doğrusal bir eğilim "
                  "oluşur; γ ve n yeterince büyükse iki test de bu örüntüyü yakalar. White daha çok serbestlik derecesi "
                  "kullandığı için küçük örneklemde biraz daha az güçlü olabilir. m'yi X aralığının ortasına (2) taşıyın. ")
     elif center == 2.0:
         text += ("Varyans X aralığının ortasında (m = 2) en küçük, iki ucunda büyük: simetrik, U biçimli bir örüntü. "
-                 "BP'nin yardımcı regresyonu yalnız X'i içerir; bu örüntüde kareli artıkların X ile doğrusal eğilimi "
+                 "BP'nin yardımcı regresyonu yalnız X'i içerir; bu örüntüde artık değerlerin karelerinin X ile doğrusal eğilimi "
                  "zayıftır" + (" ve BP çoğu örneklemde reddedemez. " if s["ret_bp"] < 0.5 else ". ")
                  + ("White X²'yi de içerdiği için bu örüntüyü yakalar. " if s["ret_white"] >= 0.5 else
                     "White X²'yi de içerdiği için bu örüntüyü yakalayabilir; ama bu ayarda γ ya da n küçük olduğu "
                     "için White da çoğu örneklemde reddedemez. γ'yı ya da n'yi büyütün. "))
     else:
         text += (f"Varyans m = {_short(center, 1)} noktasında en küçük; X aralığının bir ucunda diğerinden daha büyük olduğu "
-                 "için kareli artıklarda doğrusal bir eğilim de oluşur ve BP de yakalayabilir. m'yi 2'ye taşıyın: "
+                 "için artık değerin karesilerde doğrusal bir eğilim de oluşur ve BP de yakalayabilir. m'yi 2'ye taşıyın: "
                  "örüntü simetrikleşir ve BP'nin gücü düşer. ")
     return text + end
 
@@ -509,7 +509,7 @@ TESTS = SimExperiment(
         "hesaplanır."
     ),
     look_at=(
-        "**Artık grafiği** — artıkların yayılımı X ile nasıl değişiyor: tek yönde mi, U biçiminde mi?",
+        "**Artık değer grafiği** — artık değerlerin yayılımı X ile nasıl değişiyor: tek yönde mi, U biçiminde mi?",
         "**Ret oranları** — γ = 0 iken α'ya yakın mı? γ > 0 iken hangi test daha sık reddediyor?",
         "**m** — varyansın en küçük olduğu noktayı X aralığının ortasına ve ucuna taşıyın.",
     ),
@@ -517,7 +517,7 @@ TESTS = SimExperiment(
     metrics=_tests_metrics,
     takeaway=_tests_takeaway,
     tables=(("testlerin_gucu", "Tekrarlı örneklemede iki testin kararları"),),
-    labels=(("x", "X"), ("z", "Z"), ("y", "Y"), ("artik", "Artık û"), ("artik2", "Kareli artık û²"), ("x2", "X²"),
+    labels=(("x", "X"), ("z", "Z"), ("y", "Y"), ("artik", "Artık değer û"), ("artik2", "Artık değerin karesi û²"), ("x2", "X²"),
             ("lm_bp", "BP LM"), ("p_bp", "BP p-değeri"), ("reddet_bp", "BP H₀'ı reddetti"),
             ("lm_white", "White LM"), ("p_white", "White p-değeri"), ("reddet_white", "White H₀'ı reddetti")),
 )
@@ -603,9 +603,9 @@ def _small_metrics(state: LabState, parameters: Parameters) -> tuple[SimMetric, 
                   f"{_thousands(REPS_3)} eğim tahmininin ampirik standart sapması: standart hataların hedefi."),
         SimMetric("Geleneksel kapsama", _percent(100 * s["kap_gel"], 1), "Homoskedastisite varsayan aralıkların kapsaması."),
         SimMetric("HC1 kapsama", _percent(100 * s["kap_hc1"], 1),
-                  "Kareli artıklar n/(n − 2) ile çarpılır; HC0 tabloda."),
+                  "Artık değerlerin kareleri n/(n − 2) ile çarpılır; HC0 tabloda."),
         SimMetric("HC3 kapsama", _percent(100 * s["kap_hc3"], 1),
-                  "Kareli artıklar (1 − h)²'ye bölünerek büyütülür; HC2 tabloda."),
+                  "Artık değerlerin kareleri (1 − h)²'ye bölünerek büyütülür; HC2 tabloda."),
     )
 
 
@@ -620,12 +620,12 @@ def _small_takeaway(state: LabState, parameters: Parameters) -> str:
                  "örneklemde geçerlidir; küçük örneklemde HC0 ve HC1 kapsamayı düşürebilir, HC3 daha koruyucudur. ")
     elif s_value <= 0.25:
         text += ("X hafif çarpık: kaldıraç değerleri birbirine yakındır ve dayanıklı hesaplar arasındaki fark küçülür. "
-                 "Yine de küçük örneklemde kareli artıklar hata varyansını küçümser; HC0 ve HC1 kapsamayı düşürür, HC3 "
+                 "Yine de küçük örneklemde artık değerlerin kareleri hata varyansını küçümser; HC0 ve HC1 kapsamayı düşürür, HC3 "
                  "en koruyucudur. ")
     else:
         text += ("Heteroskedastisite X ile büyüyor ve sağa çarpık X birkaç yüksek kaldıraçlı gözlem üretiyor. Bu "
-                 "gözlemlerin artıkları küçük kalır (doğru onlara doğru çekilir); HC0 ve HC1 bu yüzden belirsizliği "
-                 "küçümser. HC2 ve HC3 kaldıraçlı gözlemlerin artıklarını büyütür; HC3 en koruyucudur. ")
+                 "gözlemlerin artık değerleri küçük kalır (doğru onlara doğru çekilir); HC0 ve HC1 bu yüzden belirsizliği "
+                 "küçümser. HC2 ve HC3 kaldıraçlı gözlemlerin artık değerlerini büyütür; HC3 en koruyucudur. ")
     if delta > 0:
         robust = min(s[f"kap_{suffix}"] for suffix, _, _ in COVARIANCES_3 if suffix != "gel")
         text += ("Geleneksel aralıklar heteroskedastisiteyi hesaba katmadığı için en düşük kapsamayı verir; n büyüse "
@@ -666,7 +666,7 @@ SMALL = SimExperiment(
         "tekrarları vektörel hesaplar; üretilen kod döngüyle aynı sayıları verir."
     ),
     look_at=(
-        "**Grafik** — birkaç gözlem X ekseninde diğerlerinden çok uzakta mı? Tahmin edilen doğru onlara doğru mu "
+        "**Grafik** — birkaç gözlem X ekseninde diğerlerinden çok uzakta mı? Uyum doğrusu onlara doğru mu "
         "çekiliyor?",
         "**Kapsama** — dört dayanıklı hesap sıralanıyor mu? Hangisi nominal yüzde 95'e en yakın?",
         "**n ve s** — örneklem büyüdükçe ve X'in çarpıklığı azaldıkça farklar nasıl değişiyor?",

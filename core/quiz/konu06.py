@@ -65,22 +65,22 @@ QUESTIONS = (
     Question(
         key="k01", concept="cebirsel-ozellik-varsayim-gerektirmez", note=_note("6.1"),
         prompt=(
-            "Eğitim ve deneyimle kurulmuş sabit terimli bir EKK ücret modeli için aşağıdaki ifadelerden hangisi hiçbir "
+            "Eğitim ve deneyimle kurulmuş kesim terimli bir EKK ücret modeli için aşağıdaki ifadelerden hangisi hiçbir "
             "model varsayımı gerektirmez, yani EKK'nin hesaplanabildiği her örneklemde doğrudur?"
         ),
         answer=MultipleChoice(
             (
                 "Hata terimlerinin ($u_i$) örneklemdeki toplamı sıfırdır",
                 "Modelde bulunmayan yetenek, eğitim katsayısını yukarı yönlü etkilemez",
-                "Artıkların toplamı sıfırdır; tahmin edilen değerlerin ortalaması Ȳ'dir",
+                "Artık değerlerin toplamı sıfırdır; uyum değerlerinin ortalaması Ȳ'dir",
                 "Deneyim modelden çıkarılsa da eğitim katsayısı aynı kalır",
             ),
             correct=2,
         ),
         explanation=(
-            "Artıkların toplamının sıfır olması ve tahmin edilen değerlerin ortalamasının Ȳ'ye eşit olması EKK'nin "
+            "Artık değerlerin toplamının sıfır olması ve uyum değerlerinin ortalamasının Ȳ'ye eşit olması EKK'nin "
             "cebirsel sonuçlarıdır (§4.1, §5.4); her veri tablosunda geçerlidir. Hata terimi gözlenmez; örneklemdeki "
-            "toplamının sıfır olması garanti değildir (artık ile hata aynı şey değildir, §6.5). Dışlanan yeteneğin "
+            "toplamının sıfır olması garanti değildir (artık değer ile hata aynı şey değildir, §6.5). Dışlanan yeteneğin "
             "katsayıyı etkilememesi sıfır koşullu ortalamaya dayanır; deneyim çıkarılınca eğitim katsayısı "
             "değişebilir (WAGE1'de 0,6443'ten 0,5414'e, §6.8). Hesaplama ile güvenilir yorum farklı aşamalardır "
             "(§6.1)."
@@ -160,7 +160,7 @@ QUESTIONS = (
         key="k05", concept="yas-ve-dogum-yili-tam-baglanti", note=_note("6.9", "(6.13)"),
         prompt=(
             "2024'te toplanan bir anket verisinde bütün gözlemlerde yaş = 2024 − doğum yılıdır. Ücret, yaş ve doğum "
-            "yılıyla birlikte sabit terimli bir modelle açıklanmak isteniyor. Hangisi doğrudur?"
+            "yılıyla birlikte kesim terimli bir modelle açıklanmak isteniyor. Hangisi doğrudur?"
         ),
         answer=MultipleChoice(
             (
@@ -168,13 +168,13 @@ QUESTIONS = (
                 "değişir",
                 "Doğum yılı 1900'den itibaren ölçülürse (1985 yerine 85) iki katsayı ayrı ayrı tahmin edilebilir",
                 "Gözlem sayısı artırılırsa iki değişkenin katsayıları ayrı ayrı tahmin edilebilir hâle gelir",
-                "Yaş, sabit terim ile doğum yılının tam doğrusal birleşimidir; ayrı katsayılar benzersiz tahmin "
+                "Yaş, kesim terimi ile doğum yılının tam doğrusal birleşimidir; ayrı katsayılar benzersiz tahmin "
                 "edilemez",
             ),
             correct=3,
         ),
         explanation=(
-            "Yaş = 2024 × 1 − 1 × doğum yılı kimliği bütün gözlemlerde geçerlidir: yaş, sabit terim sütunu ile doğum "
+            "Yaş = 2024 × 1 − 1 × doğum yılı kimliği bütün gözlemlerde geçerlidir: yaş, kesim terimi sütunu ile doğum "
             "yılının tam doğrusal birleşimidir ((6.13)'teki biçim, a = 2024 ve b = −1). Kimlik her yeni gözlemde de "
             "geçerli olacağı için gözlem sayısını artırmak sorunu çözmez; doğum yılını 1900'den ölçmek de yalnız "
             "kimliği yaş = 124 − yeni değişken biçimine getirir. Veri yalnız birleşik etkiyi belirler; değişkenlerden "
@@ -232,12 +232,12 @@ QUESTIONS = (
     Question(
         key="d01", concept="orneklem-degiskenligi-gerekli", note=_note("6.2", "Tablo 6.1"),
         prompt=(
-            "Örneklemdeki bütün çalışanların eğitimi 12 yılsa, sabit terimli bir ücret modelinde eğitim katsayısı "
+            "Örneklemdeki bütün çalışanların eğitimi 12 yılsa, kesim terimli bir ücret modelinde eğitim katsayısı "
             "benzersiz biçimde tahmin edilemez."
         ),
         answer=TrueFalse(True),
         explanation=(
-            "Eğitim sütunu bütün gözlemlerde 12'dir, yani sabit terim sütununun 12 katıdır. A3 hem tam doğrusal "
+            "Eğitim sütunu bütün gözlemlerde 12'dir, yani kesim terimi sütununun 12 katıdır. A3 hem tam doğrusal "
             "birleşimi dışlar hem de ilgili örneklem değişkenliğini ister (Tablo 6.1): eğitimde değişkenlik yoksa "
             "eğitim farkına karşılık gelen ücret farkı veriden öğrenilemez. Basit regresyonda da eğim formülünün "
             "paydası Σ(Xᵢ − X̄)² sıfır olurdu (§6.2)."
@@ -425,7 +425,7 @@ QUESTIONS = (
             lhs="\\mathbb{E}(u \\mid \\text{eğitim})",
             symbols=(
                 Symbol("gamma", "\\gamma", "yeteneğin ücretle ilişkisi", 0.2, 2, aliases=_greek("gamma", "γ", "gamma")),
-                Symbol("a", "a", "koşullu ortalamanın sabiti", -2, 2),
+                Symbol("a", "a", "koşullu ortalamanın kesim terimi", -2, 2),
                 Symbol("b", "b", "yetenek ile eğitimin ilişkisi", 0.1, 1),
                 Symbol("x", "x", "eğitim (yıl)", 6, 18, aliases=("\\texteğitim", "\\textEğitim", "eğitim", "egitim", "Eğitim", "Egitim")),
             ),
@@ -469,19 +469,19 @@ QUESTIONS = (
         ),
     ),
     Question(
-        key="e03", concept="kisa-model-sabitinin-beklenen-degeri", note=_note("6.6", "(6.5)", "(6.7)"),
+        key="e03", concept="kisa-model-kesim teriminin-beklenen-degeri", note=_note("6.6", "(6.5)", "(6.7)"),
         prompt=(
             "Gerçek model $Y = \\beta_0 + \\beta_1X + \\beta_2Z + u$ ve yardımcı ilişki $Z = \\delta_0 + \\delta_1X + "
-            "r$ olsun (6.5 ve 6.7). $Z$ dışarıda bırakıldığında kısa modelin sabit teriminin beklenen değerini yazın. "
+            "r$ olsun (6.5 ve 6.7). $Z$ dışarıda bırakıldığında kısa modelin kesim teriminin beklenen değerini yazın. "
             "Gerekmeyen sembolleri kullanmayın."
         ),
         answer=Equation(
             lhs="\\mathbb{E}(\\widehat{\\widetilde\\beta}_0)",
             symbols=(
-                Symbol("b0", "\\beta_0", "gerçek sabit", -5, 5, aliases=beta_aliases(0)),
+                Symbol("b0", "\\beta_0", "gerçek kesim terimi", -5, 5, aliases=beta_aliases(0)),
                 Symbol("b1", "\\beta_1", "X'in gerçek katsayısı", 0.1, 2, aliases=beta_aliases(1)),
                 Symbol("b2", "\\beta_2", "Z'nin gerçek katsayısı", -3, 3, aliases=beta_aliases(2)),
-                Symbol("d0", "\\delta_0", "yardımcı ilişkinin sabiti", -3, 3, aliases=_greek("delta", "δ", "delta", 0)),
+                Symbol("d0", "\\delta_0", "yardımcı ilişkinin kesim terimi", -3, 3, aliases=_greek("delta", "δ", "delta", 0)),
                 Symbol("d1", "\\delta_1", "yardımcı ilişkinin eğimi", -1, 1, aliases=_greek("delta", "δ", "delta", 1)),
             ),
             answer="b0 + b2*d0",
@@ -491,7 +491,7 @@ QUESTIONS = (
             "Yardımcı ilişkiyi gerçek modele yerleştirelim: $Y = (\\beta_0 + \\beta_2\\delta_0) + (\\beta_1 + "
             "\\beta_2\\delta_1)X + (\\beta_2 r + u)$. Kısa model bu doğruyu tahmin eder: eğimin beklenen değeri (6.8)'deki "
             "$\\beta_1 + \\beta_2\\delta_1$, sabitinki $\\beta_0 + \\beta_2\\delta_0$ olur. Z'nin X = 0'daki "
-            "ortalama düzeyi ($\\delta_0$) sabit terime, X ile birlikte hareket eden kısmı ($\\delta_1$) eğime "
+            "ortalama düzeyi ($\\delta_0$) kesim terimine, X ile birlikte hareket eden kısmı ($\\delta_1$) eğime "
             "taşınır (§6.6)."
         ),
     ),
@@ -506,11 +506,11 @@ QUESTIONS = (
         answer=Equation(
             lhs="X_1\\text{'in katsayısı}",
             symbols=(
-                Symbol("beta0", "\\beta_0", "sabit parametre", -5, 5, aliases=beta_aliases(0)),
+                Symbol("beta0", "\\beta_0", "kesim terimi", -5, 5, aliases=beta_aliases(0)),
                 Symbol("beta1", "\\beta_1", "X₁'in parametresi", 0.1, 2, aliases=beta_aliases(1)),
                 Symbol("beta2", "\\beta_2", "X₂'nin parametresi", 0.1, 2, aliases=beta_aliases(2)),
                 Symbol("beta3", "\\beta_3", "X₃'ün parametresi", 0.1, 2, aliases=beta_aliases(3)),
-                Symbol("a", "a", "kimliğin sabiti", -5, 5),
+                Symbol("a", "a", "kimliğin kesim terimi", -5, 5),
                 Symbol("b", "b", "kimlikte X₁'in katsayısı", 0.5, 12),
                 Symbol("c", "c", "kimlikte X₂'nin katsayısı", -3, 3),
             ),
@@ -528,7 +528,7 @@ QUESTIONS = (
         key="e05", concept="vif-bagimsiz-kalan-degiskenlik", note=_note("6.12", "Kod 6.4", "Tablo 6.9"),
         prompt=(
             "Kod 6.4'teki yardımcı regresyonda $X_j$ diğer açıklayıcı değişkenlere göre tahmin edilir. Bu regresyonun "
-            "toplam kareler toplamı $\\text{TKT}_j$, artık kareleri toplamı $\\text{HKT}_j$ ($X_j$'nin diğer "
+            "toplam kareler toplamı $\\text{TKT}_j$, artık değerlerin kareleri toplamı $\\text{HKT}_j$ ($X_j$'nin diğer "
             "değişkenlerden bağımsız kalan değişkenliği) olsun. $\\operatorname{VIF}_j$'yi bu iki büyüklük cinsinden "
             "yazın."
         ),
@@ -537,7 +537,7 @@ QUESTIONS = (
             symbols=(
                 Symbol("tkt", "\\text{TKT}_j", "yardımcı regresyonun toplam kareler toplamı", 50, 500,
                        aliases=_sum_of_squares("TKT")),
-                Symbol("hkt", "\\text{HKT}_j", "yardımcı regresyonun artık kareleri toplamı", 1, 45,
+                Symbol("hkt", "\\text{HKT}_j", "yardımcı regresyonun artık değerlerin kareleri toplamı", 1, 45,
                        aliases=_sum_of_squares("HKT")),
             ),
             answer="tkt/hkt",

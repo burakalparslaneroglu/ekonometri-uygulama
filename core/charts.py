@@ -243,7 +243,7 @@ def _scatter(op: ScatterPlot, plot: dict) -> go.Figure:
     if plot["dogru"] is not None:
         intercept, slope = plot["dogru"]
         figure.add_trace(go.Scatter(
-            x=x, y=intercept + slope * x, mode="lines", name="Tahmin edilen doğru", hoverinfo="skip",
+            x=x, y=intercept + slope * x, mode="lines", name="Uyum doğrusu", hoverinfo="skip",
             line={"color": PALETTE[1], "width": 3},
         ))
     for index, (intercept, slope, label) in enumerate(plot.get("cizgiler", ())):

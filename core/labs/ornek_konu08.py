@@ -254,7 +254,7 @@ def _step1(case: Case) -> LabStep:
         f, critical, p = s["F_ortak"], s["kritik_F"], s["p_ortak"]
         if exact:
             return (f"{_percent(alpha)} düzeyinde kritik değer {sayi(critical, 2)}. Uyum tam olduğu için kısıtsız modelin "
-                    "artık değişkenliği sıfıra çok yakındır; F çok büyük ve yuvarlama gürültüsüdür, karar yazılmaz."
+                    "artık değerlerin değişkenliği sıfıra çok yakındır; F çok büyük ve yuvarlama gürültüsüdür, karar yazılmaz."
                     + EXACT_MULTI_NOTE)
         rejected = f > critical
         text = (f"Gözlenen {_f_text(f)}; {_percent(alpha)} düzeyinde kritik değer {sayi(critical, 2)}. "
@@ -276,7 +276,7 @@ def _step1(case: Case) -> LabStep:
         title="Karar kuralı: kritik değer ve ortak p-değeri",
         note=NoteRef("8.5", 0, ("Şekil 8.1",)),
         explanation=(
-            "F istatistiği kısıtların yarattığı uyum kaybını kısıtsız modeldeki artık değişkenliğine göre ölçer; büyük "
+            "F istatistiği kısıtların yarattığı uyum kaybını kısıtsız modeldeki artık değerlerin değişkenliğine göre ölçer; büyük "
             "değerler $H_0$ aleyhine kanıttır ve reddetme bölgesi F dağılımının üst kuyruğundadır. "
             f"Model `{case.roles[SONUC]} ~ {' + '.join(regressors)}`; varsayılan hipotezde {_subject(case, tested)}"
             f"{_together(tested)} sıfırdır: pay serbestlik derecesi $q = {q}$, payda serbestlik derecesi $n - k - 1 = "
@@ -369,7 +369,7 @@ def _step2(case: Case) -> LabStep:
         return text
 
     checks = [
-        *(_check(f"Kod 8.2 karşılığı: {case.name(term) if term != INTERCEPT else 'sabit terim'}, {label}",
+        *(_check(f"Kod 8.2 karşılığı: {case.name(term) if term != INTERCEPT else 'kesim terimi'}, {label}",
                  CoefTarget("m", term, quantity), decimals)
           for term in (INTERCEPT, *regressors)
           for quantity, label, decimals in (("coef", "coef", 4), ("se", "std err", 3), ("t", "t", 3), ("p", "P>|t|", 3))),
@@ -410,7 +410,7 @@ def _need(number: int, title: str, note: NoteRef, lead: str) -> LabStep:
 
 
 def _ssr_decimals(case: Case, outcome: str, regressors: tuple[str, ...], kept: tuple[str, ...], exact: bool) -> int:
-    """Artık kareleri toplamının basamağı: en az üç, küçük değerlerde en az üç anlamlı basamak. Uyum tamsa kısıtsız
+    """Artık değerlerin kareleri toplamının basamağı: en az üç, küçük değerlerde en az üç anlamlı basamak. Uyum tamsa kısıtsız
     modelin SSR'si sıfıra çok yakındır; basamak kısıtlı modelden alınır."""
 
     ssr = _fit(case, outcome, kept if exact else regressors).ssr
@@ -428,7 +428,7 @@ def _restricted_note(s: dict, q: int, d: int, exact: bool) -> str:
             f"{sayim(s['sd_s'])}] = {sayi(s['F_ssr'], 2)}. R² formülü: [({sayi(s['r2_s'], 5)} − {sayi(s['r2_k'], 5)})/{q}] / "
             f"[(1 − {sayi(s['r2_s'], 5)})/{sayim(s['sd_s'])}] = {sayi(s['F_r2'], 2)}. İki formül aynı sonucu verir; çünkü "
             "iki model aynı bağımlı değişkeni ve aynı gözlemleri kullanır. Değişken çıkarmak uyumu artırmaz: kısıtlı "
-            "modelin SSR'si büyük, R²'si küçüktür. Soru, bu uyum kaybının kısıtsız modeldeki artık değişkenliğine göre "
+            "modelin SSR'si büyük, R²'si küçüktür. Soru, bu uyum kaybının kısıtsız modeldeki artık değerlerin değişkenliğine göre "
             "büyük olup olmadığıdır (§8.6). ")
     if math.isfinite(rough) and sayi(rough, 2) != sayi(s["F_r2"], 2):
         return text + (f"R² formülünde beş basamaklı R² kullanılır; üç basamağa yuvarlanmış R² ile hesap "
@@ -452,7 +452,7 @@ def _step3(case: Case) -> LabStep:
                           options(case, regressors), tested,
                           help=f"Varsayılan: {listing([case.name(term) for term in tested])}; kısıtlı model "
                                f"{listing([case.name(term) for term in kept_default])} içerir. Kısıtlı modelde en az "
-                               "bir değişken kalır (yalnız sabitli model genel testtir: Adım 4).",
+                               "bir değişken kalır (yalnız kesim terimli model genel testtir: Adım 4).",
                           maximum=len(regressors) - 1)
 
     def build(choices) -> tuple:
@@ -464,11 +464,11 @@ def _step3(case: Case) -> LabStep:
         same = chosen == tested
         return (
             OLS("mk", case.frame, y, kept, f"Kısıtlı model: {y} ~ {' + '.join(kept)}"),
-            ModelValue("ssr_k", "mk", "ssr", "SSR_R: kısıtlı modelin artık kareleri toplamı", decimals=d),
-            ModelValue("ssr_s", "m", "ssr", "SSR_UR: kısıtsız modelin artık kareleri toplamı", decimals=d),
+            ModelValue("ssr_k", "mk", "ssr", "SSR_R: kısıtlı modelin artık değerlerin kareleri toplamı", decimals=d),
+            ModelValue("ssr_s", "m", "ssr", "SSR_UR: kısıtsız modelin artık değerlerin kareleri toplamı", decimals=d),
             ModelValue("r2_k", "mk", "r2", "R²_R: kısıtlı modelin R²'si", decimals=5),
             ModelValue("r2_s", "m", "r2", "R²_UR: kısıtsız modelin R²'si", decimals=5),
-            ModelValue("sd_s", "m", "df_resid", "Kısıtsız modelin artık serbestlik derecesi n − k − 1", decimals=0),
+            ModelValue("sd_s", "m", "df_resid", "Kısıtsız modelin artık değerlerin serbestlik derecesi n − k − 1", decimals=0),
             Scalar("q3", E.const(len(chosen)), "Kısıt sayısı q", decimals=0),
             *(() if exact else (  # uyum tamken SSR_UR ≈ 0: iki formülün paydası sıfırdır
                 Scalar("F_ssr", ssr, "F, SSR formülü: [(SSR_R − SSR_UR)/q] / [SSR_UR/(n − k − 1)]", decimals=2),
@@ -504,7 +504,7 @@ def _step3(case: Case) -> LabStep:
         title=title,
         note=note_ref,
         explanation=(
-            f"{lead} F, SSR farkını kısıt sayısına ve kısıtsız modelin artık değişkenliğine göre ölçekler: "
+            f"{lead} F, SSR farkını kısıt sayısına ve kısıtsız modelin artık değerlerin değişkenliğine göre ölçekler: "
             "$F = \\frac{(SSR_R - SSR_{UR})/q}{SSR_{UR}/(n-k-1)}$. Aynı bağımlı değişken ve aynı örneklemle R² biçimi de "
             "aynı değeri verir. Kısıtlı modelden çıkarılan değişkenleri değiştirin."
         ),
@@ -550,12 +550,12 @@ def _step4(case: Case) -> LabStep:
         names = listing([phrase(case, term) for term in chosen])
         if tight(chosen):
             return (f"Model {names} ile veriye neredeyse tam uyar (R² = {sayi(s['r2_genel'], 3)}): genel F yuvarlama "
-                    "gürültüsüyle çok büyüktür ve karar yazılmaz. Kısıtlı model yalnız sabit terimi içerir, bu yüzden "
+                    "gürültüsüyle çok büyüktür ve karar yazılmaz. Kısıtlı model yalnız kesim terimini içerir, bu yüzden "
                     "R²_R = 0 (§8.7)." + EXACT_MULTI_NOTE)
         rejected = s["p_genel"] < 0.05
         text = (f"Genel test F({k}, {sayim(df)}): {_f_text(s['F_genel'])}, {p_text(s['p_genel'])}: {names} "
                 f"{'katsayılarının tamamının birlikte' if k > 1 else 'katsayısının'} sıfır olduğu hipotezi yüzde 5 "
-                f"düzeyinde {'reddedilir' if rejected else 'reddedilemez'}. Kısıtlı model yalnız sabit terimi içerir, bu "
+                f"düzeyinde {'reddedilir' if rejected else 'reddedilemez'}. Kısıtlı model yalnız kesim terimini içerir, bu "
                 f"yüzden R²_R = 0 ve F = (R²/k)/[(1 − R²)/(n − k − 1)] = {sayi(s['F_genel_r2'], 2)}. ")
         if k == 1:
             text += "Tek eğimli modelde genel F, eğim katsayısının t istatistiğinin karesidir (§8.8). "
@@ -571,7 +571,7 @@ def _step4(case: Case) -> LabStep:
         note=NoteRef("8.7", 0),
         explanation=(
             "Genel test bütün eğim katsayılarının birlikte sıfır olduğu hipotezini sınar: $H_0: \\beta_1 = \\beta_2 = "
-            "\\cdots = \\beta_k = 0$. Kısıtlı model yalnız sabit terimi içerdiği için $R^2_R = 0$ ve "
+            "\\cdots = \\beta_k = 0$. Kısıtlı model yalnız kesim terimini içerdiği için $R^2_R = 0$ ve "
             "$F = \\frac{R^2/k}{(1-R^2)/(n-k-1)}$. Modeldeki açıklayıcı değişkenleri değiştirin: aynı R² farklı k ile "
             "farklı kanıt üretir."
         ),
@@ -846,7 +846,7 @@ def build(case: Case) -> LabSpec:
     y = case.roles[SONUC]
     if positive(case, y):
         labels.setdefault(log_column(case, y), log_label(case, y))
-    labels[INTERCEPT] = "Sabit terim"
+    labels[INTERCEPT] = "Kesim terimi"
     spec = LabSpec(
         topic_key=TOPIC,
         title=str(case.extra.get("title", TITLE)),

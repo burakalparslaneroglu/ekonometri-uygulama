@@ -314,9 +314,9 @@ def _step1(case: Case) -> LabStep:
             OLS("m_y", "olcek", y_column, m1, f"{rows[1]}: {y_column} ~ {' + '.join(m1)}"),
             OLS("m_x", "olcek", y, swapped, f"{rows[2]}: {y} ~ {' + '.join(swapped)}"),
             *side,
-            ModelValue("a_1", "m_dolar", "coef", f"{rows[0]}: sabit terim", term=INTERCEPT,
+            ModelValue("a_1", "m_dolar", "coef", f"{rows[0]}: kesim terimi", term=INTERCEPT,
                        decimals=digits_for(intercept, 3)),
-            ModelValue("a_2", "m_y", "coef", f"{rows[1]}: sabit terim", term=INTERCEPT, decimals=widest),
+            ModelValue("a_2", "m_y", "coef", f"{rows[1]}: kesim terimi", term=INTERCEPT, decimals=widest),
             ModelValue("sh_1", "m_dolar", "se", f"{rows[0]}: katsayının standart hatası", term=x,
                        decimals=digits_for(se, 4)),
             ModelValue("sh_2", "m_y", "se", f"{rows[1]}: katsayının standart hatası", term=x,
@@ -346,7 +346,7 @@ def _step1(case: Case) -> LabStep:
             effect = ("bir birimlik artış artık on yıllık eğitim artışıdır" if x_key == "on"
                       else "bir birimlik artış artık bir aylık eğitim artışıdır")
         a2 = digits_for(s["a_2"], 3)
-        text = (f"Sonuç {ys[y_key][1]} cinsinden yazılınca bağımlı değişken {factor}; sabit terim "
+        text = (f"Sonuç {ys[y_key][1]} cinsinden yazılınca bağımlı değişken {factor}; kesim terimi "
                 f"({sayi(s['a_1'], digits_for(s['a_1'], 3))} → {sayi(s['a_2'], a2)}), {phrase(case, x)} katsayısı "
                 f"({sayi(s['b_1'], digits_for(s['b_1'], 3))} → {sayi(s['b_2'], digits_for(s['b_2'], 3))}) ve standart "
                 f"hatası ({sayi(s['sh_1'], digits_for(s['sh_1'], 4))} → {sayi(s['sh_2'], digits_for(s['sh_2'], 4))}) aynı "
@@ -361,7 +361,7 @@ def _step1(case: Case) -> LabStep:
 
     rows = _row_labels(case, ys, xs, y_default, x_default)
     checks = [
-        _check("Sabit terim", CoefTarget("m_dolar", INTERCEPT, "coef"), digits_for(intercept, 3)),
+        _check("Kesim terimi", CoefTarget("m_dolar", INTERCEPT, "coef"), digits_for(intercept, 3)),
         *(_check(f"{case.name(term)} katsayısı", CoefTarget("m_dolar", term, "coef"),
                  digits_for(float(level.params[term]), 3)) for term in m1),
         *(_check(f"Tablo: {row}, katsayı", TableTarget("tablo92", row, column), widest) for row in rows),
@@ -371,7 +371,7 @@ def _step1(case: Case) -> LabStep:
         checks += [*(_check(f"Tablo: {row}, t", TableTarget("tablo92", row, "t"), 3) for row in rows),
                    *(_check(f"Tablo: {row}, p", TableTarget("tablo92", row, "p"), 3) for row in rows)]
     lead = ("Bir değişkeni başka bir birimle yazmak ekonomik bilgiyi değiştirmez; yalnız katsayının sayısal ölçeğini "
-            "değiştirir. Sonuç bir sayıyla çarpılırsa sabit terim, eğim katsayıları ve standart hatalar da aynı sayıyla "
+            "değiştirir. Sonuç bir sayıyla çarpılırsa kesim terimi, eğim katsayıları ve standart hatalar da aynı sayıyla "
             "çarpılır; açıklayıcı bir sayıya bölünürse onun katsayısı aynı sayıyla çarpılır. ")
     model = f"Model `{y} ~ {' + '.join(m1)}`."
     return interactive_step(
@@ -662,7 +662,7 @@ def _step4(case: Case) -> LabStep:
         return text + ("veri doğrusal modelden ayrışacak kadar eğrilik göstermez. Reddedememek doğrusal biçimin doğru "
                        "olduğunu kanıtlamaz; karesel terimlerin katsayıları sıfıra yakın ve belirsizdir (§9.5, §9.9).")
 
-    labels = {INTERCEPT: "sabit terim"}
+    labels = {INTERCEPT: "kesim terimi"}
     checks = [
         *(_check(f"Kod 9.2 karşılığı: {labels.get(name, case.name(name) if name in case.data.columns else name)}, "
                  f"{label}", CoefTarget("m4", name, quantity), decimals)
@@ -818,7 +818,7 @@ def _step5(case: Case) -> LabStep:
         if second is not None and second not in means:
             means.append(second)
         operations: list = [
-            ModelValue("b_0", "m4", "coef", "Sabit terim", term=INTERCEPT, decimals=4),
+            ModelValue("b_0", "m4", "coef", "Kesim terimi", term=INTERCEPT, decimals=4),
             ModelValue("b_d", "m4", "coef", f"{_title(case, first)} katsayısı β̂₁", term=first,
                        decimals=digits_for(float(fit.params[first]), 6)),
             ModelValue("b_dd", "m4", "coef", f"{_title(case, first)}² katsayısı β̂₂", term=squares[first], decimals=dd),
@@ -882,7 +882,7 @@ def _step5(case: Case) -> LabStep:
             Scalar("sifir", E.const(0), "Sıfır etki çizgisi", decimals=0, shown=False),
             ScatterPlot(case.frame, first, ly, _axis(case, first), log_label(case, case.roles[SONUC]),
                         f"{_title(case, first)} ile log sonuç arasındaki karesel ilişki (Şekil 9.2'deki gibi)", size=6,
-                        opacity=0.35, curves=(("egri", first, "tahmin", "Tahmin edilen eğri"),)),
+                        opacity=0.35, curves=(("egri", first, "tahmin", "Uyum eğrisi"),)),
             LineChart("egri", first, "etki", _axis(case, first), f"{capital(step_text)} ek artışın yaklaşık yüzde etkisi",
                       f"{_title(case, first)} için tahmin edilen marjinal etki (Şekil 9.3'teki gibi)",
                       references=(("sifir", "Sıfır etki"),), markers=False,
@@ -993,7 +993,7 @@ def _turning_text(case: Case, variable: str, square: str, turning: float, low: f
             f"örneklemde {name} {span}. ")
     if not low <= turning <= high:
         trend = "artandır" if (curve < 0) == (turning > high) else "azalandır"
-        text += (f"Dönüm noktası veri aralığının dışındadır: veri aralığında tahmin edilen eğri {trend} ve dönüm "
+        text += (f"Dönüm noktası veri aralığının dışındadır: veri aralığında uyum eğrisi {trend} ve dönüm "
                  "noktası yorumlanmaz.")
     else:
         count = int(round(beyond))
@@ -1060,15 +1060,15 @@ def _step6(case: Case) -> LabStep:
         return (
             ModelValue("r2_ham", "m4", "r2", "Ham model: R²", decimals=6),
             ModelValue("r2d_ham", "m4", "adj_r2", "Ham model: düzeltilmiş R²", decimals=6),
-            ModelValue("hkt_ham", "m4", "ssr", "Ham model: HKT (artık kareleri toplamı)", decimals=4),
+            ModelValue("hkt_ham", "m4", "ssr", "Ham model: HKT (artık değerlerin kareleri toplamı)", decimals=4),
             *noted,
             *table(c, "m_c", "merkez", "", f"Ham ve {level_text(c)} düzeyinde merkezlenmiş karesel model (Tablo 9.6'daki "
                                            "gibi)" if same else f"Seçiminiz: ham ve {level_text(c)} düzeyinde merkezlenmiş "
                                                                 "model"),
-            Residuals("merkez", "u_ham", "m4", "Ham modelin artıkları"),
-            Residuals("merkez", "u_mer", "m_c", "Merkezlenmiş modelin artıkları"),
-            Derive("merkez", "u_fark", E.absolute(E.sub(E.var("u_ham"), E.var("u_mer"))), "İki modelin artık farkı"),
-            Statistic("merkez", "u_fark", "max", "azami_fark", "Artıkların (ve tahmin edilen değerlerin) azami farkı",
+            Residuals("merkez", "u_ham", "m4", "Ham modelin artık değerleri"),
+            Residuals("merkez", "u_mer", "m_c", "Merkezlenmiş modelin artık değerleri"),
+            Derive("merkez", "u_fark", E.absolute(E.sub(E.var("u_ham"), E.var("u_mer"))), "İki modelin artık değer farkı"),
+            Statistic("merkez", "u_fark", "max", "azami_fark", "Artık değerlerin (ve uyum değerlerinin) azami farkı",
                       decimals=noise),
             PairStatistic("merkez", first, squares[first], "corr", "r_ham",
                           f"Korelasyon: {_name(case, first)} ile karesi", decimals=3),
@@ -1082,7 +1082,7 @@ def _step6(case: Case) -> LabStep:
         shown = level_text(c)
         return (f"Merkezlenmiş modelde doğrusal terimin katsayısı {sayi(s['egim_mer'], 6)}: ham modelde {shown} "
                 f"düzeyindeki eğim β̂₁ + 2β̂₂·{shown} = {sayi(s['egim_ham'], 6)} ile aynıdır. R², düzeltilmiş R² ve HKT "
-                "değişmez; iki modelin tahmin edilen değerleri arasındaki en büyük fark yalnız bilgisayar yuvarlaması "
+                "değişmez; iki modelin uyum değerleri arasındaki en büyük fark yalnız bilgisayar yuvarlaması "
                 f"düzeyindedir. Merkezleme {phrase(case, first)} ile karesi arasındaki korelasyonu değiştirir "
                 f"({sayi(s['r_ham'], 3)} → {sayi(s['r_mer'], 3)}); ekonomik ilişkiyi, eksik değişken sorununu ya da "
                 "içselliği değiştirmez (§9.6)." + (EXACT_MULTI_NOTE if exact else ""))
@@ -1094,7 +1094,7 @@ def _step6(case: Case) -> LabStep:
         explanation=(
             f"Karesel modelde {phrase(case, first)} katsayısı {phrase(case, first)} = 0 noktasındaki eğimdir. Değişken c "
             "düzeyinde merkezlenirse ($X_c = X - c$) doğrusal terim doğrudan c düzeyindeki eğimi verir. Model aynı "
-            "tahmin edilen değerleri üretir; yalnız katsayıların referans noktası değişir. Merkez noktasını değiştirin."
+            "uyum değerleri üretir; yalnız katsayıların referans noktası değişir. Merkez noktasını değiştirin."
         ),
         controls=(control,),
         uses=(),
@@ -1111,7 +1111,7 @@ def _step6(case: Case) -> LabStep:
                                                          "Ham model"), 6),
             _check("Tablo: merkezlenmiş model, eğim",
                    TableTarget("tablo96", f"{level_text(control.default)} düzeyindeki eğim", "Merkezlenmiş model"), 6),
-            _scalar("azami_fark", "İki model aynı tahmin edilen değerleri üretir", noise),
+            _scalar("azami_fark", "İki model aynı uyum değerleri üretir", noise),
         ),
         note_for=lambda state, choices: note(state, choices),
     )
@@ -1347,7 +1347,7 @@ def build(case: Case) -> LabSpec:
     y = case.roles[SONUC]
     labels = labels_of(case)
     labels[_ly(case)] = labels.get(_ly(case)) or log_label(case, y)
-    labels[INTERCEPT] = "Sabit terim"
+    labels[INTERCEPT] = "Kesim terimi"
     ys, xs, _, _ = _units(case)
     for column, _, _, comment, _, _ in (*ys.values(), *xs.values()):
         labels.setdefault(column, comment.split(": ")[0] if not case.own else comment)

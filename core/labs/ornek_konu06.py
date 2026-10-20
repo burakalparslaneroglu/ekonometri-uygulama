@@ -185,9 +185,9 @@ def _step1(case: Case, choice: Choice) -> LabStep:
         controls=(choice,),
         build=build,
         checks=(
-            _check("Kısa model: sabit terim", CoefTarget("kisa", INTERCEPT), 4),
+            _check("Kısa model: kesim terimi", CoefTarget("kisa", INTERCEPT), 4),
             _check("Kısa model: temel katsayı", CoefTarget("kisa", x), 4),
-            _check("Uzun model: sabit terim", CoefTarget("uzun", INTERCEPT), 4),
+            _check("Uzun model: kesim terimi", CoefTarget("uzun", INTERCEPT), 4),
             _check("Uzun model: temel katsayı", CoefTarget("uzun", x), 4),
             _check(f"Uzun model: {case.name(default)} katsayısı", CoefTarget("uzun", default), 4),
             _scalar("kisa_x", "Kısa model, yorumdaki katsayı", 3),
@@ -207,7 +207,7 @@ def _step2(case: Case, choice: Choice) -> LabStep:
         z = choices[Z_KEY]
         return (
             OLS("yardimci", case.frame, z, (x,), f"Yardımcı regresyon: {z} ~ {x} (Denklem 6.12'nin karşılığı)"),
-            ModelValue("yardimci_sabit", "yardimci", "coef", "Yardımcı regresyon: sabit terim", term=INTERCEPT),
+            ModelValue("yardimci_sabit", "yardimci", "coef", "Yardımcı regresyon: kesim terimi", term=INTERCEPT),
             ModelValue("yardimci_egim", "yardimci", "coef", f"Yardımcı eğim δ̂ ({_name(case, z)} ~ {_name(case, x)})",
                        term=x),
             Scalar("katki", E.mul(E.ref("uzun_z"), E.ref("yardimci_egim")),
@@ -261,7 +261,7 @@ def _step2(case: Case, choice: Choice) -> LabStep:
         uses=(choice,),
         build=build,
         checks=(
-            _scalar("yardimci_sabit", "Yardımcı regresyon: sabit terim", 4),
+            _scalar("yardimci_sabit", "Yardımcı regresyon: kesim terimi", 4),
             _scalar("yardimci_egim", "Yardımcı eğim", 4),
             _scalar("katki", "Katkı", 4),
             _scalar("yeniden", "Uzun katsayı + katkı = kısa katsayı", 4),
@@ -362,7 +362,7 @@ def _step3(case: Case, z_default: str) -> LabStep:
         checks.append(_check(f"Tablo: {heading}, R²", TableTarget("tablo66", "r2", heading), 4))
         checks.append(_check(f"Grafik: {heading}", TableTarget("x_katsayilari", heading, "deger"), 3))
     checks += [
-        _check(f"Kod 6.3 karşılığı: {case.name(term) if term != INTERCEPT else 'sabit terim'}, {label}",
+        _check(f"Kod 6.3 karşılığı: {case.name(term) if term != INTERCEPT else 'kesim terimi'}, {label}",
                CoefTarget("kod63", term, quantity), decimals)
         for term in (INTERCEPT, x, z_default)
         for quantity, label, decimals in (("coef", "katsayı", 4), ("se", "standart hata", 3), ("t", "t", 3),
@@ -440,8 +440,8 @@ def _step4(case: Case, load: bool = False) -> LabStep:
                      for i in range(1, len(pairs) + 1)) + (_scalar("r_ay", "Korelasyon", 4),),
         takeaway=(
             "Tam bağlantıda katsayılar “yanlış” olmadan önce ayrı ayrı tanımlanamaz: aynı tahmini veren sonsuz sayıda "
-            "katsayı çifti vardır. Sık kaynaklar: aynı değişkenin farklı birimleri, toplam ile bütün parçaları, sabit "
-            "terimle birlikte bütün kategori göstergeleri (kukla değişken tuzağı, Konu 10). A3 yalnız tam tekrarı "
+            "katsayı çifti vardır. Sık kaynaklar: aynı değişkenin farklı birimleri, toplam ile bütün parçaları, kesim terimi "
+            "le birlikte bütün kategori göstergeleri (kukla değişken tuzağı, Konu 10). A3 yalnız tam tekrarı "
             "yasaklar; değişkenlerin ilişkili olması olağandır."
         ),
     )
@@ -577,7 +577,7 @@ def build(case: Case) -> LabSpec:
     house = second(case)
     labels = labels_of(case)
     labels.update(labels_of(house))
-    labels.update({INTERCEPT: "Sabit terim", "beta1": "β₁", "beta2": "β₂", "birlesim": "β₁ + 12β₂",
+    labels.update({INTERCEPT: "Kesim terimi", "beta1": "β₁", "beta2": "β₂", "birlesim": "β₁ + 12β₂",
                    "x_ay": str(case.extra.get("months_label", f"{case.name(case.roles[ACIKLAYICI])} × 12"))})
     if _omitted(case):
         choice = z_choice(case)

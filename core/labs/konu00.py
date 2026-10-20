@@ -599,7 +599,7 @@ def _regression_note(state, choices) -> str:
     b1 = s["b1"]
     text = (f"Çıktıdaki eğim {plain(b1, 4)}; aynı sayı kovaryansın varyansa oranıdır: {plain(s['kov_wx'], 4)} / "
             f"{plain(s['var_x'], 4)} = {plain(s['egim_formul'], 4)}. R² = {plain(s['r2'], 3)}, korelasyonun karesiyle "
-            f"aynıdır ({plain(s['r_kare'], 3)}); bu eşitlik yalnız sabit terimli basit regresyonda geçerlidir. ")
+            f"aynıdır ({plain(s['r_kare'], 3)}); bu eşitlik yalnız kesim terimli basit regresyonda geçerlidir. ")
     text += (f"Mekanik yorum: örneklemde {_SLOPE_PHRASES[x]} çalışanların tahmin edilen saatlik ücreti ortalama "
              f"{plain(abs(b1), 2)} dolar daha {signed_difference(b1)}. Bu, nedensel bir etki iddiası değildir. "
              "Standart hata (`std err`), t, p-değeri (`P>|t|`) ve %95 güven aralığı sütunları Konu 7'de, F istatistiği "
@@ -838,16 +838,16 @@ STEPS = (
         controls=(X_CHOICE,),
         build=_regression,
         checks=(
-            _coef(INTERCEPT, "coef", -0.9049, 4, "Kod 0.2: sabit terim"),
+            _coef(INTERCEPT, "coef", -0.9049, 4, "Kod 0.2: kesim terimi"),
             _coef("educ", "coef", 0.5414, 4, "Kod 0.2: eğitim katsayısı"),
-            _coef(INTERCEPT, "se", 0.685, 3, "Kod 0.2: sabit terimin standart hatası"),
+            _coef(INTERCEPT, "se", 0.685, 3, "Kod 0.2: kesim teriminin standart hatası"),
             _coef("educ", "se", 0.053, 3, "Kod 0.2: eğitim katsayısının standart hatası"),
-            _coef(INTERCEPT, "t", -1.321, 3, "Kod 0.2: sabit terimin t değeri"),
+            _coef(INTERCEPT, "t", -1.321, 3, "Kod 0.2: kesim teriminin t değeri"),
             _coef("educ", "t", 10.167, 3, "Kod 0.2: eğitim katsayısının t değeri"),
-            _coef(INTERCEPT, "p", 0.187, 3, "Kod 0.2: sabit terimin p-değeri"),
+            _coef(INTERCEPT, "p", 0.187, 3, "Kod 0.2: kesim teriminin p-değeri"),
             _coef("educ", "p", 0.000, 3, "Kod 0.2: eğitim katsayısının p-değeri"),
-            _coef(INTERCEPT, "ci_low", -2.250, 3, "Kod 0.2: sabit terim, %95 GA alt sınır"),
-            _coef(INTERCEPT, "ci_high", 0.441, 3, "Kod 0.2: sabit terim, %95 GA üst sınır"),
+            _coef(INTERCEPT, "ci_low", -2.250, 3, "Kod 0.2: kesim terimi, %95 GA alt sınır"),
+            _coef(INTERCEPT, "ci_high", 0.441, 3, "Kod 0.2: kesim terimi, %95 GA üst sınır"),
             _coef("educ", "ci_low", 0.437, 3, "Kod 0.2: eğitim, %95 GA alt sınır"),
             _coef("educ", "ci_high", 0.646, 3, "Kod 0.2: eğitim, %95 GA üst sınır"),
             Check("Kod 0.2: R²", ModelTarget("model", "r2"), 0.165, 3),
@@ -879,7 +879,7 @@ KONU00_LAB = LabSpec(
         ("log_fark", "Log farkı ×100"), ("fark", "Fark"), ("wage_sent", "Saatlik ücret (sent)"),
         ("sira", "Sıra numarası"), ("tek", "Tek sıra (1/0)"), ("cift", "Çift sıra (1/0)"),
         ("besinci", "Her beşinci (1/0)"), ("count", "Çalışan sayısı"), ("mean", "Ortalama saatlik ücret"),
-        ("deger", "Değer"), (INTERCEPT, "Sabit terim"), ("n", "Gözlem sayısı"), ("k", "Analitik değişken sayısı"),
+        ("deger", "Değer"), (INTERCEPT, "Kesim terimi"), ("n", "Gözlem sayısı"), ("k", "Analitik değişken sayısı"),
     ),
     consistency_notes=(
         "Bölüm 0'ın laboratuvar bölümü yoktur; adımlar bölümün çözümlü örnekleridir ve alt bölümlere bağlıdır.",

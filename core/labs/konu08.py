@@ -173,7 +173,7 @@ def _output() -> tuple:
 
 DROPPED_3 = MultiChoice("adim3_x", "Kısıtlı modelden çıkarılan (birlikte sınanan) değişkenler", TERM_OPTIONS, TESTED,
                         help="Notlarda deneyim ve kıdem; kısıtlı model yalnız eğitimi içerir. Kısıtlı modelde en az "
-                             "bir değişken kalır (yalnız sabitli model genel testtir: Adım 4).",
+                             "bir değişken kalır (yalnız kesim terimli model genel testtir: Adım 4).",
                         maximum=2)
 
 
@@ -192,11 +192,11 @@ def _restricted(choices) -> tuple:
     notes = dropped == TESTED
     return (
         OLS("mk", DATA, "wage", kept, f"Kısıtlı model: wage ~ {' + '.join(kept)}"),
-        ModelValue("ssr_k", "mk", "ssr", "SSR_R: kısıtlı modelin artık kareleri toplamı", decimals=3),
-        ModelValue("ssr_s", "m", "ssr", "SSR_UR: kısıtsız modelin artık kareleri toplamı", decimals=3),
+        ModelValue("ssr_k", "mk", "ssr", "SSR_R: kısıtlı modelin artık değerlerin kareleri toplamı", decimals=3),
+        ModelValue("ssr_s", "m", "ssr", "SSR_UR: kısıtsız modelin artık değerlerin kareleri toplamı", decimals=3),
         ModelValue("r2_k", "mk", "r2", "R²_R: kısıtlı modelin R²'si", decimals=5),
         ModelValue("r2_s", "m", "r2", "R²_UR: kısıtsız modelin R²'si", decimals=5),
-        ModelValue("sd_s", "m", "df_resid", "Kısıtsız modelin artık serbestlik derecesi n − k − 1", decimals=0),
+        ModelValue("sd_s", "m", "df_resid", "Kısıtsız modelin artık değerlerin serbestlik derecesi n − k − 1", decimals=0),
         Scalar("q3", E.const(q), "Kısıt sayısı q", decimals=0),
         Scalar("F_ssr", ssr, "F, SSR formülü: [(SSR_R − SSR_UR)/q] / [SSR_UR/(n − k − 1)]", decimals=2),
         Scalar("F_r2", r2, "F, R² formülü: [(R²_UR − R²_R)/q] / [(1 − R²_UR)/(n − k − 1)]", decimals=2),
@@ -217,7 +217,7 @@ def _restricted_note(state, choices) -> str:
             f"{plain(s['r2_k'], 5)})/{q}] / [(1 − {plain(s['r2_s'], 5)})/{plain(s['sd_s'], 0)}] = "
             f"{plain(s['F_r2'], 2)}. İki formül aynı sonucu verir; çünkü iki model aynı bağımlı değişkeni ve aynı "
             "gözlemleri kullanır. Değişken çıkarmak uyumu artırmaz: kısıtlı modelin SSR'si büyük, R²'si küçüktür. "
-            "Soru, bu uyum kaybının kısıtsız modeldeki artık değişkenliğine göre büyük olup olmadığıdır (§8.6). R² "
+            "Soru, bu uyum kaybının kısıtsız modeldeki artık değerlerin değişkenliğine göre büyük olup olmadığıdır (§8.6). R² "
             "formülünde beş basamaklı R² kullanılır; üç basamağa yuvarlanmış R² ile hesap belirgin biçimde sapar.")
 
 
@@ -252,7 +252,7 @@ def _overall_note(state, choices) -> str:
     names = _listing([WORDS[term] for term in regressors])
     text = (f"Genel test F({k}, {df}) = {plain(s['F_genel'], 2)}, {_p(s['p_genel'])}: {names} "
             f"{'katsayılarının tamamının birlikte' if k > 1 else 'katsayısının'} sıfır olduğu hipotezi yüzde 5 "
-            f"düzeyinde {'reddedilir' if rejected else 'reddedilemez'}. Kısıtlı model yalnız sabit terimi içerir, "
+            f"düzeyinde {'reddedilir' if rejected else 'reddedilemez'}. Kısıtlı model yalnız kesim terimini içerir, "
             f"bu yüzden R²_R = 0 ve F = (R²/k)/[(1 − R²)/(n − k − 1)] = {plain(s['F_genel_r2'], 2)}. ")
     if k == 1:
         text += "Tek eğimli modelde genel F, eğim katsayısının t istatistiğinin karesidir (§8.8). "
@@ -344,7 +344,7 @@ def _house_note(state, choices) -> str:
 # --- Tanım ---------------------------------------------------------------------------------------------
 
 _OUTPUT = (
-    (INTERCEPT, "sabit terim", (-2.8727, 0.729, -3.941, 0.000)),
+    (INTERCEPT, "kesim terimi", (-2.8727, 0.729, -3.941, 0.000)),
     ("educ", "educ", (0.5990, 0.051, 11.679, 0.000)),
     ("exper", "exper", (0.0223, 0.012, 1.853, 0.064)),
     ("tenure", "tenure", (0.1693, 0.022, 7.820, 0.000)),
@@ -368,7 +368,7 @@ STEPS = (
         title="Karar kuralı: kritik değer ve ortak p-değeri",
         note=NoteRef("8.5", 0, ("Şekil 8.1",)),
         explanation=(
-            "F istatistiği kısıtların yarattığı uyum kaybını kısıtsız modeldeki artık değişkenliğine göre ölçer; büyük "
+            "F istatistiği kısıtların yarattığı uyum kaybını kısıtsız modeldeki artık değerlerin değişkenliğine göre ölçer; büyük "
             "değerler $H_0$ aleyhine kanıttır ve reddetme bölgesi F dağılımının üst kuyruğundadır. Şekil 8.1'de WAGE1 "
             "ücret modelinde deneyim ve kıdem katsayılarının birlikte sıfır olduğu hipotezi sınanır: pay serbestlik "
             "derecesi $q = 2$, payda serbestlik derecesi $n - k - 1 = 522$. Birlikte sınanan katsayıları ve "
@@ -424,7 +424,7 @@ STEPS = (
         note=NoteRef("8.6", 0, ("Tablo 8.1",)),
         explanation=(
             "Kısıtlı model sıfır hipotezini modele yükler: deneyim ve kıdem çıkarılır, model yalnız eğitimle tahmin "
-            "edilir. F, SSR farkını kısıt sayısına ve kısıtsız modelin artık değişkenliğine göre ölçekler: "
+            "edilir. F, SSR farkını kısıt sayısına ve kısıtsız modelin artık değerlerin değişkenliğine göre ölçekler: "
             "$F = \\frac{(SSR_R - SSR_{UR})/q}{SSR_{UR}/(n-k-1)}$. Aynı bağımlı değişken ve aynı örneklemle R² "
             "biçimi de aynı değeri verir. Kısıtlı modelden çıkarılan değişkenleri değiştirin."
         ),
@@ -452,7 +452,7 @@ STEPS = (
         note=NoteRef("8.7", 0),
         explanation=(
             "Genel test bütün eğim katsayılarının birlikte sıfır olduğu hipotezini sınar: $H_0: \\beta_1 = \\beta_2 = "
-            "\\cdots = \\beta_k = 0$. Kısıtlı model yalnız sabit terimi içerdiği için $R^2_R = 0$ ve "
+            "\\cdots = \\beta_k = 0$. Kısıtlı model yalnız kesim terimini içerdiği için $R^2_R = 0$ ve "
             "$F = \\frac{R^2/k}{(1-R^2)/(n-k-1)}$. Modeldeki açıklayıcı değişkenleri değiştirin: aynı R² farklı k ile "
             "farklı kanıt üretir."
         ),
@@ -555,11 +555,11 @@ KONU08_LAB = LabSpec(
     steps=STEPS,
     labels=(
         *W.labels(DATA, HPRICE),
-        (INTERCEPT, "Sabit terim"),
+        (INTERCEPT, "Kesim terimi"),
     ),
     consistency_notes=(
         "Veri notlardaki gibi WAGE1 ve HPRICE1'dir; notlardaki kod, betikler, uygulama ve üretilen kod onları wooldridge "
-        "paketinden okur. HPRICE1 modellerinin artık kareleri toplamı (348053,432 ve 300723,805) paket verisiyle "
+        "paketinden okur. HPRICE1 modellerinin artık değerlerin kareleri toplamı (348053,432 ve 300723,805) paket verisiyle "
         "hesaplanmıştır.",
         "Tablo 8.6'daki log ücret modelinde deneyim ve kıdemin ortak F değeri 49,69'dur (eski metin 29,44 yazıyordu); "
         "notlar ve sunum düzeltildi.",

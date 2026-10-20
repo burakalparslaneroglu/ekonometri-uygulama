@@ -1,13 +1,13 @@
 """Konu 3 Sezgi deneyleri: veri üretim süreci bilinen kontrollü simülasyonlar.
 
 Deney 1  Örneklemden örneklemeye değişen doğru                       (Notlar §3.7)
-Deney 2  EKK doğrusunu elle aramak: kareli artıklar toplamı         (Notlar §3.8)
-Deney 3  Hata terimi ve artık aynı şey değildir                      (Notlar §3.5, §3.7)
+Deney 2  EKK doğrusunu elle aramak: artık değerlerin kareleri toplamı         (Notlar §3.8)
+Deney 3  Hata terimi ve artık değer aynı şey değildir                      (Notlar §3.5, §3.7)
 
 Bölüm 3'te simülasyonla üretilmiş bir tablo ya da şekil yoktur; deneyler bölümün kavramlarını bilinen bir anakütle
 doğrusuyla gösterir. Deney 1 ve 3'teki anakütle doğrusu E(Y | X) = −1 + 0,5·X, WAGE1'deki eğitim–ücret doğrusuna
 (Denklem 3.11) yakın ölçektedir. Standart hata, yansızlık ve varyans Konu 6–7'nin konusudur; deneyler yalnız tahminin
-örneklemden örneklemeye değiştiğini, EKK ölçütünü ve hata terimi–artık ayrımını gösterir. Tohum 305.
+örneklemden örneklemeye değiştiğini, EKK ölçütünü ve hata terimi–artık değer ayrımını gösterir. Tohum 305.
 """
 
 from __future__ import annotations
@@ -108,7 +108,7 @@ def _build_lines(parameters: Parameters) -> tuple:
         NewSample("orneklem", n, SEED),
         *_population_draws("orneklem", sigma),
         OLS("model", "orneklem", "y", ("x",), "Bu örneklemin EKK doğrusu: y ~ x"),
-        ModelValue("b0", "model", "coef", "Tahmin edilen sabit β̂₀", term=INTERCEPT, decimals=3),
+        ModelValue("b0", "model", "coef", "Tahmin edilen kesim terimi β̂₀", term=INTERCEPT, decimals=3),
         ModelValue("b1", "model", "coef", "Tahmin edilen eğim β̂₁", term="x", decimals=3),
         ScatterPlot("orneklem", "x", "y", "X", "Y", f"Tek bir örneklem (n = {n}): tahmin edilen ve anakütle doğrusu",
                     fit_line=True, size=8, opacity=0.7,
@@ -168,7 +168,7 @@ def _lines_takeaway(state: LabState, parameters: Parameters) -> str:
     if sigma == 0:
         return (
             "σ = 0: hata terimi yok, bütün noktalar anakütle doğrusunun üzerindedir. Her örneklemde β̂₁ = 0,5 ve β̂₀ = "
-            "−1 bulunur: tahmin edilen doğru anakütle doğrusuyla çakışır ve histogram tek bir çizgiye iner. "
+            "−1 bulunur: uyum doğrusu anakütle doğrusuyla çakışır ve histogram tek bir çizgiye iner. "
             "Örneklemden örneklemeye değişim hata teriminden gelir (§3.7)."
         )
     return (
@@ -239,18 +239,18 @@ def _build_search(parameters: Parameters) -> tuple:
         Statistic("orneklem", "x", "mean", "xbar", "X̄", decimals=3),
         Statistic("orneklem", "y", "mean", "ybar", "Ȳ", decimals=3),
         Derive("orneklem", "aday", candidate, f"Aday doğru: Ȳ {_signed(slope)}·(X − X̄) {_signed(shift, 1)}"),
-        Derive("orneklem", "aday_artik", E.sub(E.var("y"), E.var("aday")), "Aday doğrunun artığı"),
-        Derive("orneklem", "aday_kare", E.power(E.var("aday_artik"), 2), "Aday doğrunun kareli artığı"),
-        Statistic("orneklem", "aday_artik", "sum", "aday_toplam", "Aday doğru: artıkların toplamı", decimals=3),
-        Statistic("orneklem", "aday_kare", "sum", "aday_hkt", "Aday doğru: kareli artıklar toplamı", decimals=3),
+        Derive("orneklem", "aday_artik", E.sub(E.var("y"), E.var("aday")), "Aday doğrunun artık değeri"),
+        Derive("orneklem", "aday_kare", E.power(E.var("aday_artik"), 2), "Aday doğrunun artık değerin karesii"),
+        Statistic("orneklem", "aday_artik", "sum", "aday_toplam", "Aday doğru: artık değerlerin toplamı", decimals=3),
+        Statistic("orneklem", "aday_kare", "sum", "aday_hkt", "Aday doğru: artık değerlerin kareleri toplamı", decimals=3),
         OLS("model", "orneklem", "y", ("x",), "EKK doğrusu: y ~ x"),
-        ModelValue("b0", "model", "coef", "EKK sabiti β̂₀", term=INTERCEPT, decimals=3),
+        ModelValue("b0", "model", "coef", "EKK kesim terimi β̂₀", term=INTERCEPT, decimals=3),
         ModelValue("b1", "model", "coef", "EKK eğimi β̂₁", term="x", decimals=3),
-        ModelValue("ekk_hkt", "model", "ssr", "EKK doğrusu: kareli artıklar toplamı", decimals=3),
+        ModelValue("ekk_hkt", "model", "ssr", "EKK doğrusu: artık değerlerin kareleri toplamı", decimals=3),
         Scalar("aday_sabit", E.sub(E.ref("ybar"), E.mul(E.ref("xbar"), slope)) if slope >= 0 else
-               E.add(E.ref("ybar"), E.mul(E.ref("xbar"), -slope)), "Aday doğrunun sabiti (kayma öncesi)", decimals=3),
+               E.add(E.ref("ybar"), E.mul(E.ref("xbar"), -slope)), "Aday doğrunun kesim terimi (kayma öncesi)", decimals=3),
         Scalar("aday_sabit_d", E.sub(E.ref("aday_sabit"), -shift) if shift < 0 else E.add(E.ref("aday_sabit"), shift),
-               "Aday doğrunun sabiti", decimals=3),
+               "Aday doğrunun kesim terimi", decimals=3),
         ScatterPlot("orneklem", "x", "y", "X", "Y", "Aday doğru ve EKK doğrusu", fit_line=True, size=10,
                     opacity=0.8, lines=(("aday_sabit_d", slope, "Aday doğru"),)),
     )
@@ -269,10 +269,10 @@ def _search_dgp(parameters: Parameters) -> tuple[str, ...]:
 def _search_metrics(state: LabState, parameters: Parameters) -> tuple[SimMetric, ...]:
     s = state.scalars
     return (
-        SimMetric("Aday: Σ(artık)²", plain(s["aday_hkt"], 2), "Aday doğrunun kareli artıklar toplamı."),
-        SimMetric("EKK: Σ(artık)²", plain(s["ekk_hkt"], 2), "EKK doğrusunun kareli artıklar toplamı: en küçük değer."),
-        SimMetric("Aday: Σ(artık)", plain(s["aday_toplam"], 2), "Aday doğrunun artıklarının toplamı."),
-        SimMetric("EKK eğimi β̂₁", plain(s["b1"], 3), f"EKK sabiti β̂₀ = {plain(s['b0'], 3)}."),
+        SimMetric("Aday: Σ(artık değer)²", plain(s["aday_hkt"], 2), "Aday doğrunun artık değerlerin kareleri toplamı."),
+        SimMetric("EKK: Σ(artık değer)²", plain(s["ekk_hkt"], 2), "EKK doğrusunun artık değerlerin kareleri toplamı: en küçük değer."),
+        SimMetric("Aday: Σ(artık değer)", plain(s["aday_toplam"], 2), "Aday doğrunun artık değerlerinin toplamı."),
+        SimMetric("EKK eğimi β̂₁", plain(s["b1"], 3), f"EKK kesim terimi β̂₀ = {plain(s['b0'], 3)}."),
     )
 
 
@@ -283,7 +283,7 @@ def _search_takeaway(state: LabState, parameters: Parameters) -> str:
     if gap < 0.01 * s["ekk_hkt"]:
         best = round(round(s["b1"] / 0.05) * 0.05, 2)  # kaydırıcı ızgarasında EKK eğimine en yakın eğim
         text = (
-            f"Aday doğru EKK doğrusuna çok yakın: kareli artıklar toplamı {plain(s['aday_hkt'], 2)}, en küçük değer "
+            f"Aday doğru EKK doğrusuna çok yakın: artık değerlerin kareleri toplamı {plain(s['aday_hkt'], 2)}, en küçük değer "
             f"{plain(s['ekk_hkt'], 2)}. EKK doğrusu (eğim {plain(s['b1'], 3)}, (X̄, Ȳ)'den geçer) Denklem 3.7'deki "
             "ölçütü en küçük yapan tek doğrudur; ondan hangi yöne ayrılırsanız ayrılın toplam artar (§3.8)."
         )
@@ -291,15 +291,15 @@ def _search_takeaway(state: LabState, parameters: Parameters) -> str:
             text += (" Kaydırıcılarla ulaşılabilecek en küçük toplam, "
                      f"eğim {_short(best)} ve kayma 0 iken elde edilir.")
         return text
-    text = (f"Aday doğrunun kareli artıklar toplamı {plain(s['aday_hkt'], 2)}, EKK doğrusununki "
+    text = (f"Aday doğrunun artık değerlerin kareleri toplamı {plain(s['aday_hkt'], 2)}, EKK doğrusununki "
             f"{plain(s['ekk_hkt'], 2)}; fark {plain(gap, 2)}.")
     if shift == 0:
-        text += (" Kayma d = 0 olduğu için aday doğru (X̄, Ȳ) noktasından geçer ve artıklarının toplamı sıfırdır; "
-                 "yine de kareli toplam EKK'ninkinden büyüktür. Artıkların toplamının sıfır olması doğruyu belirlemez: "
-                 "(X̄, Ȳ)'den geçen her doğrunun artık toplamı sıfırdır. "
+        text += (" Kayma d = 0 olduğu için aday doğru (X̄, Ȳ) noktasından geçer ve artık değerlerinin toplamı sıfırdır; "
+                 "yine de kareli toplam EKK'ninkinden büyüktür. Artık değerlerin toplamının sıfır olması doğruyu belirlemez: "
+                 "(X̄, Ȳ)'den geçen her doğrunun artık değer toplamı sıfırdır. "
                  "EKK, kareli toplamı en küçük yapan eğimi seçer.")
     else:
-        text += (f" Kayma d = {_short(shift, 1)}: doğru (X̄, Ȳ) noktasından geçmez; artıkların toplamı "
+        text += (f" Kayma d = {_short(shift, 1)}: doğru (X̄, Ȳ) noktasından geçmez; artık değerlerin toplamı "
                  f"{plain(s['aday_toplam'], 2)} = −n·d olur ve kareli toplam büyür.")
     if slope == 0 and shift == 0:
         text += " b = 0 ve d = 0: aday doğru yatay Ȳ çizgisidir; yalnız ortalamayı kullanan tahmin (Konu 4'te ölçüt)."
@@ -309,9 +309,9 @@ def _search_takeaway(state: LabState, parameters: Parameters) -> str:
 SEARCH = SimExperiment(
     topic_key=TOPIC,
     number=2,
-    title="EKK doğrusunu elle aramak: kareli artıklar toplamı",
-    question="Aynı noktalara birçok doğru çizilebilir. Hangi doğru ‘en iyisi’dir? Artıkların toplamını sıfır yapmak "
-             "yeter mi, yoksa kareli artıklar toplamına mı bakmalıyız?",
+    title="EKK doğrusunu elle aramak: artık değerlerin kareleri toplamı",
+    question="Aynı noktalara birçok doğru çizilebilir. Hangi doğru ‘en iyisi’dir? Artık değerlerin toplamını sıfır yapmak "
+             "yeter mi, yoksa artık değerlerin kareleri toplamına mı bakmalıyız?",
     note=NoteRef("3.8"),
     parameters=(
         SimParameter("egim", "Aday doğrunun eğimi b", -0.5, 2, 0, 0.05,
@@ -326,18 +326,18 @@ SEARCH = SimExperiment(
     ),
     look_at=(
         "**Grafik** — kesikli çizgi aday doğru, düz çizgi EKK doğrusu.",
-        "**Kareli artıklar toplamı** — aday doğru EKK doğrusuna yaklaştıkça nasıl değişiyor?",
-        "**Artıkların toplamı** — d = 0 iken eğim ne olursa olsun sıfır mı?",
+        "**Artık değerlerin kareleri toplamı** — aday doğru EKK doğrusuna yaklaştıkça nasıl değişiyor?",
+        "**Artık değerlerin toplamı** — d = 0 iken eğim ne olursa olsun sıfır mı?",
     ),
     build=_build_search,
     metrics=_search_metrics,
     takeaway=_search_takeaway,
-    labels=(("x", "X"), ("y", "Y"), ("aday", "Aday doğrunun değeri"), ("aday_artik", "Aday artık"),
-            ("aday_kare", "Aday kareli artık")),
+    labels=(("x", "X"), ("y", "Y"), ("aday", "Aday doğrunun değeri"), ("aday_artik", "Aday artık değer"),
+            ("aday_kare", "Aday artık değerin karesi")),
 )
 
 
-# --- Deney 3: hata terimi ve artık ----------------------------------------------------------------------
+# --- Deney 3: hata terimi ve artık değer ----------------------------------------------------------------------
 
 def _errors_settings(parameters: Parameters) -> tuple[int, float]:
     return int(parameters["n"]), _rounded(parameters, "sigma", 1)
@@ -349,22 +349,22 @@ def _build_errors(parameters: Parameters) -> tuple:
         NewSample("orneklem", n, SEED),
         *_population_draws("orneklem", sigma),
         OLS("model", "orneklem", "y", ("x",), "EKK doğrusu: y ~ x"),
-        ModelValue("b0", "model", "coef", "Tahmin edilen sabit β̂₀", term=INTERCEPT, decimals=3),
+        ModelValue("b0", "model", "coef", "Tahmin edilen kesim terimi β̂₀", term=INTERCEPT, decimals=3),
         ModelValue("b1", "model", "coef", "Tahmin edilen eğim β̂₁", term="x", decimals=3),
-        Derive("orneklem", "tahmin", E.add(E.ref("b0"), E.mul(E.ref("b1"), E.var("x"))), "Tahmin Ŷ = β̂₀ + β̂₁X"),
-        Derive("orneklem", "artik", E.sub(E.var("y"), E.var("tahmin")), "Artık û = Y − Ŷ"),
-        Derive("orneklem", "fark", E.sub(E.var("u"), E.var("artik")), "Hata terimi − artık: u − û"),
+        Derive("orneklem", "tahmin", E.add(E.ref("b0"), E.mul(E.ref("b1"), E.var("x"))), "Uyum değeri Ŷ = β̂₀ + β̂₁X"),
+        Derive("orneklem", "artik", E.sub(E.var("y"), E.var("tahmin")), "Artık değer û = Y − Ŷ"),
+        Derive("orneklem", "fark", E.sub(E.var("u"), E.var("artik")), "Hata terimi − artık değer: u − û"),
         Derive("orneklem", "fark_mutlak", E.absolute(E.var("fark")), "|u − û|"),
         Statistic("orneklem", "u", "sum", "toplam_u", "Hata terimlerinin toplamı Σu", decimals=3),
-        Statistic("orneklem", "artik", "sum", "toplam_artik", "Artıkların toplamı Σû", decimals=3),
-        PairStatistic("orneklem", "u", "artik", "corr", "r_u_artik", "Hata terimi ile artığın korelasyonu", decimals=3),
+        Statistic("orneklem", "artik", "sum", "toplam_artik", "Artık değerlerin toplamı Σû", decimals=3),
+        PairStatistic("orneklem", "u", "artik", "corr", "r_u_artik", "Hata terimi ile artık değerin korelasyonu", decimals=3),
         Statistic("orneklem", "fark", "max", "en_buyuk_fark", "En büyük u − û", decimals=3),
         Statistic("orneklem", "fark", "min", "en_kucuk_fark", "En küçük u − û", decimals=3),
         Statistic("orneklem", "fark_mutlak", "max", "en_buyuk_mutlak", "En büyük |u − û|", decimals=3),
-        ShowFrame("orneklem", ("x", "y", "u", "tahmin", "artik"), f"İlk {min(n, 8)} gözlem: hata terimi u ve artık û",
+        ShowFrame("orneklem", ("x", "y", "u", "tahmin", "artik"), f"İlk {min(n, 8)} gözlem: hata terimi u ve artık değer û",
                   head=8, decimals=3),
-        ScatterPlot("orneklem", "u", "artik", "Hata terimi u (simülasyonda bilinir)", "Artık û (veriden hesaplanır)",
-                    "Hata terimi ve artık", size=9, opacity=0.8, lines=((0, 1, "û = u doğrusu"),)),
+        ScatterPlot("orneklem", "u", "artik", "Hata terimi u (simülasyonda bilinir)", "Artık değer û (veriden hesaplanır)",
+                    "Hata terimi ve artık değer", size=9, opacity=0.8, lines=((0, 1, "û = u doğrusu"),)),
     )
 
 
@@ -382,10 +382,10 @@ def _errors_metrics(state: LabState, parameters: Parameters) -> tuple[SimMetric,
     s = state.scalars
     return (
         SimMetric("Σu", plain(s["toplam_u"], 3), "Hata terimlerinin bu örneklemdeki toplamı (simülasyonda bilinir)."),
-        SimMetric("Σû", plain(s["toplam_artik"], 3), "Artıkların toplamı: sabit terimli EKK'de her zaman sıfır."),
-        SimMetric("r(u, û)", plain(s["r_u_artik"], 3), "Hata terimi ile artığın korelasyonu."),
+        SimMetric("Σû", plain(s["toplam_artik"], 3), "Artık değerlerin toplamı: kesim terimli EKK'de her zaman sıfır."),
+        SimMetric("r(u, û)", plain(s["r_u_artik"], 3), "Hata terimi ile artık değerin korelasyonu."),
         SimMetric("En büyük |u − û|", plain(s["en_buyuk_mutlak"], 3),
-                  "Hata terimi ile artık arasındaki en büyük mutlak fark."),
+                  "Hata terimi ile artık değer arasındaki en büyük mutlak fark."),
     )
 
 
@@ -393,10 +393,10 @@ def _errors_takeaway(state: LabState, parameters: Parameters) -> str:
     n, _ = _errors_settings(parameters)
     s = state.scalars
     return (
-        f"Artıkların toplamı {plain(s['toplam_artik'], 3)}: EKK'nin cebirsel özelliğidir (§3.9). Hata terimlerinin "
+        f"Artık değerlerin toplamı {plain(s['toplam_artik'], 3)}: EKK'nin cebirsel özelliğidir (§3.9). Hata terimlerinin "
         f"toplamı ise {plain(s['toplam_u'], 3)}: u'nun anakütle ortalaması sıfırdır ama belirli bir örneklemdeki "
-        "toplamı sıfır olmak zorunda değildir. Artık, hata teriminin veriden hesaplanan karşılığıdır: "
-        "û = u − (β̂₀ − β₀) − (β̂₁ − β₁)·X. Tahminler anakütle parametrelerinden ne kadar ayrılırsa artık da hata "
+        "toplamı sıfır olmak zorunda değildir. Artık değer, hata teriminin veriden hesaplanan karşılığıdır: "
+        "û = u − (β̂₀ − β₀) − (β̂₁ − β₁)·X. Tahminler anakütle parametrelerinden ne kadar ayrılırsa artık değer da hata "
         f"teriminden o kadar ayrılır; bu örneklemde u − û, {plain(s['en_kucuk_fark'], 2)} ile "
         f"{plain(s['en_buyuk_fark'], 2)} arasındadır. Gerçek "
         "verilerde u hiç gözlenmez; yalnız û hesaplanır (§3.5, §3.7)."
@@ -406,8 +406,8 @@ def _errors_takeaway(state: LabState, parameters: Parameters) -> str:
 ERRORS = SimExperiment(
     topic_key=TOPIC,
     number=3,
-    title="Hata terimi ve artık aynı şey değildir",
-    question="Hata terimi u anakütle modeline aittir ve gözlenmez; artık û örneklemden hesaplanır. Simülasyonda "
+    title="Hata terimi ve artık değer aynı şey değildir",
+    question="Hata terimi u anakütle modeline aittir ve gözlenmez; artık değer û örneklemden hesaplanır. Simülasyonda "
              "ikisini de bildiğimize göre: ne kadar benzerler, nerede ayrılırlar?",
     note=NoteRef("3.5", objects=("§3.7",)),
     parameters=(
@@ -417,7 +417,7 @@ ERRORS = SimExperiment(
     ),
     dgp=_errors_dgp,
     dgp_note=(
-        "Simülasyonda hata terimi u çekildiği için bilinir. Artık û ise EKK doğrusu tahmin edildikten sonra "
+        "Simülasyonda hata terimi u çekildiği için bilinir. Artık değer û ise EKK doğrusu tahmin edildikten sonra "
         "hesaplanır. İkinci satır iki büyüklüğün cebirsel ilişkisidir."
     ),
     look_at=(
@@ -428,7 +428,7 @@ ERRORS = SimExperiment(
     build=_build_errors,
     metrics=_errors_metrics,
     takeaway=_errors_takeaway,
-    labels=(("x", "X"), ("y", "Y"), ("u", "Hata terimi u"), ("tahmin", "Tahmin Ŷ"), ("artik", "Artık û"),
+    labels=(("x", "X"), ("y", "Y"), ("u", "Hata terimi u"), ("tahmin", "Uyum değeri Ŷ"), ("artik", "Artık değer û"),
             ("fark", "u − û"), ("fark_mutlak", "|u − û|")),
 )
 

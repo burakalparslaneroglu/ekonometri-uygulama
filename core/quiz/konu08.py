@@ -73,7 +73,7 @@ QUESTIONS = (
             correct=1,
         ),
         explanation=(
-            "F'nin payı kısıt başına ortalama uyum kaybıdır: $(SSR_R - SSR_{UR})/q$. Payda, yani kısıtsız modelin artık "
+            "F'nin payı kısıt başına ortalama uyum kaybıdır: $(SSR_R - SSR_{UR})/q$. Payda, yani kısıtsız modelin artık değer "
             "değişkenliği iki testte aynı olduğundan dört kısıtlı testin F'si tek kısıtlınınkinin dörtte biridir. Daha "
             "fazla kısıt doğal olarak daha fazla uyum kaybı yaratabileceği için kayıp kısıt sayısına göre ölçeklenir "
             "(§8.4)."
@@ -96,7 +96,7 @@ QUESTIONS = (
         ),
         explanation=(
             "F testi üst kuyruk testidir: p = P(F(2, 522) > 0,02) ≈ 0,98. Çok küçük F, kısıtların yarattığı uyum "
-            "kaybının artık değişkenliğine göre ihmal edilebilir olduğunu gösterir; veri $H_0$ ile uyumludur ve $H_0$ "
+            "kaybının artık değerlerin değişkenliğine göre ihmal edilebilir olduğunu gösterir; veri $H_0$ ile uyumludur ve $H_0$ "
             "reddedilemez. F negatif olamaz ama 1'den küçük olabilir (§8.5)."
         ),
     ),
@@ -148,7 +148,7 @@ QUESTIONS = (
     Question(
         key="k06", concept="normal-olmayan-hatada-yaklasik-gecerlilik", note=_note("8.10", "Tablo 8.3"),
         prompt=(
-            "Bir ücret örnekleminde 2.000 çalışan vardır ve artıklar belirgin biçimde sağa çarpıktır. Eğitim "
+            "Bir ücret örnekleminde 2.000 çalışan vardır ve artık değerler belirgin biçimde sağa çarpıktır. Eğitim "
             "katsayısının geleneksel $t$ testi için aşağıdakilerden hangisi doğrudur?"
         ),
         answer=MultipleChoice(
@@ -221,12 +221,12 @@ QUESTIONS = (
     Question(
         key="d03", concept="f-paydasi-kisitsiz-modelin-artik-varyansi", note=_note("8.4"),
         prompt=(
-            "F istatistiğinin paydası $SSR_{UR}/(n - k - 1)$, kısıtsız modelin artık varyans tahminidir; kısıtlı "
-            "modelin artıkları paydaya girmez."
+            "F istatistiğinin paydası $SSR_{UR}/(n - k - 1)$, kısıtsız modelin artık değerlerin varyans tahminidir; kısıtlı "
+            "modelin artık değerleri paydaya girmez."
         ),
         answer=TrueFalse(True),
         explanation=(
-            "Payda kısıtsız modeldeki gözlem başına artık değişkenliğini temsil eder; n − k − 1 kısıtsız modelin artık "
+            "Payda kısıtsız modeldeki gözlem başına artık değerlerin değişkenliğini temsil eder; n − k − 1 kısıtsız modelin artık değer "
             "serbestlik derecesidir. Kısıtlı model yalnız paya, uyum kaybı $SSR_R - SSR_{UR}$ üzerinden girer. WAGE1'de "
             "payda 4966,303/522 ≈ 9,51'dir (§8.4)."
         ),
@@ -299,25 +299,25 @@ QUESTIONS = (
         explanation=(
             "Payda serbestlik derecesi kısıtsız modelinkidir: n − k − 1 = 206 − 5 − 1 = 200. "
             "F = [(1.250 − 1.100)/3]/(1.100/200) = 50/5,5 ≈ 9,09. Pay kısıt başına uyum kaybı, payda kısıtsız modelin "
-            "artık varyansıdır (§8.4)."
+            "artık değerlerin varyansıdır (§8.4)."
         ),
     ),
     Question(
         key="b02", concept="genel-test-ssr-bicimiyle", note=_note("8.7", "Tablo 8.1", "Kod 8.2"),
         prompt=(
-            "WAGE1 ücret modelinde kısıtsız modelin artık kareleri toplamı $SSR_{UR} = 4966{,}303$ (Bölüm 4'teki HKT), "
+            "WAGE1 ücret modelinde kısıtsız modelin artık değerlerin kareleri toplamı $SSR_{UR} = 4966{,}303$ (Bölüm 4'teki HKT), "
             "§8.6'daki beş basamaklı değerle $R^2_{UR} = 0{,}30642$'dir. $R^2 = 1 - SSR/\\text{TKT}$ olduğundan toplam "
-            "kareler toplamı TKT **(1)** olur. Genel testte kısıtlı model yalnız sabit terimi içerdiği için "
+            "kareler toplamı TKT **(1)** olur. Genel testte kısıtlı model yalnız kesim terimini içerdiği için "
             "$SSR_R = \\text{TKT}$'dir; bu testte kısıtların yarattığı uyum kaybı $SSR_R - SSR_{UR}$ **(2)** olur. "
             "(Virgülden sonra bir basamak yazın.)"
         ),
         answer=FillBlanks((NumberBlank(7160.4, 0.05, "7160,4"), NumberBlank(2194.1, 0.05, "2194,1"))),
         explanation=(
             "TKT = SSR_UR/(1 − R²_UR) = 4966,303/0,69358 ≈ 7160,4 (Bölüm 4'te aynı veri için TKT = 7160,414). Yalnız "
-            "sabitli modelin tahmini ortalamadır ve artıkları $Y_i - \\bar Y$'dir; bu yüzden onun SSR'si TKT'dir. Uyum "
+            "kesim terimli modelin tahmini ortalamadır ve artık değerleri $Y_i - \\bar Y$'dir; bu yüzden onun SSR'si TKT'dir. Uyum "
             "kaybı TKT − SSR_UR ≈ 2194,1, yani kısıtsız modelin açıklanan kareler toplamıdır (MKT). SSR biçimiyle "
             "F = (2194,1/3)/(4966,303/522) ≈ 76,87: Kod 8.2'deki `F-statistic`. Genel test, kısıtlı modeli yalnız "
-            "sabitli model olan özel bir ortak testtir (§8.7)."
+            "kesim terimli model olan özel bir ortak testtir (§8.7)."
         ),
     ),
     Question(
@@ -363,7 +363,7 @@ QUESTIONS = (
         answer=FillBlanks((NumberBlank(0.10, 0.005, "0,10"), NumberBlank(1.0, 0.005, "1,00"))),
         explanation=(
             "Tutarlılık: yayılım örneklemle küçülür, 0,20/2 = 0,10. Standartlaştırma ise tahmini standart hataya "
-            "bölerek yayılımı her n'de yaklaşık 1'e sabitler; asimptotik normallik bu standartlaştırılmış istatistiğin "
+            "bölerek yayılımı her n'de yaklaşık 1'e kesim terimleri; asimptotik normallik bu standartlaştırılmış istatistiğin "
             "biçiminin "
             "standart normale yaklaşmasıdır. Tablo 8.3'te standartlaştırılmış eğimin standart sapması n = 25, 100 ve "
             "500'de 1,038; 0,985 ve 0,998'dir (§8.10)."
@@ -408,7 +408,7 @@ QUESTIONS = (
                 Symbol("u", "R^2_{UR}", "kısıtsız modelin R²'si", 0.3, 0.6, aliases=_R2_UR),
                 Symbol("r", "R^2_{R}", "kısıtlı modelin R²'si", 0.05, 0.25, aliases=_R2_R),
                 Symbol("q", "q", "kısıt sayısı", 1, 4),
-                Symbol("d", "d", "kısıtsız modelin artık serbestlik derecesi", 50, 500),
+                Symbol("d", "d", "kısıtsız modelin artık değerlerin serbestlik derecesi", 50, 500),
             ),
             answer="((u - r)/q)/((1 - u)/d)",
             shown="\\frac{(R^2_{UR} - R^2_{R})/q}{(1 - R^2_{UR})/d}",

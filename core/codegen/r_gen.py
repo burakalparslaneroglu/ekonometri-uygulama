@@ -366,12 +366,12 @@ _STARS = [
 _HC_COVARIANCE = [
     "# Heteroskedastisiteye dayanıklı (HC) kovaryans matrisi, sandviç formülüyle (ek paket gerekmez):",
     "# (X'X)^-1 X' diag(w) X (X'X)^-1; w: HC0 = u², HC1 = u²·n/(n − k − 1), HC2 = u²/(1 − h), HC3 = u²/(1 − h)²;",
-    "# u: artıklar, h: kaldıraç değerleri (X(X'X)^-1 X' matrisinin köşegeni), k: sabit dışındaki açıklayıcı sayısı",
+    "# u: artık değerler, h: kaldıraç değerleri (X(X'X)^-1 X' matrisinin köşegeni), k: kesim terimi dışındaki açıklayıcı sayısı",
     "hc_kovaryans <- function(model, tur) {",
     "  X <- model.matrix(model)",
     "  u <- resid(model)",
     "  n <- nrow(X)",
-    "  k <- ncol(X) - 1  # sabit dışındaki açıklayıcı sayısı",
+    "  k <- ncol(X) - 1  # kesim terimi dışındaki açıklayıcı sayısı",
     "  ekmek <- solve(crossprod(X))",
     "  h <- rowSums((X %*% ekmek) * X)",
     "  w <- switch(tur, HC0 = u^2, HC1 = u^2 * n / (n - k - 1), HC2 = u^2 / (1 - h), HC3 = u^2 / (1 - h)^2)",
@@ -399,7 +399,7 @@ _ROBUST_MODEL = [
     '  ozet$coefficients[, "Std. Error"] <- sh',
     '  ozet$coefficients[, "t value"] <- t_degeri',
     '  ozet$coefficients[, "Pr(>|t|)"] <- 2 * pt(abs(t_degeri), df.residual(object), lower.tail = FALSE)',
-    "  b <- coef(object)[-1]  # sabit terim dışındaki katsayılar birlikte sıfır mı (genel F testi)",
+    "  b <- coef(object)[-1]  # kesim terimi dışındaki katsayılar birlikte sıfır mı (genel F testi)",
     "  v <- object$hc_kovaryans[-1, -1, drop = FALSE]",
     '  ozet$fstatistic[["value"]] <- drop(t(b) %*% solve(v, b)) / length(b)',
     "  ozet",
@@ -938,16 +938,16 @@ class RGenerator(Generator):
                 ]
             if op.fit_line:
                 lines += [
-                    "# Tahmin edilen doğru (sabit terim ve eğim veriden)",
+                    "# Uyum doğrusu (kesim terimi ve eğim veriden)",
                     f'abline(lm({op.y} ~ {op.x}, data = {op.frame}), col = "{PALETTE[1]}", lwd = 2.5)',
                 ]
-                names.append("Tahmin edilen doğru")
+                names.append("Uyum doğrusu")
                 colors.append(PALETTE[1])
                 types.append("1")
             for index, (first, second, label) in enumerate(op.lines):
                 color = REFERENCE_COLORS[index % len(REFERENCE_COLORS)]
                 lines += [
-                    f"# {label}: y = sabit + eğim · x (kesikli çizgi)",
+                    f"# {label}: y = kesim terimi + eğim · x (kesikli çizgi)",
                     f'abline(a = {_parameter(first)}, b = {_parameter(second)}, col = "{color}", lty = 2, lwd = 2.5)',
                 ]
                 names.append(label)
@@ -1985,13 +1985,13 @@ class RGenerator(Generator):
         x, aux = f"{op.name}_x", f"{op.name}_yardimci"
         if op.kind == "bp":
             build = [
-                "# Breusch–Pagan testi (Koenker'in n·R² biçimi): H0 homoskedastisite. Artık kareleri modelin",
+                "# Breusch–Pagan testi (Koenker'in n·R² biçimi): H0 homoskedastisite. Artık değerlerin kareleri modelin",
                 "# açıklayıcılarına regrese edilir; LM = n·R², serbestlik derecesi = açıklayıcı sayısı.",
-                f"{x} <- model.matrix({op.model})[, -1, drop = FALSE]  # sabit terim dışındaki sütunlar",
+                f"{x} <- model.matrix({op.model})[, -1, drop = FALSE]  # kesim terimi dışındaki sütunlar",
             ]
         else:
             build = [
-                "# White testi: H0 homoskedastisite. Artık kareleri açıklayıcıların düzeyleri, kareleri ve çapraz",
+                "# White testi: H0 homoskedastisite. Artık değerlerin kareleri açıklayıcıların düzeyleri, kareleri ve çapraz",
                 "# çarpımları üzerine regrese edilir; LM = n·R², serbestlik derecesi = bağımsız terim sayısı",
                 "# (0/1 kuklanın karesi kendisidir; lm() tekrar eden sütunu atar ve $rank onu saymaz).",
                 f"{x}_duzey <- model.matrix({op.model})[, -1, drop = FALSE]",
@@ -2033,7 +2033,7 @@ class RGenerator(Generator):
             f"# {op.comment}",
             f"# H0: {', '.join(f'{term} = 0' for term in op.terms)} (q = {len(op.terms)} kısıt). Kısıtlı model sınanan "
             "terimler çıkarılarak",
-            "# aynı gözlemlerle tahmin edilir; anova() iki modelin artık kareleri toplamından F'yi hesaplar.",
+            "# aynı gözlemlerle tahmin edilir; anova() iki modelin artık değerlerin kareleri toplamından F'yi hesaplar.",
             f"{op.name}_kisitli <- update({op.model}, . ~ . - {removed})",
             f"{op.name}_tablo <- anova({op.name}_kisitli, {op.model})",
             f"print({op.name}_tablo)",

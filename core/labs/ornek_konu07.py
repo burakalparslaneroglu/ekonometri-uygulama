@@ -322,7 +322,7 @@ def _step2(case: Case) -> LabStep:
             *_load(case),
             ModelValue("b2", "m", "coef", f"{capital(_name(case, term))} katsayısı β̂", term=term, decimals=3),
             ModelValue("sh2", "m", "se", "Standart hata se(β̂)", term=term, decimals=4),
-            ModelValue("sd_artik", "m", "df_resid", "Artık serbestlik derecesi n − k − 1", decimals=0),
+            ModelValue("sd_artik", "m", "df_resid", "Artık değerlerin serbestlik derecesi n − k − 1", decimals=0),
             Scalar("t0_2", E.div(E.ref("b2"), E.ref("sh2")), "t, H₀: β = 0", decimals=2),
             Scalar("ta_2", E.div(E.sub(E.ref("b2"), a), E.ref("sh2")), f"t, H₀: β = {level_text(a)}", decimals=2),
             Scalar("kritik_2", E.tinv(0.975, E.ref("sd_artik")), "Kritik değer t₀,₀₂₅", decimals=3),
@@ -358,7 +358,7 @@ def _step2(case: Case) -> LabStep:
         controls=(term_control, a_control),
         build=build,
         checks=(
-            _check("Sabit terim", CoefTarget("m", INTERCEPT), 3),
+            _check("Kesim terimi", CoefTarget("m", INTERCEPT), 3),
             *(_check(f"{case.name(name)} katsayısı", CoefTarget("m", name), 3) for name in regressors),
             *(() if exact else (_scalar("sh2", "Temel katsayının standart hatası", 4), _scalar("t0_2", "t, H₀: β = 0", 2),
                                 _scalar("ta_2", "t, H₀: β = a", 2))),
@@ -635,7 +635,7 @@ def _step7(case: Case) -> LabStep:
         k = len(chosen)
         n, df = int(result.nobs), int(result.df_resid)
         significant = [phrase(case, term) for term in chosen if result.pvalues[term] < 0.05]
-        text = (f"Artık serbestlik derecesi n − k − 1 = {sayim(n)} − {k} − 1 = {sayim(df)}. `coef` katsayı tahmini, "
+        text = (f"Artık değerlerin serbestlik derecesi n − k − 1 = {sayim(n)} − {k} − 1 = {sayim(df)}. `coef` katsayı tahmini, "
                 "`std err` klasik EKK standart hatası, `t` ve `P>|t|` H₀: β = 0 için t istatistiği ve iki taraflı "
                 "p-değeri, `[0.025 0.975]` yüzde 95 güven aralığıdır. ")
         text += (f"Yüzde 5 düzeyinde sıfırdan farklı eğimler: {listing(significant)}. " if significant
@@ -655,7 +655,7 @@ def _step7(case: Case) -> LabStep:
         explanation=(
             "Statsmodels çıktısında `coef`, `std err`, `t`, `P>|t|` ve `[0.025 0.975]` sütunları aynı katsayıyı farklı "
             "açılardan özetler. Önce bağımlı değişkeni ve gözlem sayısını, sonra ilgilenilen katsayı satırını okuyun. "
-            "Modeli değiştirin: artık serbestlik derecesi ve katsayı satırları nasıl değişiyor?"
+            "Modeli değiştirin: artık değerlerin serbestlik derecesi ve katsayı satırları nasıl değişiyor?"
         ),
         controls=(
             Choice("adim7_bagimli", "Bağımlı değişken", tuple(outcomes), y, help=f"Varsayılan: {case.name(y)}."),
@@ -664,11 +664,11 @@ def _step7(case: Case) -> LabStep:
         ),
         build=build,
         checks=stable_checks((
-            *(_check(f"{case.name(term) if term != INTERCEPT else 'Sabit terim'}: {label}",
+            *(_check(f"{case.name(term) if term != INTERCEPT else 'Kesim terimi'}: {label}",
                      CoefTarget("cikti", term, quantity), decimals)
               for term in (INTERCEPT, *regressors) for quantity, label, decimals in quantities),
             _check("Gözlem sayısı", ModelTarget("cikti", "nobs"), 0),
-            _check("Artık serbestlik derecesi", ModelTarget("cikti", "df_resid"), 0),
+            _check("Artık değerlerin serbestlik derecesi", ModelTarget("cikti", "df_resid"), 0),
             _check("R²", ModelTarget("cikti", "r2"), 3),
         ), _exact(case)),
         note_for=lambda state, choices: note(state, choices),
@@ -695,9 +695,9 @@ def _step8(case: Case) -> LabStep:
     checks = []
     for heading, _ in columns:
         for name in (*regressors, INTERCEPT):
-            checks.append(_check(f"{heading}: {case.name(name) if name != INTERCEPT else 'sabit'}",
+            checks.append(_check(f"{heading}: {case.name(name) if name != INTERCEPT else 'kesim terimi'}",
                                  TableTarget("tablo75", name, heading), 3))
-            checks.append(_check(f"{heading}: {case.name(name) if name != INTERCEPT else 'sabit'} (SH)",
+            checks.append(_check(f"{heading}: {case.name(name) if name != INTERCEPT else 'kesim terimi'} (SH)",
                                  TableTarget("tablo75", f"{name}_sh", heading), 3))
         checks.append(_check(f"{heading}: R²", TableTarget("tablo75", "r2", heading), 3))
     if logs:
@@ -931,7 +931,7 @@ def build(case: Case) -> LabSpec:
     labels.update(labels_of(house))
     if positive(case, case.roles[SONUC]):
         labels.setdefault(log_column(case, case.roles[SONUC]), log_label(case, case.roles[SONUC]))
-    labels[INTERCEPT] = "Sabit terim"
+    labels[INTERCEPT] = "Kesim terimi"
     spec = LabSpec(
         topic_key=TOPIC,
         title=str(case.extra.get("title", TITLE)),

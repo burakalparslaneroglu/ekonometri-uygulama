@@ -1,4 +1,4 @@
-"""Konu 11: Etkileşim Terimleri ve Gruplar Arasında Sabit ile Eğim Farklılıkları."""
+"""Konu 11: Etkileşim Terimleri ve Gruplar Arasında Kesim terimi ile Eğim Farklılıkları."""
 
 from __future__ import annotations
 

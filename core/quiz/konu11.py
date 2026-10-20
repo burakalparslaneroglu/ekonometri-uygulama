@@ -81,7 +81,7 @@ QUESTIONS = (
         ),
         explanation=(
             "Additif modelde iki grubun doğruları paraleldir: reklam eğimi her iki grupta da $\\beta_1$'dir ve "
-            "$\\gamma_0$ yalnız düzey (sabit) farkını ölçer; $\\beta_1 + \\gamma_0$ bir eğim değildir. Model eğim "
+            "$\\gamma_0$ yalnız düzey (kesim terimi) farkını ölçer; $\\beta_1 + \\gamma_0$ bir eğim değildir. Model eğim "
             "farkını tahmin etmediği için bu konuda hiçbir şey söyleyemez; soru $\\text{online} \\times \\text{reklam}$ "
             "etkileşimini ve onun katsayısının testini gerektirir. Ortak eğim varsayımı veriyle ayrıca değerlendirilir "
             "(§11.1)."
@@ -104,7 +104,7 @@ QUESTIONS = (
         ),
         explanation=(
             "(B) ve (C), (D)'nin birer kısıtlı hâlidir: (B) $\\gamma_1 = 0$, (C) $\\gamma_0 = 0$ kısıtını dayatır; (A) "
-            "ikisini birden. Terim eklemek EKK'de artık kareleri toplamını artıramaz; bu yüzden genel model en az "
+            "ikisini birden. Terim eklemek EKK'de artık değerlerin kareleri toplamını artıramaz; bu yüzden genel model en az "
             "kısıtlı modeller kadar iyi uyar, (A) da (B) ve (C)'den iyi uyamaz. (B) ile (C) iç içe değildir: hangisinin "
             "daha yüksek $R^2$ vereceği veriye bağlıdır. Model seçimi yalnız $R^2$'ye dayanmaz; notlar genel modelle "
             "başlamayı en güvenli yol sayar, hiyerarşi ilkesi de etkileşim varken ana etkilerin tutulmasını ister "
@@ -143,7 +143,7 @@ QUESTIONS = (
             (
                 "$\\gamma_0$ ve $\\gamma_1$'in t testleri ayrı ayrı yapılır; ikisi de reddedilmezse fark yoktur",
                 "$H_0: \\gamma_0 = \\gamma_1 = 0$ ortak F testi yapılır; bu test X = 5'teki farkı sınar",
-                "Sabit terimin t testi yapılır; sabit, X = 5'teki grup farkını gösterir",
+                "Kesim teriminin t testi yapılır; sabit, X = 5'teki grup farkını gösterir",
                 "X, 5 etrafında merkezlenir ($X - 5$) ve yeni modelde D katsayısının t testi yapılır",
             ),
             correct=3,
@@ -158,7 +158,7 @@ QUESTIONS = (
     Question(
         key="k05", concept="iki-etkilesimli-formulun-terimleri", note=_note("11.9"),
         prompt=(
-            "`statsmodels`'te `y ~ D * X + D * Z` formülü modele sabit dışında hangi terimleri koyar?"
+            "`statsmodels`'te `y ~ D * X + D * Z` formülü modele kesim terimi dışında hangi terimleri koyar?"
         ),
         answer=MultipleChoice(
             (
@@ -256,7 +256,7 @@ QUESTIONS = (
         explanation=(
             "Merkezleme modelin parametrelerini başka bir referans noktasında ifade eder: kukla katsayısı X = c'deki farka ($\\gamma_0 + \\gamma_1c$) "
             "dönüşür ve belirsizliği c'ye bağlıdır; veri merkezinde en küçük, veri aralığının dışında büyüktür. "
-            "Etkileşim katsayısı ve standart hatası, tahmin edilen değerler ve $R^2$ değişmez. Konu 11 Sezgi Deney 1'in "
+            "Etkileşim katsayısı ve standart hatası, uyum değerleri ve $R^2$ değişmez. Konu 11 Sezgi Deney 1'in "
             "varsayılan ayarında fark tahmininin ampirik standart sapması c = 0'da 0,209, X = 13'te 0,047'dir (§11.5)."
         ),
     ),
@@ -284,7 +284,7 @@ QUESTIONS = (
         answer=TrueFalse(True),
         explanation=(
             "Merkezleme hangi c seçilirse seçilsin kısıtsız modelin ($1, X, D, DX$) ve kısıtlı modelin ($1, X$) "
-            "tahmin edilen değerlerini değiştirmez; iki modelin SSR'leri ve F istatistiği aynı kalır. Buna karşılık "
+            "uyum değerlerini değiştirmez; iki modelin SSR'leri ve F istatistiği aynı kalır. Buna karşılık "
             "$\\gamma_0$'ın t testi merkez noktasındaki farkı sınar ve c ile değişir. Konu 11 Sezgi Deney 3'te c "
             "değiştirildiğinde F'nin ret oranı aynı kalır, $\\gamma_0$'ınki değişir (§11.8)."
         ),
@@ -378,7 +378,7 @@ QUESTIONS = (
         ),
         answer=FillBlanks((NumberBlank(1.5, 0.005, "1,5"), NumberBlank(-0.2, 0.005, "−0,2"))),
         explanation=(
-            "Yalnız $D$, $X$ ve $DX$ içeren etkileşimli model her gruba kendi sabitini ve eğimini verir; EKK iki grubun "
+            "Yalnız $D$, $X$ ve $DX$ içeren etkileşimli model her gruba kendi kesim terimini ve eğimini verir; EKK iki grubun "
             "ayrı regresyonlarıyla aynı doğruları bulur. $\\widehat\\beta_0 = 2{,}0$, $\\widehat\\beta_1 = 0{,}5$; "
             "$\\widehat\\gamma_0 = 3{,}5 - 2{,}0 = 1{,}5$ ve $\\widehat\\gamma_1 = 0{,}3 - 0{,}5 = -0{,}2$. Modele "
             "gruplar için ortak eğimli başka bir değişken eklenirse bu eşitlik bozulur (§11.2)."
@@ -389,8 +389,8 @@ QUESTIONS = (
         prompt=(
             "Kod 11.2'deki WAGE1 etkileşim modelinde (n = 526; kadın kuklası `female`, merkezlenmiş eğitim `educ12`, "
             "etkileşim `female:educ12`, deneyim `exper` ve kıdem `tenure`) $H_0: \\gamma_0 = \\gamma_1 = 0$ ortak F "
-            "testi için kısıtlı model de tahmin ediliyor. Kısıtlı modelin artık serbestlik derecesi **(1)**, kısıtsız "
-            "modelin artık serbestlik derecesi **(2)** olur."
+            "testi için kısıtlı model de tahmin ediliyor. Kısıtlı modelin artık değerlerin serbestlik derecesi **(1)**, kısıtsız "
+            "modelin artık değerlerin serbestlik derecesi **(2)** olur."
         ),
         answer=FillBlanks((NumberBlank(522.0, 0.5, "522"), NumberBlank(520.0, 0.5, "520"))),
         explanation=(
@@ -453,13 +453,13 @@ QUESTIONS = (
         key="e03", concept="merkezlenmis-sabit", note=_note("11.5"),
         prompt=(
             "Özgün model $Y = \\beta_0 + \\beta_1X + \\gamma_0D + \\gamma_1DX + u$, merkezlenmiş model "
-            "$Y = \\alpha_0 + \\beta_1(X - c) + \\gamma_0^{c}D + \\gamma_1D(X - c) + u$'dur. Merkezlenmiş modelin sabiti "
+            "$Y = \\alpha_0 + \\beta_1(X - c) + \\gamma_0^{c}D + \\gamma_1D(X - c) + u$'dur. Merkezlenmiş modelin kesim terimi "
             "$\\alpha_0$'ı $\\beta_0$, $\\beta_1$ ve c cinsinden yazın."
         ),
         answer=Equation(
             lhs="\\alpha_0",
             symbols=(
-                _coefficient("b", 0, -5, 5, "özgün modelin sabiti"),
+                _coefficient("b", 0, -5, 5, "özgün modelin kesim terimi"),
                 _coefficient("b", 1, -2, 2, "referans grubun eğimi"),
                 Symbol("c", "c", "merkez noktası", 1, 20),
             ),
@@ -469,7 +469,7 @@ QUESTIONS = (
         explanation=(
             "İki model aynı doğruları tanımlar. $D = 0$ ve $X = c$ iken merkezlenmiş model $\\alpha_0$'ı, özgün model "
             "$\\beta_0 + \\beta_1c$'yi verir; ikisi eşittir. $\\alpha_0$, referans grubun X = c'deki koşullu beklenen "
-            "değeridir; tahmini $\\widehat\\alpha_0$ bu noktadaki tahmin edilen değerdir. Aynı yolla $\\gamma_0^{c} = "
+            "değeridir; tahmini $\\widehat\\alpha_0$ bu noktadaki uyum değeridir. Aynı yolla $\\gamma_0^{c} = "
             "\\gamma_0 + \\gamma_1c$ bulunur; eğimler ve etkileşim katsayısı değişmez (§11.5)."
         ),
     ),

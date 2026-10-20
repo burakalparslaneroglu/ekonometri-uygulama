@@ -1,6 +1,6 @@
 """Konu 12 uygulaması: heteroskedastisite ve heteroskedastisiteye dayanıklı çıkarım (gerçek veri).
 
-Bölüm 12'nin çözümlü örnekleri bölüm sırasıyla: HPRICE1 düzey ve log modellerinin artık grafikleri (§12.4, Şekil
+Bölüm 12'nin çözümlü örnekleri bölüm sırasıyla: HPRICE1 düzey ve log modellerinin artık değer grafikleri (§12.4, Şekil
 12.3–12.5), Breusch–Pagan ve White testleri (§12.5, Tablo 12.2), HC0–HC3 dayanıklı kovaryans seçenekleri (§12.6, Tablo 12.3),
 geleneksel ve HC1 çıkarımı: düzey modeli, güven aralıkları, log modeli ve makale tablosu (§12.7, Şekil 12.6, Tablo 12.4),
 dayanıklı ortak test (§12.8, Tablo 12.5) ve WAGE1 düzey–log karşılaştırması (§12.10). Heteroskedastik benzetim
@@ -8,7 +8,7 @@ dayanıklı ortak test (§12.8, Tablo 12.5) ve WAGE1 düzey–log karşılaştı
 sayıdır; değer notlardan kopyalanmıştır.
 
 Dayanıklı kovaryans statsmodels'te ``fit(cov_type="HC1", use_t=True)`` ile (t ve F dağılımı, n − k − 1 serbestlik
-derecesi, k sabit dışındaki açıklayıcı sayısı; notlardaki ``get_robustcov_results`` ile aynı sayılar), R'de sandviç
+derecesi, k kesim terimi dışındaki açıklayıcı sayısı; notlardaki ``get_robustcov_results`` ile aynı sayılar), R'de sandviç
 formülüyle açıkça hesaplanır. Notlardan farklı bir seçimde notlardaki model (HC1, notlardaki açıklayıcılar ve sınanan
 katsayılar) yan yana gösterilir.
 Etkileşim: incelenen model (Adım 1–3), yardımcı regresyon (Adım 2), dayanıklı kovaryans türü (Adım 4; Adım 5–7 aynı
@@ -64,19 +64,19 @@ WAGE = "wage1"
 LEVEL_X = ("lotsize1000", "sqrft100", "bdrms")
 LOG_X = ("llotsize", "lsqrft", "bdrms")
 MODELS = {
-    "duzey": ("m_duzey", "price", LEVEL_X, "Fiyat düzeyi", "Tahmin edilen konut fiyatı (bin dolar)"),
-    "log": ("m_log", "lprice", LOG_X, "Log fiyat", "Tahmin edilen log konut fiyatı"),
+    "duzey": ("m_duzey", "price", LEVEL_X, "Fiyat düzeyi", "Konut fiyatının uyum değeri (bin dolar)"),
+    "log": ("m_log", "lprice", LOG_X, "Log fiyat", "Log konut fiyatının uyum değeri"),
 }
 """Bölüm 12'nin iki HPRICE1 modeli: (model adı, bağımlı değişken, açıklayıcılar, kısa ad, tahmin ekseninin adı)."""
 MODEL_OPTIONS = (("duzey", "Fiyat düzeyi: price ~ lotsize1000 + sqrft100 + bdrms (notlar)"),
                  ("log", "Log fiyat: lprice ~ llotsize + lsqrft + bdrms"))
 HC_TYPES = ("HC0", "HC1", "HC2", "HC3")
 TERM_WORDS = {"lotsize1000": "arsa büyüklüğü", "sqrft100": "konut büyüklüğü", "bdrms": "yatak odası sayısı",
-              "llotsize": "log arsa büyüklüğü", "lsqrft": "log konut büyüklüğü", INTERCEPT: "sabit terim"}
+              "llotsize": "log arsa büyüklüğü", "lsqrft": "log konut büyüklüğü", INTERCEPT: "kesim terimi"}
 PLOT_LABELS = (("lotsize1000", "Arsa / 1.000"), ("sqrft100", "Konut / 100"), ("bdrms", "Yatak odası"),
                ("llotsize", "log(arsa)"), ("lsqrft", "log(konut)"))
 RESIDUAL_UNITS = {"duzey": " (bin dolar)", "log": " (log birimi)"}
-"""Artık eksenlerinin birimi: düzey modelinde fiyat bin dolar, log modelde log fiyat."""
+"""Artık değer eksenlerinin birimi: düzey modelinde fiyat bin dolar, log modelde log fiyat."""
 LEVERAGE = {"duzey": 0.843, "log": 0.319}
 """Arsası 92.681 fit² olan konutun kaldıracı (iki modelde de en büyük kaldıraç; ortalama kaldıraç 4/88 ≈ 0,045);
 testle doğrulanır."""
@@ -116,7 +116,7 @@ def _models() -> tuple:
                  for name, outcome, terms, title, _ in MODELS.values())
 
 
-# --- Adım 1: artık grafikleri ------------------------------------------------------------------------------------
+# --- Adım 1: artık değer grafikleri ------------------------------------------------------------------------------------
 
 MODEL_1 = Choice("adim1_model", "İncelenen model", MODEL_OPTIONS, "duzey",
                  help="Notlarda önce düzey modeli (Şekil 12.3–12.4), sonra log model (Şekil 12.5).")
@@ -132,27 +132,27 @@ def _residual_plots(choices) -> tuple:
         *_models(),
         ShowModel(name, f"{title} modelinin katsayıları", columns=("coef",), stats=("nobs", "r2"), exact=True),
         CopyFrame("tani", HOUSE, "Tanı için veri setinin kopyası (özgün veri değişmez)"),
-        Residuals("tani", "artik", name, f"{title} modelinin artıkları û"),
-        Derive("tani", "tahmin", E.sub(E.var(outcome), E.var("artik")), "Tahmin edilen değer: Ŷ = Y − û"),
-        Derive("tani", "mutlak", E.absolute(E.var("artik")), "Mutlak artık |û|"),
-        ScatterPlot("tani", "tahmin", "artik", axis, "Artık" + RESIDUAL_UNITS[kind],
-                    ("Şekil 12.3: HPRICE1 düzey modelinde artıklar ve tahmin edilen fiyatlar" if level
-                     else "Şekil 12.5: HPRICE1 log modelinde artıklar ve tahmin edilen log fiyatlar"),
+        Residuals("tani", "artik", name, f"{title} modelinin artık değerleri û"),
+        Derive("tani", "tahmin", E.sub(E.var(outcome), E.var("artik")), "Uyum değeri: Ŷ = Y − û"),
+        Derive("tani", "mutlak", E.absolute(E.var("artik")), "Mutlak artık değer |û|"),
+        ScatterPlot("tani", "tahmin", "artik", axis, "Artık değer" + RESIDUAL_UNITS[kind],
+                    ("Şekil 12.3: HPRICE1 düzey modelinde artık değerler ve fiyatın uyum değerleri" if level
+                     else "Şekil 12.5: HPRICE1 log modelinde artık değerler ve log fiyatın uyum değerleri"),
                     lines=((0.0, 0.0, "Sıfır çizgisi"),), opacity=0.8),
-        ScatterPlot("tani", "tahmin", "mutlak", axis, "Mutlak artık" + RESIDUAL_UNITS[kind],
-                    ("Şekil 12.4: HPRICE1 düzey modelinde mutlak artıklar ve tahmin edilen fiyatlar" if level
-                     else "Log modelde mutlak artıklar ve tahmin edilen log fiyatlar"), opacity=0.8),
-        *(Percentile("tani", "tahmin", p, f"q{p}", f"Tahmin edilen değerin {p}. yüzdeliği", decimals=3)
+        ScatterPlot("tani", "tahmin", "mutlak", axis, "Mutlak artık değer" + RESIDUAL_UNITS[kind],
+                    ("Şekil 12.4: HPRICE1 düzey modelinde mutlak artık değerler ve fiyatın uyum değerleri" if level
+                     else "Log modelde mutlak artık değerler ve log fiyatın uyum değerleri"), opacity=0.8),
+        *(Percentile("tani", "tahmin", p, f"q{p}", f"Uyum değerinin {p}. yüzdeliği", decimals=3)
           for p in (25, 50, 75)),
         Derive("tani", "ceyrek", E.add(E.add(E.add(1, E.compare("ge", E.var("tahmin"), E.ref("q25"))),
                                               E.compare("ge", E.var("tahmin"), E.ref("q50"))),
                                         E.compare("ge", E.var("tahmin"), E.ref("q75"))),
-               "Tahmin edilen değerin çeyreği: 1 (en düşük) … 4 (en yüksek)"),
+               "Uyum değerinin çeyreği: 1 (en düşük) … 4 (en yüksek)"),
         GroupSummary("tani", "ceyrek", (("n", "artik", "count"), ("ss", "artik", "std"), ("ort_mutlak", "mutlak", "mean")),
                      "yayilim", (1, 2, 3, 4), decimals=3 if level else 4, labels=QUARTER_LABELS,
-                     heading="Tahmin edilen değer",
-                     title="Artıkların yayılımı tahmin edilen değerin çeyreklerine göre (standart sapma ve ortalama "
-                           "mutlak artık)"),
+                     heading="Uyum değeri",
+                     title="Artık değerlerin yayılımı uyum değerinin çeyreklerine göre (standart sapma ve ortalama "
+                           "mutlak artık değer)"),
     )
 
 
@@ -162,13 +162,13 @@ def _residual_note(state, choices) -> str:
     mean = table["ort_mutlak"].to_numpy(dtype=float)
     spread = table["ss"].to_numpy(dtype=float)
     decimals = 2 if kind == "duzey" else 4
-    text = (f"Ortalama mutlak artık ilk üç çeyrekte {plain(mean[:3].min(), decimals)} ile {plain(mean[:3].max(), decimals)} "
-            f"arasında, en yüksek tahmin çeyreğinde {plain(mean[3], decimals)}; artıkların standart sapması en yüksek "
+    text = (f"Ortalama mutlak artık değer ilk üç çeyrekte {plain(mean[:3].min(), decimals)} ile {plain(mean[:3].max(), decimals)} "
+            f"arasında, en yüksek tahmin çeyreğinde {plain(mean[3], decimals)}; artık değerlerin standart sapması en yüksek "
             f"çeyrekte {plain(spread[3], decimals)}, diğer çeyreklerde {plain(spread[:3].min(), decimals)}–"
             f"{plain(spread[:3].max(), decimals)}. ")
     if kind == "duzey":
-        text += ("Düşük ve orta tahmin düzeylerinde artıklar dar bir alanda toplanırken yüksek tahmin edilen fiyatlarda "
-                 "çok daha büyük pozitif ve negatif artıklar görülür: huni biçimi heteroskedastisite şüphesini güçlendirir. ")
+        text += ("Düşük ve orta uyum değeri düzeylerinde artık değerler dar bir alanda toplanırken yüksek fiyat uyum değerlerinde "
+                 "çok daha büyük pozitif ve negatif artık değerler görülür: huni biçimi heteroskedastisite şüphesini güçlendirir. ")
     else:
         text += ("Log modelde yayılım düzey modeline göre daha dengelidir; log dönüşümü ölçek etkisini azaltabilir ama "
                  "katsayıların yorumunu da değiştirir (esneklik). ")
@@ -181,7 +181,7 @@ def _residual_note(state, choices) -> str:
 TEST_2 = Choice("adim2_test", "Yardımcı regresyon",
                 (("bp", "Breusch–Pagan: açıklayıcıların düzeyleri (notlar)"),
                  ("white", "White: düzeyler, kareler ve çapraz çarpımlar")), "bp",
-                help="Yardımcı regresyonun bağımlı değişkeni artıkların karesidir; LM = n·R².")
+                help="Yardımcı regresyonun bağımlı değişkeni artık değerlerin karesidir; LM = n·R².")
 MODEL_2 = Choice("adim2_model", "Model", MODEL_OPTIONS, "duzey", help="Notlarda düzey modeli (§12.5).")
 
 
@@ -212,15 +212,15 @@ def _tests(choices) -> tuple:
     rows = tuple((MODELS[model_kind][3], model_kind) for model_kind in ("duzey", "log"))
     return (
         CopyFrame("yardimci", HOUSE, "Yardımcı regresyon için veri setinin kopyası (özgün veri değişmez)"),
-        Residuals("yardimci", "artik", name, f"{title} modelinin artıkları û"),
-        Derive("yardimci", "artik2", E.power(E.var("artik"), 2), "Kareli artık û²: hata varyansının gözlenebilir ölçüsü"),
+        Residuals("yardimci", "artik", name, f"{title} modelinin artık değerleri û"),
+        Derive("yardimci", "artik2", E.power(E.var("artik"), 2), "Artık değerin karesi û²: hata varyansının gözlenebilir ölçüsü"),
         *white,
         OLS("m_yardimci", "yardimci", "artik2", aux_terms,
             f"{HETERO_TESTS[test]} yardımcı regresyonu: {_formula('artik2', aux_terms)}"),
         ModelValue("r2_yardimci", "m_yardimci", "r2", "Yardımcı regresyonun R²'si", decimals=6),
         ModelValue("n_yardimci", "m_yardimci", "nobs", "Gözlem sayısı n", decimals=0),
         Scalar("lm_elle", E.mul(E.ref("n_yardimci"), E.ref("r2_yardimci")), "LM = n·R² (elle)", decimals=3),
-        Scalar("q_yardimci", E.const(len(aux_terms)), "Serbestlik derecesi q (sabit dışındaki terim sayısı)", decimals=0),
+        Scalar("q_yardimci", E.const(len(aux_terms)), "Serbestlik derecesi q (kesim terimi dışındaki terim sayısı)", decimals=0),
         Scalar("p_elle", E.chi2sf(E.ref("lm_elle"), E.ref("q_yardimci")), "p = P(χ²_q > LM)", decimals=4,
                p_value=True),
         HeteroskedasticityTest("lm_kutuphane", "p_kutuphane", name, test,
@@ -246,7 +246,7 @@ def _tests_note(state, choices) -> str:
     return (f"{HETERO_TESTS[test]} ({MODELS[kind][3].lower()} modeli): yardımcı regresyonun R²'si "
             f"{plain(s['r2_yardimci'], 6)}, LM = n·R² = "
             f"{plain(s['n_yardimci'], 0)} × {plain(s['r2_yardimci'], 6)} {sign} {plain(s['lm_elle'], 3)}, "
-            f"q = {plain(s['q_yardimci'], 0)} (yardımcı regresyondaki sabit dışındaki terim sayısı), "
+            f"q = {plain(s['q_yardimci'], 0)} (yardımcı regresyondaki kesim terimi dışındaki terim sayısı), "
             f"{_p(s['p_elle'])}; tek çağrı ({'statsmodels `het_breuschpagan`' if test == 'bp' else '`white_testi`'}) "
             f"aynı sayıyı verir ({plain(s['lm_kutuphane'], 3)}). Yüzde 5 düzeyinde homoskedastisite hipotezi "
             + ("reddedilir. " if rejected else "reddedilemez; reddedememek homoskedastisitenin kanıtlandığı anlamına "
@@ -291,13 +291,13 @@ def _hc_note(state, choices) -> str:
     text = (f"Katsayılar beş sütunda aynıdır; yalnız parantez içindeki standart hatalar ve yıldızlar değişir. "
             f"{word.capitalize()} katsayısının standart hatası: geleneksel {plain(s['sh3_gel'], 4)}, HC0 "
             f"{plain(s['sh3_hc0'], 4)}, HC1 {plain(s['sh3_hc1'], 4)}, HC2 {plain(s['sh3_hc2'], 4)}, HC3 "
-            f"{plain(s['sh3_hc3'], 4)}. HC1, HC0 varyansını n/(n − k − 1) = {n}/{df} ile çarpar (k: sabit dışındaki "
+            f"{plain(s['sh3_hc3'], 4)}. HC1, HC0 varyansını n/(n − k − 1) = {n}/{df} ile çarpar (k: kesim terimi dışındaki "
             f"açıklayıcı sayısı); standart hata bunun kareköküyle büyür: {plain(s['sh3_hc0'], 5)} × √({n}/{df}) {sign} "
             f"{plain(s['sh3_hc1'], 4)}. ")
     if kind == "duzey":
         text += ("HC2 ve HC3'teki büyük artış yüksek kaldıraçlı bir gözlemden gelir: arsası 92.681 fit² olan konutun "
                  f"kaldıracı yaklaşık {plain(LEVERAGE['duzey'], 2)} (ortalama kaldıraç (k + 1)/n = 4/88 ≈ 0,045). HC3 bu "
-                 "gözlemin kareli artığını (1 − h)² ≈ 0,025 ile bölerek yaklaşık 40 kat büyütür; arsa katsayısının HC3 "
+                 "gözlemin artık değerin karesiini (1 − h)² ≈ 0,025 ile bölerek yaklaşık 40 kat büyütür; arsa katsayısının HC3 "
                  "varyansının yaklaşık %99'u bu tek gözlemden gelir. ")
     else:
         text += (f"Log modelde aynı konutun kaldıracı yaklaşık {plain(LEVERAGE['log'], 2)}: log dönüşümü uç arsanın "
@@ -670,7 +670,7 @@ _COLUMNS = ("coef", "OLS se", "OLS p", "HC1 se", "HC1 p")
 _TABLE122 = (("Fiyat düzeyi", (14.092, 0.0028, 33.732, 0.0)), ("Log fiyat", (4.223, 0.2383, 9.549, 0.3882)))
 TABLE124_WORDS = {"lotsize1000": "arsa", "lotsize1000_sh": "arsa (SH)", "sqrft100": "konut büyüklüğü",
                   "sqrft100_sh": "konut büyüklüğü (SH)", "bdrms": "yatak odası", "bdrms_sh": "yatak odası (SH)",
-                  INTERCEPT: "sabit", f"{INTERCEPT}_sh": "sabit (SH)", "n": "gözlem sayısı", "r2": "R²"}
+                  INTERCEPT: "kesim terimi", f"{INTERCEPT}_sh": "kesim terimi (SH)", "n": "gözlem sayısı", "r2": "R²"}
 """Tablo 12.4 kontrol etiketleri: satır anahtarlarının Türkçe adları."""
 _TABLE124 = (
     ("(1) Geleneksel SH", (("lotsize1000", 2.068), ("lotsize1000_sh", 0.642), ("sqrft100", 12.278),
@@ -694,12 +694,12 @@ def _output_checks(table: str, rows, source: str) -> tuple[Check, ...]:
 STEPS = (
     interactive_step(
         number=1,
-        title="Artık grafikleriyle ilk tanı",
+        title="Artık değer grafikleriyle ilk tanı",
         note=NoteRef("12.4", 0, ("Şekil 12.3", "Şekil 12.4", "Şekil 12.5")),
         explanation=(
-            "Hata terimleri gözlenmez; EKK artıkları $\\hat u_i$ kullanılır. Artık–tahmin grafiğinde yatay eksende "
+            "Hata terimleri gözlenmez; EKK artık değerleri $\\hat u_i$ kullanılır. Artık değer–tahmin grafiğinde yatay eksende "
             "$\\hat Y_i$, dikey eksende $\\hat u_i$ vardır. Homoskedastik modelde sıfır çizgisi çevresindeki dikey "
-            "yayılım yaklaşık sabittir; huni ya da yelpaze biçimi heteroskedastisite şüphesi doğurur. Mutlak artıklar "
+            "yayılım yaklaşık sabittir; huni ya da yelpaze biçimi heteroskedastisite şüphesi doğurur. Mutlak artık değerler "
             "hata büyüklüğünü işaretinden bağımsız gösterir. İncelenen modeli değiştirin."
         ),
         controls=(MODEL_1,),
@@ -721,8 +721,8 @@ STEPS = (
         note=NoteRef("12.5", 0, ("Tablo 12.2", "Kod 12.1")),
         explanation=(
             "İki testin sıfır hipotezi homoskedastisitedir: $H_0: \\operatorname{Var}(u_i \\mid X_i) = \\sigma^2$. "
-            "Kareli artıklar $\\hat u_i^2$ yardımcı regresyonla açıklanır; $H_0$ altında ve büyük örneklemde "
-            "$LM = nR^2_{aux}$ yaklaşık $\\chi^2_q$ dağılır ($q$: yardımcı regresyondaki sabit dışındaki terim sayısı). "
+            "Artık değerlerin kareleri $\\hat u_i^2$ yardımcı regresyonla açıklanır; $H_0$ altında ve büyük örneklemde "
+            "$LM = nR^2_{aux}$ yaklaşık $\\chi^2_q$ dağılır ($q$: yardımcı regresyondaki kesim terimi dışındaki terim sayısı). "
             "Breusch–Pagan yardımcı regresyonda modelin açıklayıcılarını, White ayrıca karelerini ve çapraz çarpımlarını "
             "kullanır. Küçük p-değeri homoskedastisitenin reddedilmesine yol açar. Testi ve modeli değiştirin."
         ),
@@ -746,10 +746,10 @@ STEPS = (
             "§12.3'teki gerçek varyans formülünde $\\sigma_i^2$ yerine gözleme özgü bir tahmin $\\omega_i$ konur: "
             "$\\widehat{\\operatorname{Var}}(\\hat\\beta_1) = \\sum_i (X_i - \\bar X)^2\\omega_i / [\\sum_i (X_i - "
             "\\bar X)^2]^2$; çoklu regresyonda aynı fikir bütün katsayılara uygulanır. HC0'da $\\omega_i = \\hat u_i^2$; "
-            "HC1 bunu $n/(n - k - 1)$ ile çarpar ($k$: sabit dışındaki açıklayıcı sayısı); HC2 ve HC3 gözlemin "
+            "HC1 bunu $n/(n - k - 1)$ ile çarpar ($k$: kesim terimi dışındaki açıklayıcı sayısı); HC2 ve HC3 gözlemin "
             "kaldıracı $h_i$ ile $\\hat u_i^2/(1 - h_i)$ ve $\\hat u_i^2/(1 - h_i)^2$ kullanır. Kaldıraç, gözlemin "
             "açıklayıcı değerlerinin örneklemin merkezinden uzaklığını ölçer ($0 < h_i < 1$; basit regresyonda "
-            "$h_i = 1/n + (X_i - \\bar X)^2 / \\sum_j (X_j - \\bar X)^2$). Katsayılar, tahmin edilen değerler ve R² "
+            "$h_i = 1/n + (X_i - \\bar X)^2 / \\sum_j (X_j - \\bar X)^2$). Katsayılar, uyum değerleri ve R² "
             "değişmez. Modeli değiştirin."
         ),
         controls=(MODEL_3,),
@@ -767,7 +767,7 @@ STEPS = (
         explanation=(
             "Düzey fiyat modelinin geleneksel ve dayanıklı sonuçları aynı tabloda: katsayılar aynıdır, standart hata, "
             "p-değeri ve güven aralıkları değişir. statsmodels'te `fit(cov_type=\"HC1\", use_t=True)` (Kod 12.2) t ve F "
-            "dağılımını ($n - k - 1$ serbestlik derecesi; $k$ sabit dışındaki açıklayıcı sayısı) kullanır; `use_t` "
+            "dağılımını ($n - k - 1$ serbestlik derecesi; $k$ kesim terimi dışındaki açıklayıcı sayısı) kullanır; `use_t` "
             "yazılmazsa normal dağılım kullanılır ve p-değerleri notlardakinden farklı olur. Dayanıklı kovaryans türünü "
             "değiştirin: notlardaki HC1 sütunu yan yana gösterilir."
         ),
@@ -787,7 +787,7 @@ STEPS = (
         explanation=(
             "$\\ln(\\text{price}_i) = \\beta_0 + \\beta_1 \\ln(\\text{lotsize}_i) + \\beta_2 \\ln(\\text{sqrft}_i) + "
             "\\beta_3 \\text{bdrms}_i + u_i$: arsa ve konut büyüklüğü katsayıları esnekliktir. Notlardaki HC1 hesabıyla "
-            "log modelde geleneksel ve dayanıklı standart hatalar birbirine yakındır; bu, artık grafiği ve testlerle "
+            "log modelde geleneksel ve dayanıklı standart hatalar birbirine yakındır; bu, artık değer grafiği ve testlerle "
             "uyumludur. Adım 4'teki kovaryans seçimi bu adımı da belirler." + LOG_MEAN_NOTE
         ),
         uses=(HC_4,),
@@ -887,17 +887,17 @@ KONU12_LAB = LabSpec(
     steps=STEPS,
     labels=(
         *W.labels(HOUSE, WAGE),
-        (INTERCEPT, "Sabit terim"),
+        (INTERCEPT, "Kesim terimi"),
         ("lotsize1000", "Arsa büyüklüğü/1.000 (bin fit²)"),
         ("sqrft100", "Konut büyüklüğü/100 (yüz fit²)"),
-        ("artik", "Artık û"),
-        ("artik2", "Kareli artık û²"),
-        ("tahmin", "Tahmin edilen değer Ŷ"),
-        ("mutlak", "Mutlak artık |û|"),
-        ("ceyrek", "Tahmin edilen değerin çeyreği"),
+        ("artik", "Artık değer û"),
+        ("artik2", "Artık değerin karesi û²"),
+        ("tahmin", "Uyum değeri Ŷ"),
+        ("mutlak", "Mutlak artık değer |û|"),
+        ("ceyrek", "Uyum değerinin çeyreği"),
         ("n", "Gözlem sayısı"),
-        ("ss", "Artıkların standart sapması"),
-        ("ort_mutlak", "Ortalama mutlak artık"),
+        ("ss", "Artık değerlerin standart sapması"),
+        ("ort_mutlak", "Ortalama mutlak artık değer"),
         *_derived_labels(),
     ),
     consistency_notes=(

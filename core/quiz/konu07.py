@@ -72,7 +72,7 @@ QUESTIONS = (
         key="k02", concept="standart-hata-diger-yayilim-olculerinden-farkli", note=_note("7.2", "(7.2)"),
         prompt=(
             "WAGE1 ücret modelinde (ücret ~ eğitim + deneyim + kıdem) üç sayı hesaplanıyor: saatlik ücretin örneklem "
-            "standart sapması 3,693; artıkların standart sapması $\\widehat\\sigma = 3{,}084$; eğitim katsayısının "
+            "standart sapması 3,693; artık değerlerin standart sapması $\\widehat\\sigma = 3{,}084$; eğitim katsayısının "
             "standart hatası 0,051. “Aynı büyüklükte başka bir örneklem seçilseydi eğitim katsayısının tahmini tipik "
             "olarak ne kadar değişirdi?” sorusunu hangisi cevaplar?"
         ),
@@ -95,7 +95,7 @@ QUESTIONS = (
     Question(
         key="k03", concept="kritik-deger-artik-serbestlik-derecesinden", note=_note("7.4", "Tablo 7.3"),
         prompt=(
-            "25 gözlemli bir örneklemde sabit terimli ve dört açıklayıcı değişkenli bir model tahmin ediliyor. Tek bir "
+            "25 gözlemli bir örneklemde kesim terimli ve dört açıklayıcı değişkenli bir model tahmin ediliyor. Tek bir "
             "katsayı için yüzde 5 iki taraflı $t$ testinde hangi kritik değer kullanılır?"
         ),
         answer=MultipleChoice(
@@ -108,7 +108,7 @@ QUESTIONS = (
             correct=0,
         ),
         explanation=(
-            "Sabit terimli çoklu regresyonda serbestlik derecesi $n - k - 1 = 25 - 4 - 1 = 20$; Tablo 7.3'e göre "
+            "Kesim terimli çoklu regresyonda serbestlik derecesi $n - k - 1 = 25 - 4 - 1 = 20$; Tablo 7.3'e göre "
             "$t_{0{,}025;\\,20} = 2{,}086$. 25 gözlem sayısıdır, serbestlik derecesi değildir; 23, tek açıklayıcı "
             "değişkenli modelin serbestlik derecesi olurdu. 1,960 yalnız çok büyük serbestlik derecesinde uygundur; "
             "küçük örneklemde onu kullanmak testi gereğinden sık reddettirir (§7.4)."
@@ -220,7 +220,7 @@ QUESTIONS = (
         answer=TrueFalse(False),
         explanation=(
             "Tersidir: anakütle parametresi sabittir, örneklemden örnekleme değişen güven aralığıdır. “Yüzde 95”, aynı "
-            "yöntemle kurulan aralıkların uzun dönemde yaklaşık %95'inin sabit parametreyi kapsayacağını anlatır. Tablo "
+            "yöntemle kurulan aralıkların uzun dönemde yaklaşık %95'inin kesim terimiyi kapsayacağını anlatır. Tablo "
             "7.1'in benzetiminde 5.000 aralığın 0,9460'ı gerçek eğimi kapsar; Şekil 7.3'teki aralıkların her biri "
             "farklıdır (§7.6)."
         ),
@@ -420,14 +420,14 @@ QUESTIONS = (
     Question(
         key="e03", concept="artik-standart-sapmasi-serbestlik-derecesi", note=_note("7.2", "(7.3)"),
         prompt=(
-            "Sabit terimli ve $k$ açıklayıcı değişkenli bir model $n$ gözlemle tahmin ediliyor; artıkların kareleri "
+            "Kesim terimli ve $k$ açıklayıcı değişkenli bir model $n$ gözlemle tahmin ediliyor; artık değerlerin kareleri "
             "toplamı $\\text{HKT} = \\sum \\widehat u_i^2$'dir (Bölüm 4). Hata teriminin standart sapması σ'nın "
             "tahmini $\\widehat\\sigma$'yı HKT, $n$ ve $k$ cinsinden yazın."
         ),
         answer=Equation(
             lhs="\\widehat\\sigma",
             symbols=(
-                Symbol("hkt", "\\text{HKT}", "artıkların kareleri toplamı", 100, 2000,
+                Symbol("hkt", "\\text{HKT}", "artık değerlerin kareleri toplamı", 100, 2000,
                        aliases=("HKT", "hkt", "SSR", "\\sum\\widehat u_i^2", "\\sum\\hat u_i^2")),
                 Symbol("n", "n", "gözlem sayısı", 30, 600),
                 Symbol("k", "k", "açıklayıcı değişken sayısı", 1, 6),
@@ -436,7 +436,7 @@ QUESTIONS = (
             shown="\\sqrt{\\frac{\\text{HKT}}{n - k - 1}}",
         ),
         explanation=(
-            "Denklem 7.3: $\\widehat\\sigma^2 = \\sum \\widehat u_i^2/(n - k - 1)$; payda artık serbestlik "
+            "Denklem 7.3: $\\widehat\\sigma^2 = \\sum \\widehat u_i^2/(n - k - 1)$; payda artık değer serbestlik "
             "derecesidir. WAGE1 ücret modelinde HKT = 4966,303 ve n − k − 1 = 526 − 3 − 1 = 522 olduğundan "
             "$\\widehat\\sigma = \\sqrt{4966{,}303/522} \\approx 3{,}084$. $\\widehat\\sigma$, Denklem 7.2'de standart "
             "hatanın payındadır (§7.2)."

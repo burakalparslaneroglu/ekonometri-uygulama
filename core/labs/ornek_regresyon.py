@@ -375,7 +375,7 @@ def labels_of(case: Case) -> dict[str, str]:
 # --- Sayısal hassasiyet ------------------------------------------------------------------------------------
 
 def noise_decimals(case: Case, column: str | None = None, regressors: Iterable[str] = ()) -> int:
-    """Artıkların toplamının gösterim basamağı: hesap hassasiyeti n · ölçek düzeyindedir; ölçek max|Y| ile tahmin
+    """Artık değerlerin toplamının gösterim basamağı: hesap hassasiyeti n · ölçek düzeyindedir; ölçek max|Y| ile tahmin
     edilen değerin terimlerinin büyüklüğünün (|β̂₀| + Σ|β̂ⱼXᵢⱼ|) en büyüğüdür. Büyük açıklayıcı değerleri birbirini
     götüren terimlerle çarpılınca gürültü |Y|'den çok büyük olabilir. İki yazılımın yuvarlama gürültüsü bu basamakta
     görünmez."""
@@ -618,7 +618,7 @@ def program_case() -> Case:
 
 def validate(case: Case) -> None:
     """Sonuç ve açıklayıcı farklı sütunlar; seçilen her sayısal sütunda en az iki farklı değer; en büyük model (temel
-    açıklayıcı ve bütün ek değişkenler, k açıklayıcı) için en az k + 2 gözlem (artık serbestlik derecesi en az 1); ek
+    açıklayıcı ve bütün ek değişkenler, k açıklayıcı) için en az k + 2 gözlem (artık değerlerin serbestlik derecesi en az 1); ek
     değişkenler temel açıklayıcıyla birlikte tam doğrusal bağlantı kurmaz (çoklu modeller kurulamazdı)."""
 
     y, x = case.roles[SONUC], case.roles[ACIKLAYICI]

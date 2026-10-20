@@ -194,7 +194,7 @@ def _series_note(state, frame: str, time: str, order: str, series, names: dict[s
     shown = ", ".join(_shown(value) for value in state.frames[frame][time].head(6))
     rest = "; diğer serilerin zaman içindeki hareketi kaybolur" if len(series) > 1 or order not in series else ""
     return (f"Satırlar {names[order]} değerine göre sıralandığında ilk altı satırın dönemleri {shown} olur; dönemler "
-            "artık ardışık değildir. Grafiğin yatay ekseni dönem değil satır sırasıdır"
+            "artık değer ardışık değildir. Grafiğin yatay ekseni dönem değil satır sırasıdır"
             + (f": {names[order]} serisi azalmayan, basamaklı bir çizgiye dönüşür" if order in series else "")
             + f"{rest}. Zaman sırası bozulduğunda veri setinin önemli bir özelliği kaybolur; yatay kesitte (Adım 1) "
             "sıralama veri yapısını değiştirmez.")

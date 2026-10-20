@@ -177,7 +177,7 @@ COMPARE = SimExperiment(
     metrics=_compare_metrics,
     takeaway=_compare_takeaway,
     tables=(("modeller", "Basit ve çoklu model (bağımlı değişken: Y)"),),
-    labels=(("x1", "X₁"), ("x2", "X₂"), ("v", "v"), ("u", "u"), ("y", "Y"), (INTERCEPT, "Sabit terim")),
+    labels=(("x1", "X₁"), ("x2", "X₂"), ("v", "v"), ("u", "u"), ("y", "Y"), (INTERCEPT, "Kesim terimi")),
 )
 
 
@@ -202,15 +202,15 @@ def _build_partial(parameters: Parameters) -> tuple:
         Residuals("veri", "y_artik", "yardimci_y", "Y'nin X₂ ile açıklanamayan kısmı"),
         OLS("yardimci_x1", "veri", "x1", ("x2",), "2. adım: X₁'i X₂'ye göre tahmin et"),
         Residuals("veri", "x1_artik", "yardimci_x1", "X₁'in X₂ ile açıklanamayan kısmı"),
-        OLS("kismi", "veri", "y_artik", ("x1_artik",), "3. adım: artıkların artıklara göre regresyonu"),
-        ModelValue("kismi_egim", "kismi", "coef", "Artıklar regresyonunun eğimi", term="x1_artik", decimals=4),
+        OLS("kismi", "veri", "y_artik", ("x1_artik",), "3. adım: artık değerlerin artık değerlere göre regresyonu"),
+        ModelValue("kismi_egim", "kismi", "coef", "Artık değerler regresyonunun eğimi", term="x1_artik", decimals=4),
         Scalar("fark", E.sub(E.ref("kismi_egim"), E.ref("coklu_b1")), "Aradaki fark", decimals=12),
         OLS("basit", "veri", "y", ("x1",), "Karşılaştırma: basit model y ~ x1"),
         ModelValue("basit_b1", "basit", "coef", "Basit model: X₁ katsayısı", term="x1", decimals=4),
         ScatterPlot("veri", "x1", "y", "X₁", "Y", "Ham veri: Y ile X₁ (eğim = basit model katsayısı)", fit_line=True,
                     size=7, opacity=0.5),
         ScatterPlot("veri", "x1_artik", "y_artik", "X₁'in X₂'den arındırılmış kısmı", "Y'nin X₂'den arındırılmış kısmı",
-                    "Artıklar: eğim = çoklu modeldeki X₁ katsayısı", fit_line=True, size=7, opacity=0.5),
+                    "Artık değerler: eğim = çoklu modeldeki X₁ katsayısı", fit_line=True, size=7, opacity=0.5),
     )
 
 
@@ -219,7 +219,7 @@ def _partial_dgp(parameters: Parameters) -> tuple[str, ...]:
     return (
         rf"X_{{2i}} = a\,X_{{1i}} + v_i, \qquad Y_i = 1 + X_{{1i}} + 2X_{{2i}} + u_i, \qquad a = {_tex(a, 1)}, "
         rf"\quad n = {n}",
-        r"\text{1) } Y \text{'yi } X_2\text{'ye, 2) } X_1\text{'i } X_2\text{'ye göre tahmin et; 3) artıkları "
+        r"\text{1) } Y \text{'yi } X_2\text{'ye, 2) } X_1\text{'i } X_2\text{'ye göre tahmin et; 3) artık değerleri "
         r"birbirine göre regresyona tabi tut}",
     )
 
@@ -228,7 +228,7 @@ def _partial_metrics(state: LabState, parameters: Parameters) -> tuple[SimMetric
     s = state.scalars
     return (
         SimMetric("Çoklu model: X₁ katsayısı", plain(s["coklu_b1"], 4), "Y ~ X₁ + X₂."),
-        SimMetric("Artıklar regresyonunun eğimi", plain(s["kismi_egim"], 4), "Üç adımlı hesap."),
+        SimMetric("Artık değerler regresyonunun eğimi", plain(s["kismi_egim"], 4), "Üç adımlı hesap."),
         SimMetric("Aradaki fark (mutlak değer)", "< 10⁻¹⁰" if abs(s["fark"]) < 1e-10 else plain(abs(s["fark"]), 6),
                   "Hesap hassasiyeti içinde sıfır: iki yol aynı sayıyı verir."),
         SimMetric("Basit model: X₁ katsayısı", plain(s["basit_b1"], 4), "X₂ ayrılmadan."),
@@ -238,14 +238,14 @@ def _partial_metrics(state: LabState, parameters: Parameters) -> tuple[SimMetric
 def _partial_takeaway(state: LabState, parameters: Parameters) -> str:
     _, a = _partial_settings(parameters)
     s = state.scalars
-    text = (f"Artıklar regresyonunun eğimi {plain(s['kismi_egim'], 4)}, çoklu modeldeki X₁ katsayısı "
+    text = (f"Artık değerler regresyonunun eğimi {plain(s['kismi_egim'], 4)}, çoklu modeldeki X₁ katsayısı "
             f"{plain(s['coklu_b1'], 4)}: aynı sayı. “X₂ sabitken” yorumu, X₂'nin doğrusal katkısının hem Y'den hem X₁'den "
             "ayrılması demektir; veri içinde birebir aynı X₂ değerli gözlemleri bulmak gerekmez (§5.5).")
     if a == 0:
         return text + (" a = 0 iken X₁ zaten X₂ ile ilişkisiz: ayırma X₁'i neredeyse değiştirmez ve basit model "
                        f"katsayısı ({plain(s['basit_b1'], 4)}) çoklu modelinkine yakındır.")
     return text + (f" Ham verideki eğim (basit model) {plain(s['basit_b1'], 4)}: X₂ farklarını da taşır. |a| "
-                   "büyüdükçe iki grafiğin eğimleri birbirinden uzaklaşır; artıkların yatay yayılımı daralır, çünkü "
+                   "büyüdükçe iki grafiğin eğimleri birbirinden uzaklaşır; artık değerlerin yatay yayılımı daralır, çünkü "
                    "X₁'in X₂'den bağımsız kalan hareketi azalır.")
 
 
@@ -268,7 +268,7 @@ PARTIAL = SimExperiment(
     ),
     look_at=(
         "**İki grafik** — soldaki ham ilişki, sağdaki kontrolden arındırılmış ilişki.",
-        "**Eğimler** — artıklar regresyonunun eğimi çoklu modeldeki katsayıyla aynı mı?",
+        "**Eğimler** — artık değerler regresyonunun eğimi çoklu modeldeki katsayıyla aynı mı?",
         "**|a|** — büyüdükçe arındırılmış X₁'in yayılımı ne oluyor?",
     ),
     build=_build_partial,

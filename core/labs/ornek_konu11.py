@@ -1,4 +1,4 @@
-"""Konu 11 genel uygulaması: etkileşim terimleri ve gruplar arasında sabit ile eğim farkları.
+"""Konu 11 genel uygulaması: etkileşim terimleri ve gruplar arasında kesim terimi ile eğim farkları.
 
 Notlardaki on adım (``core.labs.konu11``) aynı numaralarla ve aynı işlemlerle, verisi değiştirilebilir biçimde yazılır:
 additif kukla modelinin paralel doğruları, etkileşim terimi ve grup denklemleri, dört olası yapı, koşullu grup farkı ve
@@ -113,7 +113,7 @@ from core.labs.spec import (
 )
 
 TOPIC = "konu11"
-TITLE = "Uygulama: Etkileşim Terimleri ve Gruplar Arasında Sabit ile Eğim Farklılıkları"
+TITLE = "Uygulama: Etkileşim Terimleri ve Gruplar Arasında Kesim terimi ile Eğim Farklılıkları"
 GRID = 50
 FEW_OBSERVATIONS = 10
 """Adım 4: merkezleme noktasında bundan az gözlem varsa farkın büyük ölçüde doğrusal varsayıma dayandığı yazılır."""
@@ -449,7 +449,7 @@ def _matrix(data: pd.DataFrame, terms) -> np.ndarray:
 
 
 def _full_rank(data: pd.DataFrame, terms) -> bool:
-    """Model kurulabilir mi: tam doğrusal bağlantı yok ve artık serbestlik derecesi en az 1."""
+    """Model kurulabilir mi: tam doğrusal bağlantı yok ve artık değerlerin serbestlik derecesi en az 1."""
 
     design = _matrix(data, terms)
     norms = np.linalg.norm(design, axis=0)
@@ -581,7 +581,7 @@ def _shift(column: str, center: float):
 
 def _group_lines(frame: str, info: tuple, prefix: str, dummy: Dummy, others: tuple[str, ...], averages: str,
                  log: bool = False) -> tuple:
-    """İki grubun tahmin edilen doğruları bir ızgarada: diğer açıklayıcılar örneklem ortalamasında.
+    """İki grubun uyum doğruları bir ızgarada: diğer açıklayıcılar örneklem ortalamasında.
 
     Katsayı skalerleri ``{prefix}_b0``, ``{prefix}_g0``, ``{prefix}_b1``, ``{prefix}_g1`` ve ``{prefix}_k_{terim}``;
     ortalamalar ``{averages}_{terim}``. ``log``: doğrular exp() ile sonucun düzeyine çevrilir."""
@@ -606,11 +606,11 @@ def _group_lines(frame: str, info: tuple, prefix: str, dummy: Dummy, others: tup
 
 def _coefficients(case: Case, model: str, prefix: str, dummy: str, slope: str, others: tuple[str, ...],
                   interaction: bool = True, shown: bool = True, decimals: int = 4) -> tuple:
-    """Katsayı skalerleri: sabit, kukla, eğim, (etkileşim) ve diğer açıklayıcılar. ``shown=False``: sayılar aynı adımda
+    """Katsayı skalerleri: kesim terimi, kukla, eğim, (etkileşim) ve diğer açıklayıcılar. ``shown=False``: sayılar aynı adımda
     bir çıktıda ya da tabloda görünüyor."""
 
     values = [
-        ModelValue(f"{prefix}_b0", model, "coef", "Sabit terim β̂₀", term=INTERCEPT, decimals=decimals, shown=shown),
+        ModelValue(f"{prefix}_b0", model, "coef", "Kesim terimi β̂₀", term=INTERCEPT, decimals=decimals, shown=shown),
         ModelValue(f"{prefix}_g0", model, "coef", "Kukla katsayısı γ̂₀", term=dummy, decimals=decimals, shown=shown),
         ModelValue(f"{prefix}_b1", model, "coef", f"{_label(case, slope)} eğimi β̂₁", term=slope, decimals=decimals,
                    shown=shown),
@@ -735,7 +735,7 @@ def _step1(case: Case) -> LabStep:
         word = _word(case, names.xc)
         return (f"İki doğrunun eğimi aynıdır ({word} katsayısı {sayi(s['a1_b1'], slope)}); dikey fark her {word} "
                 f"düzeyinde kukla katsayısıdır: en küçük ve en büyük fark {sayi(s['fark1_min'], gap)} ve "
-                f"{sayi(s['fark1_max'], gap)}. Additif model {dummy.one} ve {dummy.zero} {forms['dat_pl']} farklı sabit "
+                f"{sayi(s['fark1_max'], gap)}. Additif model {dummy.one} ve {dummy.zero} {forms['dat_pl']} farklı kesim terimi "
                 f"verir, farklı eğim vermez; grup farkı {word} düzeyinden bağımsız varsayılır. Bu varsayım veriyle ayrıca "
                 "değerlendirilir: eğimin gruba göre değişmesine izin veren terim etkileşim terimidir (Adım 2, §11.1).")
 
@@ -750,7 +750,7 @@ def _step1(case: Case) -> LabStep:
         _scalar("fark1_min", "Dikey fark: en küçük", d),
         _scalar("fark1_max", "Dikey fark: en büyük", d),
     ]
-    lead = ("Additif modelde $Y_i = \\beta_0 + \\beta_1 X_i + \\gamma_0 D_i + u_i$: iki grubun sabiti farklı olabilir, "
+    lead = ("Additif modelde $Y_i = \\beta_0 + \\beta_1 X_i + \\gamma_0 D_i + u_i$: iki grubun kesim terimi farklı olabilir, "
             "eğimi aynıdır. $\\mathbb{E}(Y \\mid X, D = 1) - \\mathbb{E}(Y \\mid X, D = 0) = \\gamma_0$ her $X$ düzeyinde "
             "aynıdır ve tahmin doğruları paraleldir.")
     return _step(
@@ -775,8 +775,8 @@ def _group_rows(case: Case, dummy: Dummy, slope: str | None) -> tuple[tuple[str,
 
     zero, one = _cap(case, dummy.zero_raw), _cap(case, dummy.one_raw)
     word = f"{_word_raw(case, slope)} eğimi" if slope else "eğim"
-    return ((f"{zero} ({dummy.column} = 0): sabit β̂₀", "b0"), (f"{one} ({dummy.column} = 1): sabit β̂₀ + γ̂₀", "sabit1"),
-            (f"{zero}: {word} β̂₁", "b1"), (f"{one}: {word} β̂₁ + γ̂₁", "egim1"), ("Sabit farkı γ̂₀", "g0"),
+    return ((f"{zero} ({dummy.column} = 0): kesim terimi β̂₀", "b0"), (f"{one} ({dummy.column} = 1): kesim terimi β̂₀ + γ̂₀", "sabit1"),
+            (f"{zero}: {word} β̂₁", "b1"), (f"{one}: {word} β̂₁ + γ̂₁", "egim1"), ("Kesim terimi farkı γ̂₀", "g0"),
             ("Eğim farkı γ̂₁", "g1"))
 
 
@@ -785,7 +785,7 @@ def _group_equations(case: Case, model: str, prefix: str, dummy: Dummy, slope: s
     return (
         *_coefficients(case, model, prefix, dummy.column, slope, others, shown=shown, decimals=decimals),
         Scalar(f"{prefix}_sabit1", E.add(E.ref(f"{prefix}_b0"), E.ref(f"{prefix}_g0")),
-               f"{_cap(case, dummy.one_raw)} grubunun sabiti β̂₀ + γ̂₀", decimals=decimals, shown=shown),
+               f"{_cap(case, dummy.one_raw)} grubunun kesim terimi β̂₀ + γ̂₀", decimals=decimals, shown=shown),
         Scalar(f"{prefix}_egim1", E.add(E.ref(f"{prefix}_b1"), E.ref(f"{prefix}_g1")),
                f"{_cap(case, dummy.one_raw)} grubunun {_word_raw(case, slope)} eğimi β̂₁ + γ̂₁", decimals=decimals,
                shown=shown),
@@ -817,7 +817,7 @@ def _step2(case: Case) -> LabStep:
             table: tuple = (
                 ScalarTable(tuple((label, E.ref(f"e2_{suffix}")) for label, suffix in _group_rows(case, dummy, x)),
                             "grup_denklemleri", decimals=dd, heading="Katsayı", value="Tahmin",
-                            title="Grup denklemleri: sabitler ve eğimler (Tablo 11.1'deki roller)"),
+                            title="Grup denklemleri: kesim terimleri ve eğimler (Tablo 11.1'deki roller)"),
             )
         else:  # varsayılan etkileşim seçilen değişkenle yan yana
             dn = max(dd, d)
@@ -861,7 +861,7 @@ def _step2(case: Case) -> LabStep:
         return (f"{capital(dummy.zero)} {forms['gen']} {_word(case, x)} eğimi β̂₁ = {sayi(s['e2_b1'], dd)}; "
                 f"{dummy.one} {forms['gen']}ki β̂₁ + γ̂₁ = {total}. Etkileşim katsayısı γ̂₁ = {sayi(s['e2_g1'], dd)} "
                 f"{dummy.one} grubunun eğimi değil, iki eğim arasındaki farktır; kukla katsayısı γ̂₀ = "
-                f"{sayi(s['e2_g0'], _d(s['e2_g0']))} da {dummy.one} grubunun sabiti değil, {where}. Çarpım sütunu "
+                f"{sayi(s['e2_g0'], _d(s['e2_g0']))} da {dummy.one} grubunun kesim terimi değil, {where}. Çarpım sütunu "
                 f"{dummy.zero} {forms['loc']} sıfır olduğu için etkileşim yalnız {dummy.one} grubunun eğimini değiştirir "
                 "(§11.2).")
 
@@ -874,7 +874,7 @@ def _step2(case: Case) -> LabStep:
             "Kukla ile nicel değişkenin çarpımı modele eklenir: $Y_i = \\beta_0 + \\beta_1 X_i + \\gamma_0 D_i + "
             "\\gamma_1 (D_i X_i) + u_i$. $D_i X_i$ referans grupta (D = 0) sıfır, diğer grupta (D = 1) $X_i$'dir. Böylece "
             "$D = 0$ grubunun denklemi $\\beta_0 + \\beta_1 X$, $D = 1$ grubununki $(\\beta_0 + \\gamma_0) + (\\beta_1 + "
-            f"\\gamma_1) X$ olur: $\\gamma_0$ sabit farkı, $\\gamma_1$ eğim farkıdır. Kukla: {dummy.one} = 1, {dummy.zero} = "
+            f"\\gamma_1) X$ olur: $\\gamma_0$ kesim terimi farkı, $\\gamma_1$ eğim farkıdır. Kukla: {dummy.one} = 1, {dummy.zero} = "
             f"0. Model: {_model_text(case, default_terms, names.ly)}."
             + (" Etkileşimdeki nicel değişkeni değiştirin." if _live(control) else "")
         ),
@@ -896,10 +896,10 @@ def _structures(case: Case) -> dict[str, tuple[str, tuple[str, ...]]]:
     controls = _controls(case)
     product = f"{dummy}:{names.xc}"
     return {
-        "1": ("Aynı sabit, aynı eğim", (names.xc, *controls)),
-        "2": ("Farklı sabit, aynı eğim", (dummy, names.xc, *controls)),
-        "3": ("Aynı sabit, farklı eğim", (product, names.xc, *controls)),
-        "4": ("Farklı sabit, farklı eğim", (dummy, names.xc, product, *controls)),
+        "1": ("Aynı kesim terimi, aynı eğim", (names.xc, *controls)),
+        "2": ("Farklı kesim terimi, aynı eğim", (dummy, names.xc, *controls)),
+        "3": ("Aynı kesim terimi, farklı eğim", (product, names.xc, *controls)),
+        "4": ("Farklı kesim terimi, farklı eğim", (dummy, names.xc, product, *controls)),
     }
 
 
@@ -925,7 +925,7 @@ def _step3(case: Case) -> LabStep:
         title, terms = structures[chosen]
         model = f"m_yapi{chosen}"
         values: list = [  # sayılar tablonun sütununda görünür; ölçü kutusu olarak tekrar edilmez
-            ModelValue("y3_b0", model, "coef", "Sabit terim", term=INTERCEPT, decimals=d, shown=False),
+            ModelValue("y3_b0", model, "coef", "Kesim terimi", term=INTERCEPT, decimals=d, shown=False),
             ModelValue("y3_b1", model, "coef", f"{_label(case, names.xc)} eğimi β̂₁ (referans grup; yapı 1–2'de iki "
                        "grupta ortak)", term=names.xc, decimals=d, shown=False),
             *(ModelValue(f"y3_k_{term}", model, "coef", f"{_title(case, term)} katsayısı", term=term, decimals=d,
@@ -933,7 +933,7 @@ def _step3(case: Case) -> LabStep:
         ]
         values.append(ModelValue("y3_g0", model, "coef", "Kukla katsayısı", term=dummy.column, decimals=d, shown=False)
                       if dummy.column in terms else
-                      Scalar("y3_g0", E.const(0), "Sabit farkı yok (γ₀ = 0)", decimals=0, shown=False))
+                      Scalar("y3_g0", E.const(0), "Kesim terimi farkı yok (γ₀ = 0)", decimals=0, shown=False))
         values.append(ModelValue("y3_g1", model, "coef", "Etkileşim katsayısı", term=product, decimals=d, shown=False)
                       if product in terms else
                       Scalar("y3_g1", E.const(0), "Eğim farkı yok (γ₁ = 0)", decimals=0, shown=False))
@@ -986,10 +986,10 @@ def _step3(case: Case) -> LabStep:
         title="Gruplar arasında dört olası regresyon yapısı",
         note=NoteRef("11.3", 0, ("Tablo 11.2", "Şekil 11.2")),
         explanation=(
-            "İki grup ve bir nicel değişkenle dört yapı kurulabilir: (1) aynı sabit, aynı eğim: $1, X$; (2) farklı sabit, "
-            "aynı eğim: $1, X, D$; (3) aynı sabit, farklı eğim: $1, X, DX$; (4) farklı sabit, farklı eğim: "
+            "İki grup ve bir nicel değişkenle dört yapı kurulabilir: (1) aynı kesim terimi, aynı eğim: $1, X$; (2) farklı kesim terimi, "
+            "aynı eğim: $1, X, D$; (3) aynı kesim terimi, farklı eğim: $1, X, DX$; (4) farklı kesim terimi, farklı eğim: "
             "$1, X, D, DX$. Hiyerarşi ilkesi: $DX$ modeldeyse $D$ ve $X$ ana etkileri de tutulur; (3) $D$'yi "
-            "çıkararak iki grubun $X = 0$ noktasında aynı sabite sahip olduğunu dayatır. Grafikteki yapıyı değiştirin."
+            "çıkararak iki grubun $X = 0$ noktasında aynı kesim terimine sahip olduğunu dayatır. Grafikteki yapıyı değiştirin."
         ),
         controls=(control,),
         build=build,
@@ -1040,7 +1040,7 @@ def _step4(case: Case) -> LabStep:
             RegressionTable(((f"Varsayılan: c = {level_text(default)}", "m_merk_n"), (f"Seçiminiz: c = {shown}", "m_merk")),
                             tuple(dict.fromkeys((INTERCEPT, dummy.column, names.xc, names.xcc, f"{dummy.column}:{names.xc}",
                                                  f"{dummy.column}:{names.xcc}", *controls))),
-                            "yan114", "Aynı model, iki merkezleme noktası: yalnız sabit ve kukla katsayısı değişir",
+                            "yan114", "Aynı model, iki merkezleme noktası: yalnız kesim terimi ve kukla katsayısı değişir",
                             decimals=4, exact=not case.own, r2_decimals=6),
         )
         count: tuple = (Count(case.frame, "n_c", x, level_value(case, x, center),
@@ -1093,7 +1093,7 @@ def _step4(case: Case) -> LabStep:
                      "model varsayımına dayanır (ekstrapolasyon). ")
         return (text + f"Eğim farkı ({sayi(s['g1_c'], _d(s['g1_c']))}), {dummy.zero} {_forms(case)['gen']} eğimi "
                 f"({sayi(s['b1_c'], _d(s['b1_c']))}) ve R² ({sayi(s['r2_c'], 6)}) c ne olursa olsun aynıdır: merkezleme "
-                "tahmin edilen değerleri değiştirmez, yalnız sabitin ve kukla katsayısının hangi düzeyde okunduğunu "
+                "uyum değerleri değiştirmez, yalnız kesim teriminin ve kukla katsayısının hangi düzeyde okunduğunu "
                 "değiştirir. Kukla katsayısının standart hatası o noktadaki farkın standart hatasıdır (§11.4–11.5)."
                 + (EXACT_NOTE if exact else ""))
 
@@ -1107,7 +1107,7 @@ def _step4(case: Case) -> LabStep:
             "Etkileşimli modelde grup farkı $X$'e bağlıdır: $\\mathbb{E}(Y \\mid X, D = 1) - \\mathbb{E}(Y \\mid X, "
             "D = 0) = \\gamma_0 + \\gamma_1 X$ (§11.4). $\\gamma_0$ yalnız $X = 0$ noktasındaki farktır. $X$ anlamlı bir "
             "$c$ değeri etrafında merkezlenirse ($X^c = X - c$) kukla katsayısı farkı doğrudan $X = c$ noktasında verir; "
-            f"tahmin edilen değerler, R² ve eğimler değişmez. Burada $X$: {phrase(case, x)}. Merkezleme noktasını "
+            f"uyum değerleri, R² ve eğimler değişmez. Burada $X$: {phrase(case, x)}. Merkezleme noktasını "
             "değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(control,),
@@ -1246,7 +1246,7 @@ def _step5(case: Case) -> LabStep:
 
     log_digits, percent_digits = digits
     checks = [
-        *(_check(f"Çıktı: {'sabit terim' if term == INTERCEPT else _title(case, term) if ':' not in term else 'etkileşim'}, "
+        *(_check(f"Çıktı: {'kesim terimi' if term == INTERCEPT else _title(case, term) if ':' not in term else 'etkileşim'}, "
                  f"{label}", CoefTarget("m_w", term, quantity), 3 if quantity == "t" else
                  _d(float(getattr(fit, attribute)[term])) if quantity != "p" else 4)
           for term in (INTERCEPT, *main_terms)
@@ -1415,7 +1415,7 @@ def _step6(case: Case) -> LabStep:
             Scalar("sifir6", E.const(0), "Fark yok", decimals=0, shown=False),
             Scalar("merkez6", E.const(int(center) if center.is_integer() else center), "Merkezleme noktası",
                    decimals=0 if center.is_integer() else 2, shown=False),
-            LineChart("fark6", column, "tam_fark", axis, f"{_cap(case, dummy.one_raw)} − {dummy.zero_raw} tahmin edilen "
+            LineChart("fark6", column, "tam_fark", axis, f"{_cap(case, dummy.one_raw)} − {dummy.zero_raw} geometrik ortalama "
                       "fark (%)", f"{_data_prefix(case)}{dummy.one_raw} − {dummy.zero_raw} farkının "
                       f"{_word_raw(case, x)} düzeyiyle değişimi (Şekil 11.4'teki gibi)",
                       references=(("sifir6", "Fark yok"),), markers=False, vlines=vline),
@@ -1652,7 +1652,7 @@ def _step7(case: Case) -> LabStep:
         return text + (EXACT_NOTE if exact else "")
 
     checks = [
-        *(_check(f"Çıktı: {'sabit terim' if term == INTERCEPT else _title(house, term) if ':' not in term else 'etkileşim'}, "
+        *(_check(f"Çıktı: {'kesim terimi' if term == INTERCEPT else _title(house, term) if ':' not in term else 'etkileşim'}, "
                  f"{label}", CoefTarget("m_h", term, quantity), 3 if quantity == "t" else 4 if quantity == "p"
                  else _d(float(getattr(fit, attribute)[term])))
           for term in (INTERCEPT, *default_terms)
@@ -1770,7 +1770,7 @@ def _step8(case: Case) -> LabStep:
         d = _point_digits(case, x)
         line_values = tuple(  # doğruların katsayıları Adım 7'deki çıktıda görünür; ölçü kutusu olarak tekrar edilmez
             ModelValue(name, "m_h", "coef", label, term=term, decimals=4, shown=False)
-            for name, label, term in (("h8_b0", "Sabit terim", INTERCEPT), ("h8_b1", f"{_label(house, x)} eğimi", x),
+            for name, label, term in (("h8_b0", "Kesim terimi", INTERCEPT), ("h8_b1", f"{_label(house, x)} eğimi", x),
                                       ("h8_g0", f"{dummy.title} katsayısı", dummy.column),
                                       ("h8_g1", "Eğim farkı", f"{dummy.column}:{x}"),
                                       *((f"h8_k_{term}", f"{_title(house, term)} katsayısı", term) for term in others)))
@@ -2134,7 +2134,7 @@ def build(case: Case) -> LabSpec:
     labels = labels_of(case)
     for column, label in labels_of(house).items():
         labels.setdefault(column, label)
-    labels[INTERCEPT] = "Sabit terim"
+    labels[INTERCEPT] = "Kesim terimi"
     x, y = case.roles[ACIKLAYICI], case.roles[SONUC]
     labels.setdefault(names.ly, _log_title(case))
     if names.xc != x:
@@ -2210,7 +2210,7 @@ def _house_case() -> Case:
 def alternative_case() -> Case:
     base = beauty_case(
         extras=("exper",),
-        title="Uygulama: Etkileşim Terimleri ve Gruplar Arasında Sabit ile Eğim Farklılıkları (BEAUTY ve KIELMC)",
+        title="Uygulama: Etkileşim Terimleri ve Gruplar Arasında Kesim terimi ile Eğim Farklılıkları (BEAUTY ve KIELMC)",
         names={"dummy": "female", "ly": "lwage", "xc": "educ12", "xcc": "educ_c"},
         dummies={"female": ("kadın", "erkek", "Kadın"), "married": ("evli", "evli olmayan", "Evli"),
                  "black": ("siyah", "siyah olmayan", "Siyah"),
