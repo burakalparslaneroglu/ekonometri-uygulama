@@ -14,6 +14,8 @@ hatalarıdır; dayanıklı standart hatalar Konu 12'nin konusudur. F istatistiğ
 
 from __future__ import annotations
 
+from core.labs.wording import LOG_MEAN_NOTE
+
 from core import wooldridge_data as W
 from core.labs import expr as E
 from core.labs.sezgi import plain
@@ -620,14 +622,14 @@ STEPS = (
         explanation=(
             "Makaleler tam çıktı yerine sıkıştırılmış tablo verir. Parantezde ne olduğu (standart hata, t ya da güven "
             "aralığı) ve yıldız eşikleri tablo notundan okunur. Sütun (1) düzey–düzey, Sütun (2) log–düzey modelidir; "
-            "katsayıların birimleri farklıdır."
+            "katsayıların birimleri farklıdır." + LOG_MEAN_NOTE
         ),
         operations=_paper(),
         checks=tuple(Check(f"Tablo 7.5: {heading}, {row}", TableTarget("tablo75", row, heading), value, 3)
                      for heading, values in _TABLE75 for row, value in values),
         takeaway=(
-            "Sütun (2)'de eğitim katsayısı 0,092: diğer değişkenler sabitken bir ek eğitim yılı tahmin edilen ücretle "
-            "yaklaşık yüzde 9,2 daha yüksek ilişkilidir (daha hassas dönüşüm Konu 9'da). Üç yıldız etkinin büyük "
+            "Sütun (2)'de eğitim katsayısı 0,092: diğer değişkenler sabitken bir ek eğitim yılı koşullu geometrik ortalama ücretin "
+            "yaklaşık yüzde 9,2 daha yüksek olmasıyla ilişkilidir (daha hassas dönüşüm Konu 9'da). Üç yıldız etkinin büyük "
             "olduğunu değil, p-değerinin 0,01'den küçük olduğunu gösterir. Deneyim Sütun (1)'de yalnız yüzde 10 "
             "düzeyinde, Sütun (2)'de yüzde 5 düzeyinde sıfırdan ayrışır (§7.10)."
         ),

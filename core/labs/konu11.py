@@ -15,6 +15,8 @@ test (Adım 9) ve formül yazımı (Adım 10). Standart hatalar klasik EKK stand
 
 from __future__ import annotations
 
+from core.labs.wording import LOG_MEAN_NOTE
+
 from core import wooldridge_data as W
 from core.labs import expr as E
 from core.labs.sezgi import plain
@@ -522,7 +524,7 @@ def _wage_application(choices) -> tuple:
         *_coefficients("m_w", "w5", dummy, "educ12", CONTROLS, shown=False),
         *_averages(WAGE, "ort5", CONTROLS),
         *_group_lines("cizgi5", "educ", (0, 18), "w5", dummy, "educ12", 12, CONTROLS, "ort5", log=True),
-        LineChart("cizgi5", "educ", "ucret0", "Eğitim (yıl)", "Tahmin edilen saatlik ücret (dolar)",
+        LineChart("cizgi5", "educ", "ucret0", "Eğitim (yıl)", "Tahmin edilen geometrik ortalama ücret (dolar)",
                   ("Şekil 11.3: WAGE1 etkileşim modelinde cinsiyete göre tahmin edilen eğitim–ücret ilişkisi" if notes
                    else f"Etkileşimli model: {one} ve {zero} çalışanların tahmin edilen ücreti"),
                   markers=False, series=(("ucret1", one.capitalize()),), legend=zero.capitalize()),
@@ -540,11 +542,11 @@ def _wage_note(state, choices) -> str:
         return f"yüzde {plain(abs(value), 2)} daha {'yüksek' if value >= 0 else 'düşük'}"
 
     return (f"Deneyim ve kıdem sabitken bir yıl daha fazla eğitim, {zero} çalışanlarda yaklaşık {change(s['w_tam0'])}, "
-            f"{one} çalışanlarda yaklaşık {change(s['w_tam1'])} tahmin edilen ücretle ilişkilidir (tam dönüşüm). "
+            f"{one} çalışanlarda yaklaşık {change(s['w_tam1'])} tahmin edilen koşullu geometrik ortalama ücretle ilişkilidir (tam dönüşüm). "
             f"Etkileşim katsayısının p-değeri {plain(p, 4)}: yüzde 5 düzeyinde eğimlerin eşit olduğu hipotezi "
             + ("reddedilir. " if rejected else "reddedilemez; eğimler sayısal olarak farklı görünse de fark örnekleme "
                "belirsizliğine göre küçüktür. ")
-            + "Şekildeki eğriler exp(tahmin edilen ln(ücret)) değerleridir; deneyim ve kıdem örneklem ortalamasındadır. "
+            + "Şekildeki eğriler koşullu geometrik ortalama tahminleridir: exp(tahmin edilen ln(ücret)); deneyim ve kıdem örneklem ortalamasındadır. "
             f"Gözlemsel veriyle bu katsayılar {CAUSAL_WORDS[dummy]} nedensel etkisini ölçmez (§11.6).")
 
 
@@ -1010,7 +1012,7 @@ STEPS = (
             "Additif modelde $Y_i = \\beta_0 + \\beta_1 X_i + \\gamma_0 D_i + u_i$: iki grubun sabiti farklı olabilir, "
             "eğimi aynıdır. $\\mathbb{E}(Y \\mid X, D = 1) - \\mathbb{E}(Y \\mid X, D = 0) = \\gamma_0$ her $X$ "
             "düzeyinde aynıdır ve tahmin doğruları paraleldir. WAGE1'de ln(ücret), 12 yıl etrafında merkezlenmiş eğitim, "
-            "deneyim ve kıdemle açıklanır. Kukla değişkeni değiştirin."
+            "deneyim ve kıdemle açıklanır. Kukla değişkeni değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(DUMMY_1,),
         build=_additive,
@@ -1082,7 +1084,7 @@ STEPS = (
             "Etkileşimli modelde grup farkı $X$'e bağlıdır: $\\mathbb{E}(Y \\mid X, D = 1) - \\mathbb{E}(Y \\mid X, "
             "D = 0) = \\gamma_0 + \\gamma_1 X$ (§11.4). $\\gamma_0$ yalnız $X = 0$ noktasındaki farktır. $X$ anlamlı bir "
             "$c$ değeri etrafında merkezlenirse ($X^c = X - c$) kukla katsayısı farkı doğrudan $X = c$ noktasında verir; "
-            "tahmin edilen değerler, R² ve eğimler değişmez. Merkezleme noktasını değiştirin."
+            "tahmin edilen değerler, R² ve eğimler değişmez. Merkezleme noktasını değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(CENTER_4,),
         build=_centering,
@@ -1103,7 +1105,7 @@ STEPS = (
             "(\\text{female}_i \\times \\text{educ12}_i) + \\beta_2 \\text{exper}_i + \\beta_3 \\text{tenure}_i + u_i$. "
             "Erkek çalışanlar referans gruptur. Erkeklerin eğitim eğimi $\\beta_1$, kadınlarınki $\\beta_1 + "
             "\\gamma_1$; log eğim tam yüzdeye $100(e^{b} - 1)$ ile çevrilir. Eğitimle etkileşen kuklayı değiştirin: "
-            "notlardaki model yan yana gösterilir."
+            "notlardaki model yan yana gösterilir." + LOG_MEAN_NOTE
         ),
         controls=(DUMMY_5,),
         build=_wage_application,
@@ -1128,7 +1130,7 @@ STEPS = (
             "$100[\\exp(\\hat\\gamma_0 + \\hat\\gamma_1 \\cdot \\text{educ12}) - 1]$ (§11.4). Eğitim 12 yılda "
             "$\\text{educ12} = 0$ olduğundan kadın katsayısı doğrudan bu noktadaki farktır. Etkileşimin uyuma katkısı "
             "additif modelle karşılaştırılır. Adım 5'teki kukla seçimi bu adımı da belirler. Farkın hesaplandığı eğitim "
-            "düzeyini değiştirin."
+            "düzeyini değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(LEVEL_6,),
         uses=(DUMMY_5,),
@@ -1226,7 +1228,7 @@ STEPS = (
             "statsmodels formülünde `D * X` terimleri $1 + D + X + D{:}X$ olarak açar; `D:X` yalnız çarpımı, `D + X` "
             "etkileşimsiz additif modeli kurar. Makale tablosu okunurken önce referans grup ve merkezleme noktası "
             "belirlenir; ana $X$ katsayısı referans grubun eğimi, etkileşim eğim farkı, kukla katsayısı merkezleme "
-            "noktasındaki farktır. Üçüncü sütunun formülünü değiştirin."
+            "noktasındaki farktır. Üçüncü sütunun formülünü değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(FORMULA_10,),
         build=_paper,

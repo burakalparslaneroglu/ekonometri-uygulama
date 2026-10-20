@@ -14,6 +14,8 @@ EKK varsayımlarına dayanır; heteroskedastisiteye dayanıklı ortak test Konu 
 
 from __future__ import annotations
 
+from core.labs.wording import LOG_MEAN_NOTE
+
 from core import wooldridge_data as W
 from core.labs import expr as E
 from core.labs.sezgi import plain
@@ -518,7 +520,7 @@ STEPS = (
             "Makale tablolarında ortak testler katsayıların altında ayrı satırlarda verilir: sınanan hipotez ve "
             "standart hata türü tablo notunda yazılır. Tablo 8.6'da Sütun (1) düzey–düzey, Sütun (2) log–düzey ücret "
             "modelidir; ortak test deneyim ve kıdem katsayılarının birlikte sıfır olduğunu, genel F bütün eğimleri "
-            "sınar."
+            "sınar." + LOG_MEAN_NOTE
         ),
         operations=(
             OLS("ml", DATA, "lwage", REGRESSORS, "Log ücret modeli: lwage ~ educ + exper + tenure"),
@@ -538,7 +540,7 @@ STEPS = (
         takeaway=(
             "Sütun (1)'de deneyim yüzde 5 düzeyinde tek başına anlamlı değildir (tek yıldız: p < 0,10); buna karşılık "
             "deneyim ve kıdem birlikte güçlü biçimde anlamlıdır (F = 53,31; p < 0,001). Ortak test ayrı yıldızların "
-            "basit toplamı değildir. Sütun (2)'de bağımlı değişken log ücret olduğu için katsayılar yaklaşık yüzde "
+            "basit toplamı değildir. Sütun (2)'de bağımlı değişken log ücret olduğu için katsayılar koşullu geometrik ortalama için yaklaşık yüzde "
             "farklar olarak okunur; iki sütunun katsayı büyüklükleri doğrudan karşılaştırılamaz. Ortak testin "
             "reddedilmesi nedensellik için yeterli değildir (§8.12)."
         ),

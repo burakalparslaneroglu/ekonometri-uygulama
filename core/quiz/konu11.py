@@ -17,6 +17,8 @@ kullanır.
 
 from __future__ import annotations
 
+from core.labs.wording import LOG_MEAN_NOTE
+
 from core.labs.spec import NoteRef
 from core.quiz.expression import Symbol, beta_aliases, beta_hat_aliases
 from core.quiz.model import (
@@ -113,7 +115,7 @@ QUESTIONS = (
         key="k03", concept="tam-yuzde-fark-dogrusal-degismez", note=_note("11.4"),
         prompt=(
             "Bir $\\ln(\\text{ücret})$ etkileşim modelinde iki grup arasındaki log fark X = 8, 12 ve 16 yılda sırasıyla "
-            "−0,10; −0,30 ve −0,50'dir (her dört yılda 0,20 azalıyor). Aynı noktalardaki tam yüzde farklar nedir?"
+            "−0,10; −0,30 ve −0,50'dir (her dört yılda 0,20 azalıyor). Aynı noktalardaki tam yüzde farklar nedir?" + " Yüzde yorumunda, bağımlı değişken log ise koşullu geometrik ortalamayı esas alın."
         ),
         answer=MultipleChoice(
             (
@@ -128,7 +130,7 @@ QUESTIONS = (
             "Tam yüzde fark $100[\\exp(\\gamma_0 + \\gamma_1X) - 1]$'dir: $100(e^{-0{,}10} - 1) \\approx -9{,}52$, "
             "$100(e^{-0{,}30} - 1) \\approx -25{,}92$, $100(e^{-0{,}50} - 1) \\approx -39{,}35$. Log fark X ile doğrusal "
             "değişse de yüzde fark doğrusal değişmez: adımlar 16,40 ve 13,43 puandır. %10,52… işaretleri ters "
-            "çevirir; ×100 yaklaşık yorumdur ve büyük farklarda hata büyür (§11.4)."
+            "çevirir; ×100 yaklaşık yorumdur ve büyük farklarda hata büyür (§11.4)." + LOG_MEAN_NOTE
         ),
     ),
     Question(
@@ -429,7 +431,7 @@ QUESTIONS = (
         key="e02", concept="belirli-yuzde-farkin-x-degeri", note=_note("11.4"),
         prompt=(
             "$\\ln(Y)$ etkileşim modelinde gruplar arasındaki log fark $\\gamma_0 + \\gamma_1X$'tir ($\\gamma_1 \\neq 0$). "
-            "Tam yüzde farkın P'ye eşit olduğu X değerini $\\gamma_0$, $\\gamma_1$ ve P cinsinden yazın."
+            "Tam yüzde farkın P'ye eşit olduğu X değerini $\\gamma_0$, $\\gamma_1$ ve P cinsinden yazın." + " Yüzde yorumunda, bağımlı değişken log ise koşullu geometrik ortalamayı esas alın."
         ),
         answer=Equation(
             lhs="X_P",
@@ -444,7 +446,7 @@ QUESTIONS = (
         explanation=(
             "$100[\\exp(\\gamma_0 + \\gamma_1X) - 1] = P$ eşitliğinden $\\gamma_0 + \\gamma_1X = \\ln(1 + P/100)$ ve "
             "$X = [\\ln(1 + P/100) - \\gamma_0]/\\gamma_1$. P = 0 için sonuç log farkın sıfır olduğu $-\\gamma_0/\\gamma_1$ "
-            "noktasıdır. Bulunan X veri aralığının dışındaysa sonuç ekstrapolasyondur ve dikkatle raporlanır (§11.4)."
+            "noktasıdır. Bulunan X veri aralığının dışındaysa sonuç ekstrapolasyondur ve dikkatle raporlanır (§11.4)." + LOG_MEAN_NOTE
         ),
     ),
     Question(

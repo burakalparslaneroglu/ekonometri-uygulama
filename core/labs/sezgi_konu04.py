@@ -331,7 +331,7 @@ def _forms_takeaway(state: LabState, parameters: Parameters) -> str:
     b_log = s["b_log"]
     return (
         f"Log–log modelin eğimi esnekliği tahmin eder: β̂₁ = {plain(b_log, 3)}, DGP'deki esneklik "
-        f"{plain(elasticity, 2)}. Bu örneklemde büyüklüğü yüzde 1 daha yüksek konutların tahmin edilen fiyatı "
+        f"{plain(elasticity, 2)}. Bu örneklemde büyüklüğü yüzde 1 daha yüksek konutların tahmin edilen koşullu geometrik ortalama fiyatı "
         f"yaklaşık yüzde {plain(abs(b_log), 3)} daha {signed_difference(b_log)} (§4.9). Düzey–düzey eğim "
         f"({plain(s['b_duzey'], 4)} bin dolar / kare fit) başka bir soruya cevap verir: bir kare fitlik farka "
         f"karşılık gelen ortalama tahmini fiyat farkı. {shape} R²'ler ({plain(s['r2_duzey'], 3)} ve "

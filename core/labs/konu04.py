@@ -48,7 +48,7 @@ from core.labs.spec import (
     interactive_step,
 )
 from core.labs.sezgi import plain
-from core.labs.wording import signed_difference
+from core.labs.wording import signed_difference, LOG_MEAN_NOTE
 
 DATA = "wage1"
 HPRICE = "hprice1"
@@ -353,14 +353,14 @@ _FORM_NOTES = {
     "duzey_duzey": ("Hem fiyat hem büyüklük düzeydedir: bir kare fit daha büyük konutların tahmin edilen fiyatı "
                     "ortalama {b} bin dolar (yaklaşık 140,2 dolar) daha "
                     "yüksektir; 100 kare fitlik fark {dd} bin dolardır."),
-    "log_duzey": ("Fiyat logaritmik, büyüklük düzeydedir: bir kare fitlik fark fiyatta yaklaşık yüzde 100·β̂₁ = "
+    "log_duzey": ("Fiyat logaritmik, büyüklük düzeydedir: bir kare fitlik fark koşullu geometrik ortalama fiyatta yaklaşık yüzde 100·β̂₁ = "
                   "{ld1} farkla ilişkilidir; 100 kare fitlik fark için yaklaşık yüzde {ld}. Eğim küçük görünür, çünkü "
                   "bir kare fit küçük bir birimdir."),
-    "duzey_log": ("Fiyat düzeyde, büyüklük logaritmiktir: büyüklükteki yüzde 1'lik fark fiyatta yaklaşık β̂₁/100 = "
+    "duzey_log": ("Fiyat düzeyde, büyüklük logaritmiktir: büyüklükteki yüzde 1'lik fark koşullu aritmetik ortalama fiyatta yaklaşık β̂₁/100 = "
                   "{dl} bin dolarlık farkla ilişkilidir. Sonuç yüzde değil, fiyat birimidir. Sabitin ekonomik anlamı "
                   "yoktur: ln(büyüklük) = 0, yani bir kare fitlik konut demektir."),
     "log_log": ("İki değişken de logaritmiktir; eğim esnekliktir: büyüklük yüzde 1 daha yüksek olduğunda tahmin "
-                "edilen fiyat yaklaşık yüzde {ll} daha yüksektir; yüzde 10 için yaklaşık yüzde {ll10}."),
+                "edilen koşullu geometrik ortalama fiyat yaklaşık yüzde {ll} daha yüksektir; yüzde 10 için yaklaşık yüzde {ll10}."),
 }
 
 
@@ -404,7 +404,7 @@ def _log_note(state, choices) -> str:
     return (
         "Bağımlı değişken `lwage` (log saatlik ücret), açıklayıcı "
         f"değişken düzeydedir: log–düzey model. {phrase.capitalize()} "
-        f"bir yıl daha yüksek olan çalışanların saatlik ücreti örneklemde yaklaşık %{plain(abs(100 * b1), 2)} daha "
+        f"bir yıl daha yüksek olan çalışanların koşullu geometrik ortalama saatlik ücreti yaklaşık %{plain(abs(100 * b1), 2)} daha "
         f"{signed_difference(b1)} (100 · β̂₁; küçük değişim yaklaşımı). R² = {plain(s['r2_log'], 3)}: log ücret "
         f"değişkenliğinin yaklaşık %{plain(s['r2_log_yuzde'], 1)} kadarı örneklemde izlenir; bu sayı düzey ücret "
         "modelinin R²'siyle karşılaştırılmaz (farklı bağımlı değişken). Standart hata, t, p-değeri ve güven aralığı "
@@ -607,7 +607,7 @@ STEPS = (
             "Aynı iki değişken düzeyleriyle ya da doğal logaritmalarıyla modele girebilir (§4.8, Tablo 4.2): "
             "düzey–düzey (birim → birim), log–düzey (birim → yaklaşık yüzde $100\\beta_1$), düzey–log (yüzde 1 → "
             "$\\beta_1/100$ birim) ve log–log (yüzde 1 → yaklaşık yüzde $\\beta_1$, esneklik). Tablo 4.3 dört biçimi "
-            "HPRICE1'de yan yana gösterir; incelenecek biçimi seçin."
+            "HPRICE1'de yan yana gösterir; incelenecek biçimi seçin." + LOG_MEAN_NOTE
         ),
         controls=(
             Choice("adim7_bicim", "İncelenen biçim", FORM_OPTIONS, "duzey_duzey",
@@ -638,7 +638,7 @@ STEPS = (
         explanation=(
             "`lwage ~ educ` log saatlik ücreti bağımlı, eğitim yılını açıklayıcı değişken yapar (Denklem 4.8). Bu "
             "aşamada çıktıda okunanlar: bağımlı değişken, gözlem sayısı, katsayılar ve R². Standart hata, t, p-değeri "
-            "ve güven aralığı sütunları görünür ama henüz yorumlanmaz."
+            "ve güven aralığı sütunları görünür ama henüz yorumlanmaz." + LOG_MEAN_NOTE
         ),
         controls=(
             Choice("adim8_x", "Açıklayıcı değişken (bağımlı değişken: log saatlik ücret)", W.options(DATA, REGRESSORS),
@@ -672,7 +672,7 @@ STEPS = (
         explanation=(
             "Makale tablosu uzun yazılım çıktısını sıkıştırır: her sütun bir model, satırlar katsayılar, altta gözlem "
             "sayısı ve R². Notlardaki Tablo 4.4 düzey–düzey ve log–log modelleri yan yana koyar. Tablonun sütunlarını "
-            "Adım 7'deki dört biçimden siz seçin."
+            "Adım 7'deki dört biçimden siz seçin." + LOG_MEAN_NOTE
         ),
         controls=(
             MultiChoice("adim9_sutunlar", "Tablodaki modeller", FORM_OPTIONS, ARTICLE_DEFAULT,

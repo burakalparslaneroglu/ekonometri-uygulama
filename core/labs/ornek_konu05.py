@@ -20,6 +20,8 @@ sütunları (Adım 9).
 
 from __future__ import annotations
 
+from core.labs.wording import LOG_MEAN_NOTE
+
 from functools import cache
 
 import numpy as np
@@ -631,7 +633,7 @@ def _step5(case: Case, choice: MultiChoice) -> LabStep:
             percent = s["log_yuzde"]
             zero = negligible(case, s["log_x"], ly, x)
             text += (f" Sütun (3)'te bağımlı değişken log sonuçtur: {held}{step_words(case, x)} {plural(case)} tahmin "
-                     f"edilen {outcome_words(case)} "
+                     f"edilen koşullu geometrik ortalama {outcome_words(case)} "
                      f"{change(percent, '%' + sayi(abs(percent), digits_for(percent, 1)), zero)}."
                      + rough(s["log_x"]))
         if logs:
@@ -675,7 +677,7 @@ def _step5(case: Case, choice: MultiChoice) -> LabStep:
             "Kod 5.1'deki gibi formüldeki `+` işaretleri açıklayıcı değişkenleri birlikte kullanır. Bu aşamada çıktıda "
             "okunanlar: bağımlı değişken, gözlem sayısı, katsayılar, R² ve düzeltilmiş R². Tablo basit modeli, çoklu "
             "modeli ve (sonucun bütün değerleri pozitifse) bağımlı değişkeni log sonuç olan çoklu modeli yan yana "
-            "koyar. Bu adım Adım 1'deki modeli kullanır."
+            "koyar. Bu adım Adım 1'deki modeli kullanır." + LOG_MEAN_NOTE
         ),
         uses=(choice,),
         build=build,
@@ -1104,7 +1106,7 @@ def _step9(case: Case) -> LabStep:
         explanation=(
             "Makale tablosu yazılım çıktısını sıkıştırır: her sütun bir model, satırlar katsayılar; altta gözlem sayısı, "
             "R² ve düzeltilmiş R². Okuma sırası aynıdır: bağımlı değişken, gözlem sayısı, sütundaki değişkenler, "
-            "katsayının birimi ve ceteris paribus koşulu. Sütunları siz seçin."
+            "katsayının birimi ve ceteris paribus koşulu. Sütunları siz seçin." + LOG_MEAN_NOTE
         ),
         controls=(MultiChoice("adim9_sutunlar", "Tablodaki modeller",
                               tuple((key, name) for key, (*_, name) in article.items()), default,

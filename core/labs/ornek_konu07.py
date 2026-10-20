@@ -20,6 +20,8 @@ Standart hatalar klasik (homoskedastik) EKK standart hatalarıdır; dayanıklı 
 
 from __future__ import annotations
 
+from core.labs.wording import LOG_MEAN_NOTE
+
 import math
 from dataclasses import replace
 from functools import cache
@@ -726,7 +728,7 @@ def _step8(case: Case) -> LabStep:
             "Makaleler tam çıktı yerine sıkıştırılmış tablo verir. Parantezde ne olduğu (standart hata, t ya da güven "
             "aralığı) ve yıldız eşikleri tablo notundan okunur. "
             + ("Sütun (1) düzey–düzey, sütun (2) log–düzey modelidir; katsayıların birimleri farklıdır." if logs else
-               "Tabloda ana model vardır.")
+               "Tabloda ana model vardır.") + LOG_MEAN_NOTE
         ),
         operations=tuple(operations),
         checks=stable_checks(tuple(checks), exact, table="tablo75"),

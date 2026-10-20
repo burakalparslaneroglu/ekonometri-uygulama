@@ -14,6 +14,8 @@ yüzde dönüşümü Konu 9'un konusudur; sorular bunları kullanmaz.
 
 from __future__ import annotations
 
+from core.labs.wording import LOG_MEAN_NOTE
+
 from core.labs.spec import NoteRef
 from core.quiz.expression import Symbol, beta_hat_aliases
 from core.quiz.model import (
@@ -465,7 +467,7 @@ QUESTIONS = (
             "Log–düzey bir ücret modelinde (bağımlı değişken ln(ücret)) bir açıklayıcı değişkenin katsayısı "
             "$\\widehat\\beta$, standart hatası $s$, güven aralığının kritik değeri $c$'dir. Diğer değişkenler sabitken "
             "bu değişkendeki $\\Delta x$ birimlik farkla ilişkili yaklaşık yüzde ücret farkı için güven aralığının alt "
-            "sınırını (yüzde olarak, §7.10'daki yaklaşık yorumla) yazın."
+            "sınırını (yüzde olarak, §7.10'daki yaklaşık yorumla) yazın." + " Yüzde yorumunda, bağımlı değişken log ise koşullu geometrik ortalamayı esas alın."
         ),
         answer=Equation(
             lhs="\\text{Alt sınır (\\%)}",
@@ -483,7 +485,7 @@ QUESTIONS = (
             "yüzde yorumu (§7.10) her sınırı 100·Δx ile çarpar. Tablo 7.5'in Sütun (2)'sinde kıdem katsayısı 0,022, "
             "standart hatası 0,003: dört yıllık kıdem farkı için nokta tahmini yaklaşık %8,8, yüzde 95 aralığı "
             "yaklaşık [%6,4; %11,2] (c ≈ 1,965). Yaklaşım küçük katsayılarda iyi çalışır; daha hassas dönüşüm Konu "
-            "9'da işlenir (§7.10)."
+            "9'da işlenir (§7.10)." + LOG_MEAN_NOTE
         ),
     ),
 )

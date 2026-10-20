@@ -12,6 +12,8 @@ terimleri Konu 11'in konusudur; sorular bunları kullanmaz.
 
 from __future__ import annotations
 
+from core.labs.wording import LOG_MEAN_NOTE
+
 from core.labs.spec import NoteRef
 from core.quiz.expression import Symbol, beta_aliases, beta_hat_aliases
 from core.quiz.model import (
@@ -66,7 +68,7 @@ QUESTIONS = (
         key="k02", concept="tam-yuzde-azalista-asimetrik", note=_note("9.3", "Tablo 9.4"),
         prompt=(
             "Log–düzey modelinde $\\beta = 0{,}08$'dir. Tablo 9.4'e göre $X$ 4 birim arttığında $Y$ tam hesapla %37,71 "
-            "artar. $X$ 4 birim azalırsa $Y$'deki tam yüzde değişim nedir?"
+            "artar. $X$ 4 birim azalırsa $Y$'deki tam yüzde değişim nedir?" + " Yüzde yorumunda, bağımlı değişken log ise koşullu geometrik ortalamayı esas alın."
         ),
         answer=MultipleChoice(
             (
@@ -83,7 +85,7 @@ QUESTIONS = (
             "yaklaşık yorumdur, %−33,32 bir birimlik tam artışın (%8,33) dört katını alır. $e^{-0{,}32} = 1/e^{0{,}32}$ olduğundan azalış artışın tersidir: "
             "Y %37,71 artıp aynı 4 birimlik azalışla başlangıç düzeyine dönerse dönüş, yüksek düzeye göre yaklaşık "
             "%27,4'lük düşüştür. Yüzde değişim başlangıç düzeyine göre hesaplandığı için artış ve azalış simetrik "
-            "değildir; yaklaşık yorum (±%32) bu farkı göstermez (§9.3)."
+            "değildir; yaklaşık yorum (±%32) bu farkı göstermez (§9.3)." + LOG_MEAN_NOTE
         ),
     ),
     Question(
@@ -309,7 +311,7 @@ QUESTIONS = (
             "WAGE1 karesel modelinin katsayılarıyla (deneyim 0,0293; deneyim² −0,000592) eğitim ve kıdem aynıyken "
             "deneyimi 15 yıl olan bir çalışanla 5 yıl olan bir çalışan arasındaki tahmin edilen log ücret farkı **(1)** "
             "olur (virgülden sonra dört basamak). Bu fark, tam yüzde olarak yüzde **(2)** daha yüksek ücrete karşılık "
-            "gelir (virgülden sonra iki basamak)."
+            "gelir (virgülden sonra iki basamak)." + " Yüzde yorumunda, bağımlı değişken log ise koşullu geometrik ortalamayı esas alın."
         ),
         answer=FillBlanks((NumberBlank(0.1746, 0.0002, "0,1746"), NumberBlank(19.08, 0.02, "19,08"))),
         explanation=(
@@ -318,7 +320,7 @@ QUESTIONS = (
             "geri alır. Tam yüzde "
             "karşılığı $100(e^{0{,}1746} - 1) \\approx 19{,}08$: deneyimi 15 yıl olan çalışanın tahmin edilen ücreti "
             "yaklaşık %19 daha yüksektir. Doğrusal modelde ($M_1$, deneyim katsayısı 0,0041) aynı fark yalnız 0,041 "
-            "olurdu (§9.5)."
+            "olurdu (§9.5)." + LOG_MEAN_NOTE
         ),
     ),
     Question(
@@ -433,7 +435,7 @@ QUESTIONS = (
         key="e03", concept="log-log-buyuk-degisimde-tam-yuzde", note=_note("9.3"),
         prompt=(
             "Log–log modelde $\\ln(Y) = \\beta_0 + \\beta_1\\ln(X) + u$ ve eğim tahmini $b$'dir. $X$ yüzde $p$ "
-            "arttığında ($p$ büyük olabilir) $Y$'deki tam yüzde değişimi $b$ ve $p$ cinsinden yazın."
+            "arttığında ($p$ büyük olabilir) $Y$'deki tam yüzde değişimi $b$ ve $p$ cinsinden yazın." + " Yüzde yorumunda, bağımlı değişken log ise koşullu geometrik ortalamayı esas alın."
         ),
         answer=Equation(
             lhs="\\%\\Delta Y",
@@ -449,7 +451,7 @@ QUESTIONS = (
             "X, $(1 + p/100)$ katına çıkınca ln(X) $\\ln(1 + p/100)$ kadar, ln(Y) de $b\\ln(1 + p/100)$ kadar artar. "
             "Y'nin yeni düzeyi eskisinin $e^{b\\ln(1 + p/100)} = (1 + p/100)^b$ katıdır. Küçük p için sonuç yaklaşık "
             "$b\\,p$'dir (esneklik yorumu); b = 0,5 ve p = 50 için tam değişim %22,47, yaklaşık değer %25'tir. Büyük "
-            "yüzde değişimlerde esneklik yorumu da tam formülle düzeltilir (§9.3)."
+            "yüzde değişimlerde esneklik yorumu da tam formülle düzeltilir (§9.3)." + LOG_MEAN_NOTE
         ),
     ),
     Question(

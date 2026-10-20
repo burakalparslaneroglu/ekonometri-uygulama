@@ -31,6 +31,8 @@ hatalarıdır (dayanıklı çıkarım Konu 12).
 
 from __future__ import annotations
 
+from core.labs.wording import LOG_MEAN_NOTE
+
 import math
 from dataclasses import dataclass, replace
 from functools import cache
@@ -757,7 +759,7 @@ def _step1(case: Case) -> LabStep:
         note=NoteRef("11.1", 0, ("Şekil 11.1", "Tablo 11.6 (§11.9)")),
         explanation=(f"{lead} {case.extra.get('model_text', 'Model:')} "
                      f"{_model_text(case, base_terms, names.ly)}.{_centering_text(case) if case.own else ''}"
-                     + (" Kukla değişkeni değiştirin." if _live(control) else "")),
+                     + (" Kukla değişkeni değiştirin." if _live(control) else "") + LOG_MEAN_NOTE),
         controls=(control,),
         build=build,
         checks=_stable(checks, exact),
@@ -1106,7 +1108,7 @@ def _step4(case: Case) -> LabStep:
             "D = 0) = \\gamma_0 + \\gamma_1 X$ (§11.4). $\\gamma_0$ yalnız $X = 0$ noktasındaki farktır. $X$ anlamlı bir "
             "$c$ değeri etrafında merkezlenirse ($X^c = X - c$) kukla katsayısı farkı doğrudan $X = c$ noktasında verir; "
             f"tahmin edilen değerler, R² ve eğimler değişmez. Burada $X$: {phrase(case, x)}. Merkezleme noktasını "
-            "değiştirin."
+            "değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(control,),
         build=build,
@@ -1206,7 +1208,7 @@ def _step5(case: Case) -> LabStep:
             *_coefficients(case, "m_w", "w5", code, names.xc, controls, shown=False, decimals=d),
             *_averages(case, case.frame, "ort5", controls),
             *_group_lines("cizgi5", info, "w5", dummy, controls, "ort5", log=True),
-            LineChart("cizgi5", info[0], "duzey0", info[3], f"Tahmin edilen {case.name(y)}",
+            LineChart("cizgi5", info[0], "duzey0", info[3], f"Tahmin edilen geometrik ortalama: {case.name(y)}",
                       f"{_data_prefix(case)}etkileşimli model: {dummy.one_raw} ve {dummy.zero_raw} {_forms(case)['gen_pl']} "
                       f"tahmin edilen {_word_raw(case, y)} değeri{_held(case, controls)} (Şekil 11.3'teki gibi)",
                       markers=False, series=(("duzey1", _cap(case, dummy.one_raw)),), legend=_cap(case, dummy.zero_raw)),
@@ -1225,7 +1227,7 @@ def _step5(case: Case) -> LabStep:
         more = dict(case.extra.get("more", {})).get(names.xc) or f"{_word(case, names.xc)} değerinde bir birimlik artış"
         outcome = case.extra.get("outcome_with") or f"{phrase(case, y)} değeriyle"
         text = (f"{f'{capital(held)} sabitken ' if held else ''}{more}, {dummy.zero} {forms['loc']} yaklaşık "
-                f"{change(s['w_tam0'])}, {dummy.one} {forms['loc']} yaklaşık {change(s['w_tam1'])} tahmin edilen {outcome} "
+                f"{change(s['w_tam0'])}, {dummy.one} {forms['loc']} yaklaşık {change(s['w_tam1'])} tahmin edilen koşullu geometrik ortalama {outcome} "
                 "ilişkilidir (tam dönüşüm). ")
         if not text[0].isupper() and not text.startswith("“"):
             text = capital(text)
@@ -1238,7 +1240,7 @@ def _step5(case: Case) -> LabStep:
                      + ("reddedilir. " if p < 0.05 else "reddedilemez; eğimler sayısal olarak farklı görünse de fark "
                         "örnekleme belirsizliğine göre küçüktür. "))
         causal = dict(case.extra.get("causal", {})).get(dummy.column, "grup üyeliğinin")
-        return (text + "Şekildeki eğriler exp(tahmin edilen log sonuç) değerleridir"
+        return (text + "Şekildeki eğriler koşullu geometrik ortalama tahminleridir: exp(tahmin edilen log sonuç)"
                 + (f"; {held} örneklem ortalamasındadır" if held else "")
                 + f". Gözlemsel veriyle bu katsayılar {causal} nedensel etkisini ölçmez (§11.6).")
 
@@ -1267,7 +1269,7 @@ def _step5(case: Case) -> LabStep:
             f"Model: {model}. {capital(_dummy(case).zero)} {_forms(case)['nom']} referans gruptur. Referans grubun "
             f"{_word(case, names.xc)} eğimi $\\beta_1$, diğer grubunki $\\beta_1 + \\gamma_1$; log eğim tam yüzdeye "
             "$100(e^{b} - 1)$ ile çevrilir."
-            + (" Etkileşen kuklayı değiştirin: varsayılan model yan yana gösterilir." if _live(control) else "")
+            + (" Etkileşen kuklayı değiştirin: varsayılan model yan yana gösterilir." if _live(control) else "") + LOG_MEAN_NOTE
         ),
         controls=(control,),
         build=build,
@@ -1464,7 +1466,7 @@ def _step6(case: Case) -> LabStep:
             + (f" {capital(point)} $X^c = 0$ olduğundan kukla katsayısı doğrudan bu noktadaki farktır." if point else "")
             + " Etkileşimin uyuma katkısı additif modelle karşılaştırılır."
             + (" Adım 5'teki kukla seçimi bu adımı da belirler." if _live(dummy_control) else "")
-            + " Farkın hesaplandığı düzeyi değiştirin."
+            + " Farkın hesaplandığı düzeyi değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(control,),
         uses=(dummy_control,),
@@ -2113,7 +2115,7 @@ def _step10(case: Case) -> LabStep:
             "statsmodels formülünde `D * X` terimleri $1 + D + X + D{:}X$ olarak açar; `D:X` yalnız çarpımı, `D + X` "
             "etkileşimsiz additif modeli kurar. Makale tablosu okunurken önce referans grup ve merkezleme noktası "
             "belirlenir; ana $X$ katsayısı referans grubun eğimi, etkileşim eğim farkı, kukla katsayısı merkezleme "
-            "noktasındaki farktır. Üçüncü sütunun formülünü değiştirin."
+            "noktasındaki farktır. Üçüncü sütunun formülünü değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(control,),
         build=build,

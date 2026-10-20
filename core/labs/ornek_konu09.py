@@ -65,7 +65,7 @@ from core.labs.ornek_regresyon import (
     validate_positive,
     wage2_case,
 )
-from core.labs.wording import tr_lower
+from core.labs.wording import tr_lower, LOG_MEAN_NOTE
 from core.labs.spec import (
     INTERCEPT,
     OLS,
@@ -572,7 +572,7 @@ def _step3(case: Case) -> LabStep:
             "$\\ln(Y) = \\beta_0 + \\beta_1 X + u$ modelinde X bir birim artınca Y yaklaşık yüzde $100\\beta_1$ "
             "değişir. Tam yüzde değişim $100(e^{\\beta_1}-1)$, X'teki değişim $\\Delta X$ birimse "
             f"$100(e^{{\\beta_1 \\Delta X}}-1)$ formülüyle hesaplanır. {example} Katsayıyı ve X'teki değişimi "
-            "değiştirin: iki yorum ne zaman ayrışır?"
+            "değiştirin: iki yorum ne zaman ayrışır?" + LOG_MEAN_NOTE
         ),
         controls=(beta_control, dx_control),
         build=build,
@@ -693,7 +693,7 @@ def _step4(case: Case) -> LabStep:
             f"`{ly} ~ {' + '.join(m4)}`. Model parametrelerde doğrusaldır; kareler ayrı açıklayıcı değişken gibi EKK ile "
             f"tahmin edilir. {'Ortak test' if q > 1 else 'Test'} $H_0$: karesel "
             f"{'terimlerin katsayıları sıfır' if q > 1 else 'terimin katsayısı sıfır'} hipotezini sınar: doğrusal model "
-            "karesel modelin kısıtlı biçimidir."
+            "karesel modelin kısıtlı biçimidir." + LOG_MEAN_NOTE
         ),
         operations=tuple(operations),
         checks=tuple(checks),
@@ -965,7 +965,7 @@ def _step5(case: Case) -> LabStep:
                "\\Delta)]$. ") +
             "Dönüm noktası $x^* = -\\hat\\beta_1/(2\\hat\\beta_2)$; $\\hat\\beta_2 < 0$ ise tepe, $\\hat\\beta_2 > 0$ "
             "ise dip noktasıdır. Dönüm noktası veri aralığında ve yeterli gözlemin bulunduğu bölgede yorumlanır; karesel "
-            "terim anlamsızsa dönüm noktası da belirsizdir. Düzeyi değiştirin."
+            "terim anlamsızsa dönüm noktası da belirsizdir. Düzeyi değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(control,),
         build=build,
@@ -1334,9 +1334,9 @@ def _step8(case: Case) -> LabStep:
         control = Choice("adim8_model", "Sütun (2)'deki karesel model",
                          tuple((name, labels[name]) for name in ("m4", "m2", "m3")), "m4",
                          help="Varsayılan: iki karesel terimli model.")
-        return interactive_step(explanation=f"{lead} Sütun (2)'deki modeli değiştirin.", controls=(control,),
+        return interactive_step(explanation=f"{lead} Sütun (2)'deki modeli değiştirin." + LOG_MEAN_NOTE, controls=(control,),
                                 build=build, **common)
-    return LabStep(explanation=lead, operations=build({}), **common)
+    return LabStep(explanation=lead + LOG_MEAN_NOTE, operations=build({}), **common)
 
 
 # --- Tanım ------------------------------------------------------------------------------------------------------

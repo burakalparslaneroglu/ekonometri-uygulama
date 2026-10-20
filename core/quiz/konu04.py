@@ -12,6 +12,8 @@ değişim Konu 9'un konusudur; sorular yalnız küçük değişim yaklaşımın�
 
 from __future__ import annotations
 
+from core.labs.wording import LOG_MEAN_NOTE
+
 from core.labs.spec import NoteRef
 from core.quiz.expression import Symbol, bar_aliases, beta_aliases, beta_hat_aliases
 from core.quiz.model import (
@@ -244,14 +246,14 @@ QUESTIONS = (
             "CEOSAL1 verisiyle tahmin edilen bir modelin çıktısında `Dep. Variable: lsalary` (CEO maaşının doğal "
             "logaritması) ve tek açıklayıcı değişken olarak `lsales` (firma satışlarının doğal logaritması) görülüyor; "
             "`lsales` katsayısı 0,2567'dir. Bu çıktıya göre satışları yüzde 1 daha yüksek olan firmalarda CEO maaşı "
-            "örneklemde yaklaşık yüzde 0,26 daha yüksektir."
+            "örneklemde yaklaşık yüzde 0,26 daha yüksektir." + " Yüzde yorumunda, bağımlı değişken log ise koşullu geometrik ortalamayı esas alın."
         ),
         answer=TrueFalse(True),
         explanation=(
             "Çıktıda iki değişken de logaritmiktir: model log–log biçimindedir ve eğim esnekliktir. Satışlardaki yüzde "
             "1'lik fark, maaşta yaklaşık yüzde 0,257'lik farkla ilişkilidir. Yorum bir ilişkidir; satışları artırmanın "
             "maaşı nedensel olarak artırdığını tek başına göstermez. `Dep. Variable` satırı bağımlı değişkeni, katsayı "
-            "satırının adı açıklayıcı değişkeni ve biçimini söyler (§4.10, Tablo 4.2)."
+            "satırının adı açıklayıcı değişkeni ve biçimini söyler (§4.10, Tablo 4.2)." + LOG_MEAN_NOTE
         ),
     ),
     Question(
@@ -271,13 +273,13 @@ QUESTIONS = (
         key="d07", concept="duzey-log-yuzde-birlik-degisim", note=_note("4.9", "§4.9.3"),
         prompt=(
             "$\\widehat{\\text{ücret}} = 3 + 5\\ln(\\text{çalışan sayısı})$ modelinde (ücret dolar/saat) firmanın "
-            "çalışan sayısı yüzde 1 arttığında tahmin edilen saatlik ücret yaklaşık 5 dolar artar."
+            "çalışan sayısı yüzde 1 arttığında tahmin edilen saatlik ücret yaklaşık 5 dolar artar." + " Yüzde yorumunda, bağımlı değişken log ise koşullu geometrik ortalamayı esas alın."
         ),
         answer=TrueFalse(False),
         explanation=(
             "Düzey–log modelde X yüzde 1 arttığında Y yaklaşık $\\beta_1/100$ birim değişir: 5/100 = 0,05 dolar. 5 "
             "dolarlık fark, ln(çalışan sayısı) bir birim arttığında, yani çalışan sayısı yaklaşık 2,72 katına "
-            "çıktığında ortaya çıkar; bu küçük bir değişim değildir (§4.9, Tablo 4.2)."
+            "çıktığında ortaya çıkar; bu küçük bir değişim değildir (§4.9, Tablo 4.2)." + LOG_MEAN_NOTE
         ),
     ),
     # --- Boşluk doldurma ----------------------------------------------------------
@@ -343,13 +345,13 @@ QUESTIONS = (
         prompt=(
             "Kod 4.4'teki katsayılara göre eğitimi 12 yıl olan bir çalışanın tahmin edilen log ücreti **(1)** olur. "
             "Log farkına dayalı yaklaşımla, eğitimi 14 yıl olan bir çalışanın tahmini saatlik ücreti 12 yıl "
-            "olanınkinden yaklaşık yüzde **(2)** daha yüksektir. (Virgülden sonra iki basamak yazın.)"
+            "olanınkinden yaklaşık yüzde **(2)** daha yüksektir. (Virgülden sonra iki basamak yazın.)" + " Yüzde yorumunda, bağımlı değişken log ise koşullu geometrik ortalamayı esas alın."
         ),
         answer=FillBlanks((NumberBlank(1.58, 0.01, "1,58"), NumberBlank(16.54, 0.02, "16,54"))),
         explanation=(
             "Tahmin edilen log ücret: 0,5838 + 0,0827 × 12 ≈ 1,58. İki yıllık eğitim farkı log ücrette 2 × 0,0827 = "
             "0,1654'lük farka karşılık gelir; bunun 100 katı yaklaşık yüzde 16,54'tür (Tablo 4.2). Çıktıdaki `std "
-            "err`, `t` ve `P>|t|` sütunları bu bölümde yorumlanmaz (§4.10, Kod 4.4)."
+            "err`, `t` ve `P>|t|` sütunları bu bölümde yorumlanmaz (§4.10, Kod 4.4)." + LOG_MEAN_NOTE
         ),
     ),
     # --- Denklem yazma -----------------------------------------------------------
@@ -451,7 +453,7 @@ QUESTIONS = (
         key="e05", concept="log-log-yuzde-degisim", note=_note("4.9", "(4.9)"),
         prompt=(
             "Log–log modelde $\\ln(Y) = \\beta_0 + \\beta_1 \\ln(X) + u$ eğim tahmini $b$'dir. X yüzde $p$ (küçük bir "
-            "değer) arttığında Y'deki yaklaşık yüzde değişimi yazın."
+            "değer) arttığında Y'deki yaklaşık yüzde değişimi yazın." + " Yüzde yorumunda, bağımlı değişken log ise koşullu geometrik ortalamayı esas alın."
         ),
         answer=Equation(
             lhs="\\%\\Delta Y \\approx",
@@ -462,7 +464,7 @@ QUESTIONS = (
         explanation=(
             "Log–log modelde eğim esnekliktir: X yüzde 1 arttığında Y yaklaşık yüzde b değişir; küçük bir yüzde p için "
             "yaklaşık yüzde b·p. HPRICE1'de büyüklük yüzde 10 daha yüksek olduğunda fiyat yaklaşık yüzde 0,8727 × 10 ≈ "
-            "8,73 daha yüksektir. Değişim büyüdükçe yaklaşım bozulur (§4.9, (4.9))."
+            "8,73 daha yüksektir. Değişim büyüdükçe yaklaşım bozulur (§4.9, (4.9))." + LOG_MEAN_NOTE
         ),
     ),
 )

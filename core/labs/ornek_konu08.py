@@ -21,6 +21,8 @@ klasik (homoskedastik) EKK varsayımlarına dayanır; dayanıklı ortak test Kon
 
 from __future__ import annotations
 
+from core.labs.wording import LOG_MEAN_NOTE
+
 import math
 from dataclasses import replace
 from functools import cache
@@ -825,7 +827,7 @@ def _step7(case: Case) -> LabStep:
             "Makale tablolarında ortak testler katsayıların altında ayrı satırlarda verilir: sınanan hipotez ve standart "
             "hata türü tablo notunda yazılır. "
             + ("Sütun (1) düzey–düzey, Sütun (2) log–düzey modelidir; " if logs else "Tabloda kısıtsız model vardır; ")
-            + f"ortak test {_genitive(case, tested)} sıfır olduğunu, genel F bütün eğimleri sınar."
+            + f"ortak test {_genitive(case, tested)} sıfır olduğunu, genel F bütün eğimleri sınar." + LOG_MEAN_NOTE
         ),
         operations=tuple(operations),
         checks=_robust_checks(tuple(checks), exact or log_exact, table="tablo86"),

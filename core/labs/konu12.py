@@ -17,6 +17,8 @@ türü kullanır), ortak testte sınanan katsayılar (Adım 7) ve WAGE1 modeller
 
 from __future__ import annotations
 
+from core.labs.wording import LOG_MEAN_NOTE
+
 import math
 
 from core import wooldridge_data as W
@@ -786,7 +788,7 @@ STEPS = (
             "$\\ln(\\text{price}_i) = \\beta_0 + \\beta_1 \\ln(\\text{lotsize}_i) + \\beta_2 \\ln(\\text{sqrft}_i) + "
             "\\beta_3 \\text{bdrms}_i + u_i$: arsa ve konut büyüklüğü katsayıları esnekliktir. Notlardaki HC1 hesabıyla "
             "log modelde geleneksel ve dayanıklı standart hatalar birbirine yakındır; bu, artık grafiği ve testlerle "
-            "uyumludur. Adım 4'teki kovaryans seçimi bu adımı da belirler."
+            "uyumludur. Adım 4'teki kovaryans seçimi bu adımı da belirler." + LOG_MEAN_NOTE
         ),
         uses=(HC_4,),
         build=_log,
@@ -804,7 +806,7 @@ STEPS = (
         explanation=(
             "Aynı katsayılar standart hata türüne göre farklı yıldızlar alabilir. Makale tablosunda tablo notu önce "
             "okunur: kullanılan standart hata ya da kovaryans türü (HC0–HC3 hangisi), parantez içinde ne olduğu, "
-            "yıldız eşikleri, gözlem sayısı ve kontroller. Adım 4'teki kovaryans seçimi bu adımı da belirler."
+            "yıldız eşikleri, gözlem sayısı ve kontroller. Adım 4'teki kovaryans seçimi bu adımı da belirler." + LOG_MEAN_NOTE
         ),
         uses=(HC_4,),
         build=_paper,
@@ -845,7 +847,7 @@ STEPS = (
             "Heteroskedastisiteyle karşılaşıldığında tek bir mekanik çözüm yoktur: yatay kesit çıkarımında dayanıklı "
             "standart hata temel seçenektir; fonksiyonel biçim ekonomik gerekçeyle yeniden düşünülür; ağırlıklı en "
             "küçük kareler yalnız güvenilir varyans bilgisi varsa düşünülür. WAGE1'de ücret düzeyi ve log ücret "
-            "modelleri karşılaştırılır. Açıklayıcı değişkenleri değiştirin."
+            "modelleri karşılaştırılır. Açıklayıcı değişkenleri değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(X_8,),
         build=_wage,

@@ -55,7 +55,7 @@ from core.labs.spec import (
     TableTarget,
     interactive_step,
 )
-from core.labs.wording import signed_difference
+from core.labs.wording import signed_difference, LOG_MEAN_NOTE
 
 DATA = "wage1"
 HPRICE = "hprice1"
@@ -409,7 +409,7 @@ def _output_note(state, choices) -> str:
             "henüz yorumlanmaz (Konu 7).")
     if "educ" in chosen:
         held = "diğer değişkenler aynıyken " if len(chosen) > 1 else ""
-        text += (f" Sütun (3)'te bağımlı değişken log ücrettir: {held}bir ek eğitim yılı, tahmin edilen ücrette "
+        text += (f" Sütun (3)'te bağımlı değişken log ücrettir: {held}bir ek eğitim yılı, koşullu geometrik ortalama ücrette "
                  f"yaklaşık %{plain(s['log_yuzde'], 1)} farkla ilişkilidir.")
     return text + (" Sütun (2) ile (3)'ün R²'leri karşılaştırılmaz: bağımlı değişkenlerden biri ücret, diğeri log "
                    "ücrettir.")
@@ -829,7 +829,7 @@ STEPS = (
             "Kod 5.1 çoklu modeli tahmin eder: formüldeki `+` işaretleri açıklayıcı değişkenleri birlikte kullanır. "
             "Bu aşamada çıktıda okunanlar: bağımlı değişken, gözlem sayısı, katsayılar, R² ve düzeltilmiş R². "
             "Tablo 5.1 basit modeli, çoklu modeli ve bağımlı değişkeni log ücret olan çoklu modeli yan yana koyar. Bu "
-            "adım Adım 1'deki modeli kullanır."
+            "adım Adım 1'deki modeli kullanır." + LOG_MEAN_NOTE
         ),
         uses=(X_MULTI,),
         build=_output,
@@ -931,7 +931,7 @@ STEPS = (
         explanation=(
             "Makale tablosu yazılım çıktısını sıkıştırır: her sütun bir model, satırlar katsayılar; altta gözlem sayısı, "
             "R² ve düzeltilmiş R². Okuma sırası aynıdır: bağımlı değişken, gözlem sayısı, sütundaki değişkenler, "
-            "katsayının birimi ve ceteris paribus koşulu. Notlardaki Tablo 5.4 üç sütunludur; sütunları siz seçin."
+            "katsayının birimi ve ceteris paribus koşulu. Notlardaki Tablo 5.4 üç sütunludur; sütunları siz seçin." + LOG_MEAN_NOTE
         ),
         controls=(MultiChoice("adim9_sutunlar", "Tablodaki modeller",
                               tuple((key, name) for key, (*_, name) in ARTICLE.items()), ARTICLE_DEFAULT,

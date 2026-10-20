@@ -11,6 +11,8 @@ dayanıklı çıkarım Konu 12'nin konusudur; sorular bunları kullanmaz.
 
 from __future__ import annotations
 
+from core.labs.wording import LOG_MEAN_NOTE
+
 from core.labs.spec import NoteRef
 from core.quiz.expression import Symbol
 from core.quiz.model import (
@@ -112,7 +114,7 @@ QUESTIONS = (
         prompt=(
             "Additif bir log ücret modelinde kadın kuklasının katsayısı −0,30, evli kuklasınınki 0,10'dur. Diğer "
             "değişkenler aynıyken evli bir kadının tahmin edilen ücreti bekâr bir erkeğinkinden tam hesapla yüzde kaç "
-            "farklıdır?"
+            "farklıdır?" + " Yüzde yorumunda, bağımlı değişken log ise koşullu geometrik ortalamayı esas alın."
         ),
         answer=MultipleChoice(("%−25,92", "%−15,40", "%−20,00", "%−18,13"), correct=3),
         explanation=(
@@ -120,7 +122,7 @@ QUESTIONS = (
             "yüzdeleri toplamak (−25,92 + 10,52 = −15,40) yanlıştır: yüzde değişimler çarpımsal birleşir, $0{,}7408 "
             "\\times 1{,}1052 \\approx 0{,}8187$. %−20,00 yaklaşık yorumdur; %−25,92 yalnız kadın farkıdır. Additif "
             "model evlilik farkını kadınlar ve erkekler için aynı kabul eder; bu farkın gruplara göre değişmesine izin "
-            "veren etkileşim terimleri Konu 11'de ele alınır (§10.7)."
+            "veren etkileşim terimleri Konu 11'de ele alınır (§10.7)." + LOG_MEAN_NOTE
         ),
     ),
     Question(
@@ -314,7 +316,7 @@ QUESTIONS = (
         prompt=(
             "Kod 10.4'teki kadın katsayısının yüzde 95 güven aralığı log ölçeğinde [−0,374; −0,228]'dir. Aynı modele "
             "göre erkeklerin kadınlara göre tam yüzde ücret farkının güven aralığı: alt sınır yüzde **(1)**, üst sınır "
-            "yüzde **(2)**. (Virgülden sonra iki basamak yazın.)"
+            "yüzde **(2)**. (Virgülden sonra iki basamak yazın.)" + " Yüzde yorumunda, bağımlı değişken log ise koşullu geometrik ortalamayı esas alın."
         ),
         answer=FillBlanks((NumberBlank(25.61, 0.06, "25,61"), NumberBlank(45.35, 0.06, "45,35"))),
         explanation=(
@@ -322,7 +324,7 @@ QUESTIONS = (
             "biçimi sınırlar ayrı ayrı dönüştürülerek bulunur: $100(e^{0{,}228} - 1) \\approx 25{,}61$ ve "
             "$100(e^{0{,}374} - 1) \\approx 45{,}35$ (yuvarlanmamış sınırlarla 45,40). Kadınların erkeklere göre aralığı "
             "[−31,22; −20,39] ile karşılaştırın: bilgi aynıdır, temel grup farklıdır; yüzde farkın büyüklüğü temel gruba "
-            "bağlıdır (§10.7)."
+            "bağlıdır (§10.7)." + LOG_MEAN_NOTE
         ),
     ),
     Question(
@@ -330,14 +332,14 @@ QUESTIONS = (
         prompt=(
             "Tablo 10.3'te Kuzey Merkez'in log katsayısı −0,071, Batı'nınki 0,033'tür (Kuzeydoğu referans). Diğer "
             "değişkenler sabitken Batı'nın Kuzey Merkez'e göre log farkı **(1)** (virgülden sonra üç basamak), tam yüzde "
-            "farkı yaklaşık yüzde **(2)** olur (virgülden sonra iki basamak)."
+            "farkı yaklaşık yüzde **(2)** olur (virgülden sonra iki basamak)." + " Yüzde yorumunda, bağımlı değişken log ise koşullu geometrik ortalamayı esas alın."
         ),
         answer=FillBlanks((NumberBlank(0.104, 0.0011, "0,104"), NumberBlank(10.96, 0.06, "10,96"))),
         explanation=(
             "İki katsayı aynı referansa göre olduğundan Kuzeydoğu farkta düşer: 0,033 − (−0,071) = 0,104. Tam yüzde "
             "farkı $100(e^{0{,}104} - 1) \\approx 10{,}96$; yuvarlanmamış katsayılarla (0,1045) yaklaşık 11,01'dir. "
             "Referans Kuzey Merkez yapılsaydı Batı katsayısı doğrudan bu farkı verirdi; tahmin edilen değerler "
-            "değişmezdi (§10.5)."
+            "değişmezdi (§10.5)." + LOG_MEAN_NOTE
         ),
     ),
     Question(
@@ -454,7 +456,7 @@ QUESTIONS = (
         key="e04", concept="tam-yuzde-guven-araligi-alt-siniri", note=_note("10.7", "Kod 10.4"),
         prompt=(
             "Log bağımlı değişkenli bir modelde kukla katsayısının tahmini $\\widehat\\delta$, standart hatası $s$ ve güven "
-            "aralığının kritik değeri $c$'dir. Tam yüzde farkın güven aralığının alt sınırını yazın."
+            "aralığının kritik değeri $c$'dir. Tam yüzde farkın güven aralığının alt sınırını yazın." + " Yüzde yorumunda, bağımlı değişken log ise koşullu geometrik ortalamayı esas alın."
         ),
         answer=Equation(
             lhs="\\text{alt sınır (\\%)}",
@@ -470,14 +472,14 @@ QUESTIONS = (
             "Aralık önce log ölçeğinde kurulur: $\\widehat\\delta \\pm c\\,s$. $100(e^{x} - 1)$ artan bir dönüşüm olduğundan "
             "sınırlar ayrı ayrı dönüştürülür; aralık nokta tahmine göre simetrik olmaz. Kod 10.4'te $-0{,}3011 \\pm "
             "1{,}9645 \\times 0{,}0372$ sınırları (yuvarlanmamış değerlerle) [−31,22; −20,39] verir: nokta tahmin −26,00'dan alt sınır 5,22, üst "
-            "sınır 5,61 puan uzaktadır (§10.7)."
+            "sınır 5,61 puan uzaktadır (§10.7)." + LOG_MEAN_NOTE
         ),
     ),
     Question(
         key="e05", concept="tam-yuzdeden-kukla-katsayisina", note=_note("10.7"),
         prompt=(
             "Bir makale log ücret modelindeki bir kukla için yalnız tam yüzde farkı raporluyor: $P$ (ör. $P = -20$, "
-            "yüzde 20 daha düşük demektir). Kukla katsayısını $P$ cinsinden yazın."
+            "yüzde 20 daha düşük demektir). Kukla katsayısını $P$ cinsinden yazın." + " Yüzde yorumunda, bağımlı değişken log ise koşullu geometrik ortalamayı esas alın."
         ),
         answer=Equation(
             lhs="\\widehat\\delta",
@@ -489,7 +491,7 @@ QUESTIONS = (
             "Tam yüzde fark $P = 100(e^{\\delta} - 1)$ ise $e^{\\delta} = 1 + P/100$ ve $\\delta = \\ln(1 + P/100)$. "
             "P = −26,00 için $\\ln(0{,}74) \\approx -0{,}301$: Kod 10.4'teki kadın katsayısı. P = −20 için δ ≈ −0,223; "
             "yaklaşık yorum burada −0,20 verirdi. Makalelerden katsayıyı geri elde etmek, farklı çalışmaları aynı "
-            "ölçekte karşılaştırmayı sağlar (§10.7)."
+            "ölçekte karşılaştırmayı sağlar (§10.7)." + LOG_MEAN_NOTE
         ),
     ),
 )

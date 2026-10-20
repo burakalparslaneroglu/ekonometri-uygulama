@@ -14,6 +14,8 @@ konusudur. Sorular yalnız küçük değişim yaklaşımını kullanır.
 
 from __future__ import annotations
 
+from core.labs.wording import LOG_MEAN_NOTE
+
 from core.labs.spec import NoteRef
 from core.quiz.expression import Symbol, bar_aliases, beta_aliases
 from core.quiz.model import (
@@ -483,7 +485,7 @@ QUESTIONS = (
             "İkinci el otomobil ilanlarında $\\widehat{\\ln(\\text{fiyat})} = c_0 + c_1\\,\\text{motor hacmi} + "
             "c_2\\,\\text{yaş}$ tahmin edilmiştir (motor hacmi litre, yaş yıl). Motor hacmi aynı, yaşı $a$ yıl fazla "
             "olan otomobilin tahmin edilen fiyatındaki yaklaşık yüzde farkı yazın (küçük değişim yaklaşımı). Gerekmeyen "
-            "sembolleri kullanmayın."
+            "sembolleri kullanmayın." + " Yüzde yorumunda, bağımlı değişken log ise koşullu geometrik ortalamayı esas alın."
         ),
         answer=Equation(
             lhs="\\%\\Delta\\,\\widehat{\\text{fiyat}} \\approx",
@@ -501,7 +503,7 @@ QUESTIONS = (
             "100 ile çarpımı küçük değişimler için yaklaşık yüzde farktır. Motor hacmi aynı tutulduğu için $c_1$ "
             "girmez. Tablo 5.1'in "
             "(3) sütununda eğitim katsayısı 0,0920: deneyim ve kıdem aynıyken bir ek eğitim yılı yaklaşık %9,2 ücret "
-            "farkıyla ilişkilidir. Tam yüzde değişim Konu 9'dadır (§5.6)."
+            "farkıyla ilişkilidir. Tam yüzde değişim Konu 9'dadır (§5.6)." + LOG_MEAN_NOTE
         ),
     ),
     Question(

@@ -84,7 +84,7 @@ from core.labs.spec import (
     TableTarget,
     interactive_step,
 )
-from core.labs.wording import at_zero
+from core.labs.wording import at_zero, LOG_MEAN_NOTE
 
 TOPIC = "konu04"
 TITLE = "Uygulama: EKK Çıktısı, Uyum ve Temel Fonksiyonel Biçimler"
@@ -585,7 +585,7 @@ def _step7(house: Case) -> LabStep:
     if len(forms) < 4:
         return LabStep(number=7, title=title, note=note_ref,
                        explanation=f"{lead} {_need_logs(house)} Bu adım için iki değişkenin de bütün değerleri pozitif "
-                                   "olmalı.")
+                                   "olmalı." + LOG_MEAN_NOTE)
     step = float(house.extra.get("x_step", 1))
     step_text = str(house.extra.get("x_step_text", "bir birimlik"))
     axis = {y: display(house, y), x: display(house, x), forms["log_log"][1]: log_label(house, y),
@@ -630,16 +630,16 @@ def _step7(house: Case) -> LabStep:
         texts = {
             "duzey_duzey": (f"İki değişken de düzeydedir: {step_text} fark tahmin edilen sonuçta ortalama "
                             f"{sayi(s['dd_fark'], digits_for(s['dd_fark'], 2))}{unit} farkla ilişkilidir."),
-            "log_duzey": (f"Sonuç logaritmik, açıklayıcı düzeydedir: {step_text} fark sonuçta yaklaşık yüzde "
+            "log_duzey": (f"Sonuç logaritmik, açıklayıcı düzeydedir: {step_text} fark koşullu geometrik ortalama sonuçta yaklaşık yüzde "
                           f"{sayi(s['ld_fark'], digits_for(s['ld_fark'], 2))} farkla ilişkilidir ({formula}; küçük "
                           "değişim yaklaşımı)."
                           + (" Eğim küçük görünür, çünkü açıklayıcının birimi (fit²) küçüktür." if not house.own else "")
                           + rough(step * s["egim_ld"])),
-            "duzey_log": (f"Sonuç düzeyde, açıklayıcı logaritmiktir: açıklayıcıdaki yüzde 1'lik fark sonuçta yaklaşık "
+            "duzey_log": (f"Sonuç düzeyde, açıklayıcı logaritmiktir: açıklayıcıdaki yüzde 1'lik fark koşullu aritmetik ortalama sonuçta yaklaşık "
                           f"β̂₁/100 = {sayi(s['dl_1'], digits_for(s['dl_1'], 3))}{unit} farkla ilişkilidir. Sonuç yüzde değil, sonucun "
                           "birimidir. Sabitin ekonomik anlamı yoktur: ln(X) = 0, yani X = 1 demektir."),
             "log_log": (f"İki değişken de logaritmiktir; eğim esnekliktir: açıklayıcı yüzde 1 daha yüksek olduğunda "
-                        f"tahmin edilen sonuç {change(s['ll_1'], elasticity, flat)}"
+                        f"tahmin edilen koşullu geometrik ortalama sonuç {change(s['ll_1'], elasticity, flat)}"
                         + ("." if flat else f"; yüzde 10 için yaklaşık yüzde {sayi(abs(s['ll_10']), 2)}.")),
         }
         return texts[key] + (
@@ -652,7 +652,7 @@ def _step7(house: Case) -> LabStep:
         number=7,
         title=title,
         note=note_ref,
-        explanation=f"{lead} Tablo dört biçimi aynı veriyle yan yana gösterir; incelenecek biçimi seçin.",
+        explanation=f"{lead} Tablo dört biçimi aynı veriyle yan yana gösterir; incelenecek biçimi seçin." + LOG_MEAN_NOTE,
         controls=(Choice("adim7_bicim", "İncelenen biçim", tuple((key, value[0]) for key, value in forms.items()),
                          "duzey_duzey", help="Tablo 4.3'teki gibi dört sütun."),),
         build=build,
@@ -690,7 +690,7 @@ def _step8(case: Case) -> LabStep:
                        explanation=("Log–düzey modelde bağımlı değişken sonucun doğal logaritmasıdır. Logaritma yalnız "
                                     f"pozitif değerlerde tanımlıdır; {phrase(case, y)} değişkeninde sıfır ya da negatif "
                                     "değer olduğu için bu adım kurulamaz. Bu adım için sonucun bütün değerleri pozitif "
-                                    "olmalı."))
+                                    "olmalı." + LOG_MEAN_NOTE))
     ly = log_column(case, y)
     default = case.roles[ACIKLAYICI]
 
@@ -715,7 +715,7 @@ def _step8(case: Case) -> LabStep:
         zero = negligible(case, b1, ly, x)
         percent = sayi(abs(100 * b1), digits_for(100 * b1, 2))
         text = (f"Bağımlı değişken `{ly}` ({md(log_label(case, y))}), açıklayıcı değişken düzeydedir: log–düzey model. "
-                f"Örneklemde {step_words(case, x)} {plural(case)} {outcome_words(case)} "
+                f"Örneklemde {step_words(case, x)} {plural(case)} koşullu geometrik ortalama {outcome_words(case)} "
                 f"{change(b1, '%' + percent, zero)} (100 · β̂₁; küçük değişim yaklaşımı)." + rough(b1)
                 + f" R² = {sayi(s['r2_log'], 3)}: log sonucun değişkenliğinin yaklaşık "
                 f"%{sayi(s['r2_log_yuzde'], 1)} kadarı örneklemde izlenir; bu sayı düzey modelin R²'siyle "
@@ -745,7 +745,7 @@ def _step8(case: Case) -> LabStep:
         note=note_ref,
         explanation=(f"`{ly} ~ {default}` log sonucu bağımlı, `{default}` değişkenini açıklayıcı değişken yapar (Denklem "
                      "4.8'in karşılığı). Bu aşamada çıktıda okunanlar: bağımlı değişken, gözlem sayısı, katsayılar ve "
-                     "R². Standart hata, t, p-değeri ve güven aralığı sütunları görünür ama henüz yorumlanmaz."),
+                     "R². Standart hata, t, p-değeri ve güven aralığı sütunları görünür ama henüz yorumlanmaz." + LOG_MEAN_NOTE),
         controls=(Choice("adim8_x", f"Açıklayıcı değişken (bağımlı değişken: {log_label(case, y)})",
                          options(case, candidates(case)), default, help=f"Varsayılan: {case.name(default)}."),),
         build=build,
@@ -764,7 +764,7 @@ def _step9(house: Case) -> LabStep:
             "sayısı ve R².")
     if len(forms) < 4:
         return LabStep(number=9, title=title, note=note_ref,
-                       explanation=f"{lead} {_need_logs(house)} Bu adım Adım 7'nin dört biçimini kullanır.")
+                       explanation=f"{lead} {_need_logs(house)} Bu adım Adım 7'nin dört biçimini kullanır." + LOG_MEAN_NOTE)
     y = house.roles[SONUC]
     headings = {"duzey_duzey": _title(house, y), "duzey_log": _title(house, y),
                 "log_duzey": log_label(house, y), "log_log": log_label(house, y)}
@@ -817,7 +817,7 @@ def _step9(house: Case) -> LabStep:
         number=9,
         title=title,
         note=note_ref,
-        explanation=f"{lead} Tablonun sütunlarını Adım 7'deki dört biçimden siz seçin; varsayılan düzey–düzey ve log–log.",
+        explanation=f"{lead} Tablonun sütunlarını Adım 7'deki dört biçimden siz seçin; varsayılan düzey–düzey ve log–log." + LOG_MEAN_NOTE,
         controls=(MultiChoice("adim9_sutunlar", "Tablodaki modeller", tuple((key, value[0]) for key, value in forms.items()),
                               ARTICLE_DEFAULT, help="Varsayılan: düzey–düzey ve log–log (Tablo 4.4'teki gibi).",
                               maximum=4),),

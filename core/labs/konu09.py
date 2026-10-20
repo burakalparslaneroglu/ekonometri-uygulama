@@ -13,6 +13,8 @@ karşılaştırmaya eklenen beşinci model (Adım 7). Standart hatalar klasik (h
 
 from __future__ import annotations
 
+from core.labs.wording import LOG_MEAN_NOTE
+
 from core import wooldridge_data as W
 from core.labs import expr as E
 from core.labs.sezgi import plain
@@ -412,7 +414,7 @@ def _marginal_note(state, choices) -> str:
         direction = "Bu düzeyde marjinal etki yaklaşık sıfırdır: dönüm noktasına çok yakınsınız."
     elif slope > 0:
         direction = (f"Deneyim {x0} yıl iken bir ek yıl log ücrette yaklaşık {plain(slope, 5)} artışla, yani yaklaşık "
-                     f"%{plain(s['yuzde_x0'], 2)} daha yüksek ücretle ilişkilidir; tam hesap %{plain(s['tam_x0'], 2)}.")
+                     f"%{plain(s['yuzde_x0'], 2)} daha yüksek koşullu geometrik ortalama ücretle ilişkilidir; tam hesap %{plain(s['tam_x0'], 2)}.")
     else:
         direction = (f"Deneyim {x0} yıl iken tahmin edilen marjinal etki negatiftir ({plain(slope, 5)}; yaklaşık "
                      f"%{plain(s['yuzde_x0'], 2)}). Bu, ileri deneyimin ücreti nedensel olarak düşürdüğünü "
@@ -720,7 +722,7 @@ STEPS = (
             "$\\ln(Y) = \\beta_0 + \\beta_1 X + u$ modelinde X bir birim artınca Y yaklaşık yüzde $100\\beta_1$ "
             "değişir. Tam yüzde değişim $100(e^{\\beta_1}-1)$, X'teki değişim $\\Delta X$ birimse "
             "$100(e^{\\beta_1 \\Delta X}-1)$ formülüyle hesaplanır. Notlardaki örnekte eğitim katsayısı 0,0845'tir. "
-            "Katsayıyı ve X'teki değişimi değiştirin: iki yorum ne zaman ayrışır?"
+            "Katsayıyı ve X'teki değişimi değiştirin: iki yorum ne zaman ayrışır?" + LOG_MEAN_NOTE
         ),
         controls=(BETA_3, DX_3),
         build=_exact,
@@ -743,7 +745,7 @@ STEPS = (
             "\\beta_1\\text{eğitim} + \\beta_2\\text{deneyim} + \\beta_3\\text{deneyim}^2 + \\beta_4\\text{kıdem} + "
             "\\beta_5\\text{kıdem}^2 + u$. Model parametrelerde doğrusaldır; kareler ayrı açıklayıcı değişken gibi "
             "EKK ile tahmin edilir. Ortak test $H_0: \\beta_3 = 0,\\ \\beta_5 = 0$ hipotezini sınar: doğrusal model "
-            "karesel modelin kısıtlı biçimidir."
+            "karesel modelin kısıtlı biçimidir." + LOG_MEAN_NOTE
         ),
         operations=_quadratic(),
         checks=(
@@ -777,7 +779,7 @@ STEPS = (
             "Karesel modelde deneyimin etkisi sabit değildir: marjinal etki $\\hat\\beta_2 + 2\\hat\\beta_3 x$, "
             "x'ten x + 1'e tam değişim $\\hat\\beta_2 + \\hat\\beta_3(2x + 1)$. Dönüm noktası "
             "$x^* = -\\hat\\beta_2/(2\\hat\\beta_3)$; $\\hat\\beta_3 < 0$ olduğu için tepe noktasıdır. Dönüm "
-            "noktası veri aralığında ve yeterli gözlemin bulunduğu bölgede yorumlanır. Deneyim düzeyini değiştirin."
+            "noktası veri aralığında ve yeterli gözlemin bulunduğu bölgede yorumlanır. Deneyim düzeyini değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(X_5,),
         build=_marginal,
@@ -861,7 +863,7 @@ STEPS = (
             "Makale tablosunda değişken adları modelin biçimini gösterir: bağımlı değişken log ücret, deneyim² ve "
             "kıdem² karesel terimlerdir. Okuma sırası: bağımlı değişken log mu, karesel terimle birlikte düzey terimi "
             "var mı, işaretler eğrinin yönü hakkında ne söylüyor, karesel terimler birlikte gerekli mi, düzeltilmiş "
-            "R² aynı bağımlı değişkenle mi karşılaştırılıyor. Sütun (2)'deki modeli değiştirin."
+            "R² aynı bağımlı değişkenle mi karşılaştırılıyor. Sütun (2)'deki modeli değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(MODEL_8,),
         build=_paper,

@@ -24,6 +24,8 @@ standart hatalarıdır.
 
 from __future__ import annotations
 
+from core.labs.wording import LOG_MEAN_NOTE
+
 import math
 from dataclasses import dataclass, replace
 from functools import cache
@@ -317,7 +319,7 @@ def _formula(outcome: str, terms) -> str:
 
 
 def _need(number: int, title: str, note: NoteRef, lead: str, what: str) -> LabStep:
-    return LabStep(number=number, title=title, note=note, explanation=f"{lead} Bu adım için {what} seçilmelidir.")
+    return LabStep(number=number, title=title, note=note, explanation=f"{lead} Bu adım için {what} seçilmelidir." + LOG_MEAN_NOTE)
 
 
 _DUMMY_NEED = "dosyanızda iki kategorili bir sütun (ör. kadın/erkek, evet/hayır, 1/0)"
@@ -557,7 +559,7 @@ def _step2(case: Case) -> LabStep:
         number=2,
         title=title,
         note=note_ref,
-        explanation=f"{lead} Kontrol değişkenlerini değiştirin.",
+        explanation=f"{lead} Kontrol değişkenlerini değiştirin." + LOG_MEAN_NOTE,
         controls=(MultiChoice("adim2_x", "Kontrol değişkenleri", options_of(case, choices_all), controls,
                               help="Varsayılan: " + ", ".join(case.name(term) for term in controls) + "."),),
         build=build,
@@ -648,7 +650,7 @@ def _step3(case: Case) -> LabStep:
         title=title,
         note=note_ref,
         explanation=(f"{lead} Log sonuç modeli: ln(Y) = {equation} (katsayılar dört basamakla). Diğer kontroller "
-                     "örneklem ortalamasında tutulur. Yatay eksendeki değişkeni değiştirin."),
+                     "örneklem ortalamasında tutulur. Yatay eksendeki değişkeni değiştirin." + LOG_MEAN_NOTE),
         controls=(Choice("adim3_x", "Yatay eksendeki değişken", options_of(case, controls), controls[0],
                          help="Diğer kontroller örneklem ortalamasında tutulur (Şekil 10.2'deki gibi)."),),
         build=build,
@@ -666,9 +668,9 @@ def _maybe_interactive(number: int, title: str, note: NoteRef, explanation: str,
     """Tek seçenekli denetim (kendi verinde tek kukla) etkileşimli adım kurmaz; adım varsayılan işlemlerle kurulur."""
 
     if len(control.options) > 1:
-        return interactive_step(number=number, title=title, note=note, explanation=explanation, controls=(control,),
+        return interactive_step(number=number, title=title, note=note, explanation=explanation + LOG_MEAN_NOTE, controls=(control,),
                                 build=build, checks=checks, note_for=note_for)
-    return LabStep(number=number, title=title, note=note, explanation=explanation,
+    return LabStep(number=number, title=title, note=note, explanation=explanation + LOG_MEAN_NOTE,
                    operations=tuple(build({control.key: control.default})), checks=checks,
                    note_for=lambda state, choices: note_for(state, {control.key: control.default}))
 
@@ -859,7 +861,7 @@ def _step5(case: Case) -> LabStep:
         number=5,
         title=title,
         note=note_ref,
-        explanation=f"{lead} {case.extra.get('groups_text', '')}Referans kategoriyi değiştirin.",
+        explanation=f"{lead} {case.extra.get('groups_text', '')}Referans kategoriyi değiştirin." + LOG_MEAN_NOTE,
         controls=(reference,),
         build=build,
         checks=_stable(checks, exact),
@@ -936,7 +938,7 @@ def _step6(case: Case) -> LabStep:
         title=title,
         note=note_ref,
         explanation=(f"{lead} İlk model varsayılan referanslıdır ({groups.label(default)}). İkinci modelin referansını "
-                     "değiştirin."),
+                     "değiştirin." + LOG_MEAN_NOTE),
         controls=(Choice("adim6_ref", "İkinci modelin referans kategorisi",
                          tuple((code, groups.label(code)) for code in choices_6), choices_6[0],
                          help=f"İlk model varsayılan referanslıdır ({groups.label(default)})."),),
@@ -1140,7 +1142,7 @@ def _step9(case: Case) -> LabStep:
         number=9,
         title=title,
         note=note_ref,
-        explanation=f"{lead} Referans kategoriyi değiştirin: F değişir mi?",
+        explanation=f"{lead} Referans kategoriyi değiştirin: F değişir mi?" + LOG_MEAN_NOTE,
         controls=(Choice("adim9_ref", "Referans kategori", tuple((code, groups.label(code)) for code in groups.codes),
                          default, help="Ortak test hangi kategori referans olursa olsun aynıdır."),),
         build=build,
@@ -1229,7 +1231,7 @@ def _step10(case: Case) -> LabStep:
         number=10,
         title=title,
         note=note_ref,
-        explanation=f"{lead} {case.extra.get('groups2_text', '')}",
+        explanation=f"{lead} {case.extra.get('groups2_text', '')}" + LOG_MEAN_NOTE,
         operations=operations,
         checks=_stable(checks, exact, ("F_end", "p_end")),
         note_for=lambda state, choices: note(state),
@@ -1298,7 +1300,7 @@ def _step11(case: Case) -> LabStep:
         number=11,
         title=title,
         note=note_ref,
-        explanation=f"{lead} Sütun (2)'nin kontrollerini değiştirin.",
+        explanation=f"{lead} Sütun (2)'nin kontrollerini değiştirin." + LOG_MEAN_NOTE,
         controls=(MultiChoice("adim11_x", "Sütun (2)'deki kontrol değişkenleri", options_of(case, choices_all), controls,
                               help="Varsayılan: " + ", ".join(case.name(term) for term in controls) + "."),),
         build=build,

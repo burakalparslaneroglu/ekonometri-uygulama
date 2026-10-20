@@ -18,6 +18,8 @@ EKK standart hatalarıdır.
 
 from __future__ import annotations
 
+from core.labs.wording import LOG_MEAN_NOTE
+
 import math
 
 from core import wooldridge_data as W
@@ -755,7 +757,7 @@ STEPS = (
             "modelde $\\text{ücret} = \\beta_0 + \\delta\\,\\text{female} + \\beta_1\\text{eğitim} + "
             "\\beta_2\\text{deneyim} + \\beta_3\\text{kıdem} + u$; $\\delta$ eğitim, deneyim ve kıdem aynı "
             "tutulduğunda kadın ve erkek çalışanlar arasındaki tahmin edilen ortalama ücret farkıdır. Kontrol "
-            "değişkenlerini değiştirin."
+            "değişkenlerini değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(CONTROLS_2,),
         build=_controlled,
@@ -774,7 +776,7 @@ STEPS = (
             "Additif modelde kukla yalnız düzeyi kaydırır: bütün açıklayıcıların eğimi iki grupta aynıdır. Log ücret "
             "modeli: $\\widehat{\\ln(\\text{ücret})} = 0{,}5013 - 0{,}3011\\,\\text{female} + "
             "0{,}0875\\,\\text{eğitim} + 0{,}0046\\,\\text{deneyim} + 0{,}0174\\,\\text{kıdem}$. Diğer iki değişken "
-            "örneklem ortalamasında tutulur. Yatay eksendeki değişkeni değiştirin."
+            "örneklem ortalamasında tutulur. Yatay eksendeki değişkeni değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(AXIS_3,),
         build=_parallel,
@@ -795,7 +797,7 @@ STEPS = (
             "Kukla katsayısı da standart hata, t istatistiği, p-değeri ve güven aralığıyla değerlendirilir: "
             "$H_0: \\delta = 0$, $H_1: \\delta \\neq 0$. $H_0$ kontrol değişkenleri sabitken iki kategori arasında "
             "anakütlede ortalama fark bulunmadığını söyler. Model: ln(ücret) ~ kukla + eğitim + deneyim + kıdem. "
-            "Sınanan kuklayı değiştirin."
+            "Sınanan kuklayı değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(DUMMY_4,),
         build=_inference,
@@ -817,7 +819,7 @@ STEPS = (
             "göstergesi diğer üç kukladan kurulur: $D_{KD} = 1 - D_{KM} - D_G - D_B$. Log katsayılar tam yüzde farka "
             "çevrilir: $100(e^{\\hat\\delta} - 1)$. Notlardaki Kod 10.5 aynı modeli metin değişkeniyle kurar: "
             "`C(region, Treatment(reference=\"Kuzeydoğu\"))` Kuzeydoğu'yu referans yapar ve çıktıdaki `[T.Güney]` "
-            "satırı buradaki `south` kuklasının katsayısıdır. Referans kategoriyi değiştirin."
+            "satırı buradaki `south` kuklasının katsayısıdır. Referans kategoriyi değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(REF_5,),
         build=_regions,
@@ -834,7 +836,7 @@ STEPS = (
         explanation=(
             "Referans kategori değişince sabit terim ve kukla katsayılarının sayısal değerleri ile karşılaştırılan grup "
             "değişir; tahmin edilen değerler, artıklar, R² ve modelin ortak uyumu değişmez. İlk model Kuzeydoğu "
-            "referanslıdır. İkinci modelin referansını değiştirin."
+            "referanslıdır. İkinci modelin referansını değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(REF_6,),
         build=_reference,
@@ -877,7 +879,7 @@ STEPS = (
         explanation=(
             "Kukla değişkende değişim 0'dan 1'e tam bir birimdir; katsayı küçük değilse $100\\hat\\delta$ yaklaşımı "
             "önemli hata yaratabilir. Tam yüzde fark $100(e^{\\hat\\delta} - 1)$ ile hesaplanır; güven aralığının "
-            "sınırları da aynı dönüşümle yüzdeye çevrilir. İncelenen kuklayı değiştirin."
+            "sınırları da aynı dönüşümle yüzdeye çevrilir. İncelenen kuklayı değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(DUMMY_8,),
         build=_percent,
@@ -903,7 +905,7 @@ STEPS = (
             "Kategorik değişkenin bütünüyle modele katkı sağlayıp sağlamadığı ortak F testiyle sınanır: "
             "$H_0: \\delta_{KM} = 0,\\ \\delta_G = 0,\\ \\delta_B = 0$ (q = 3 kısıt). Tek tek t testleri kategorilerin "
             "referanstan farkını sınar; ortak test kategorik değişkenin bütününü. Referans kategoriyi değiştirin: F "
-            "değişir mi?"
+            "değişir mi?" + LOG_MEAN_NOTE
         ),
         controls=(REF_9,),
         build=_joint_region,
@@ -921,7 +923,7 @@ STEPS = (
         note=NoteRef("10.8", 0, ("Tablo 10.4",)),
         explanation=(
             "Altı endüstri kuklası birlikte sınanır; referans listelenmeyen diğer endüstrilerdir. Tek tek katsayılar "
-            "referans endüstriye göre log farklardır ve tam yüzde farka çevrilir: $100(e^{\\hat\\delta} - 1)$."
+            "referans endüstriye göre log farklardır ve tam yüzde farka çevrilir: $100(e^{\\hat\\delta} - 1)$." + LOG_MEAN_NOTE
         ),
         operations=_industry(),
         checks=(
@@ -950,7 +952,7 @@ STEPS = (
             "Makale tablosunu okurken önce tablonun sözlüğü okunur: bağımlı değişken düzey mi log mu, hangi kategori "
             "referans, parantez içindeki sayı standart hata mı t istatistiği mi, yıldızların eşikleri ne, hangi "
             "kontroller var. Sütun (1) ham log ücret farkı, Sütun (2) kontrollü farktır. Sütun (2)'nin kontrollerini "
-            "değiştirin."
+            "değiştirin." + LOG_MEAN_NOTE
         ),
         controls=(CONTROLS_11,),
         build=_paper,

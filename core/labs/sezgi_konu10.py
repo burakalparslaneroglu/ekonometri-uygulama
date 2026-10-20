@@ -372,7 +372,7 @@ def _log_metrics(state: LabState, parameters: Parameters) -> tuple[SimMetric, ..
         SimMetric("Yaklaşık: 100·δ̂", "%" + plain(s["yaklasik"], 2), "Küçük katsayılar için yaklaşık yüzde fark."),
         SimMetric("Tam: 100(e^δ̂ − 1)", "%" + plain(s["tam"], 2), "Kuklanın 0'dan 1'e değişiminin tam yüzde karşılığı."),
         SimMetric("Ortalamalar farkı", "%" + plain(s["ortalama_fark"], 2),
-                  "Veride iki grubun Y ortalamaları arasındaki yüzde fark."),
+                  "Veride iki grubun aritmetik Y ortalamaları arasındaki yüzde fark."),
         SimMetric("Gerçek tam fark", "%" + plain(s["gercek_tam"], 2), "100·(exp(δ) − 1)."),
     )
 
@@ -387,8 +387,10 @@ def _log_takeaway(state: LabState, parameters: Parameters) -> str:
     gap = 100 * (math.expm1(delta) - delta)
     text = (f"δ̂ = {plain(s['d_hat'], 4)}: yaklaşık yorum %{plain(s['yaklasik'], 2)}, tam yorum %{plain(s['tam'], 2)}. "
             f"Verideki iki grubun Y ortalamaları arasındaki yüzde fark %{plain(s['ortalama_fark'], 2)}; DGP'deki "
-            f"gerçek tam fark %{plain(s['gercek_tam'], 2)}. Tam yorum ile ortalamaların yüzde farkı aynı büyüklüğü, "
-            "Y'nin iki grup arasındaki gerçek yüzde farkını tahmin eder; 100·δ̂ ise bir yaklaşımdır. ")
+            f"gerçek tam fark %{plain(s['gercek_tam'], 2)}. "
+            "Bu DGP'de ortak hata dağılımı nedeniyle geometrik ve aritmetik ortalama oranları aynıdır; "
+            "iki hesap aynı anakütle yüzde farkını tahmin eder. Sonlu örneklem sonuçlarının eşit olması gerekmez. "
+            "100·δ̂ ise bir yaklaşımdır. ")
     if abs(delta) <= 0.1:
         text += (f"Bu ayarda δ küçük olduğundan iki formül arasındaki kuramsal fark yalnız {plain(abs(gap), 2)} yüzde "
                  "puandır; yaklaşık yorum yeterlidir. ")
@@ -416,7 +418,7 @@ LOG = SimExperiment(
     dgp=_log_dgp,
     dgp_note=(
         "Notlarda bu deneyin sayısal karşılığı yoktur. Tek örneklem, tohum 305; sırasıyla v ve u çekilir. İki grupta "
-        "hata dağılımı aynı olduğu için Y ortalamalarının oranı exp(δ)'dır; bu yüzden tam yüzde fark ortalamalar "
+        "hata dağılımı aynı olduğu için hem geometrik hem aritmetik Y ortalamalarının oranı exp(δ)'dır; bu yüzden tam yüzde fark ortalamalar "
         "arasındaki yüzde farktır. Grafik iki formülü δ'nın −1 ile 1 arasındaki değerleri için karşılaştırır."
     ),
     look_at=(

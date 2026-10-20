@@ -6,6 +6,13 @@ ayrı yazılır.
 
 from __future__ import annotations
 
+LOG_MEAN_NOTE = (
+    "\n\n**Ortalama hedefi:** Sonuç düzeydeyse koşullu aritmetik ortalama; sonuç logaritmikse "
+    "exp(E[ln(Y) | X]) ile tanımlanan koşullu geometrik ortalama yorumlanır. Bu yorum, doğru koşullu ortalama "
+    "modeline ve E(u | X) = 0 koşuluna dayanır. Log modelde aynı yüzde farkı aritmetik ortalamaya taşımak için "
+    "E[exp(u) | X] çarpanının karşılaştırılan değerlerde aynı olması gerekir."
+)
+
 
 def tr_lower(text: str) -> str:
     """Türkçe küçük harf: I → ı, İ → i (``str.lower`` "İ"yi noktalı iki karaktere çevirir)."""

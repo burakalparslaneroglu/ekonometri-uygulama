@@ -25,6 +25,8 @@ Varsayılandan farklı bir seçimde varsayılan (HC1, varsayılan açıklayıcı
 
 from __future__ import annotations
 
+from core.labs.wording import LOG_MEAN_NOTE
+
 import math
 from dataclasses import dataclass, replace
 from functools import cache
@@ -959,7 +961,7 @@ def _step5(case: Case) -> LabStep:
     if "log" not in models:
         return LabStep(number=5, title=title, note=note_ref,
                        explanation=(f"{lead} Bu adım için sonucun ve temel açıklayıcının bütün değerleri pozitif olmalı "
-                                    "(log modeli: ln(sonuç) ~ ln(temel açıklayıcı) + ek değişkenler)."))
+                                    "(log modeli: ln(sonuç) ~ ln(temel açıklayıcı) + ek değişkenler)." + LOG_MEAN_NOTE))
     log = models["log"]
     level = models["duzey"]
     exact = _exact_flags(case)["log"]
@@ -994,7 +996,7 @@ def _step5(case: Case) -> LabStep:
         word = _word(case, first)
         text = (f"{word if word.startswith('ln(') else capital(word)} katsayısı esnekliktir: {phrase(case, x)} yüzde 1 daha "
                 f"büyük olan {member} "
-                f"tahmin edilen {outcome}, diğer değişkenler sabitken yaklaşık yüzde {sayi(abs(s['e5']), 3)} daha "
+                f"tahmin edilen koşullu geometrik ortalama {outcome}, diğer değişkenler sabitken yaklaşık yüzde {sayi(abs(s['e5']), 3)} daha "
                 f"{'yüksektir' if s['e5'] > 0 else 'düşüktür'}. ")
         if exact:
             return text + "Uyum tam olduğu için standart hatalar yuvarlama gürültüsüdür (§12.7)." + EXACT_NOTE
@@ -1040,7 +1042,7 @@ def _step5(case: Case) -> LabStep:
         title=title,
         note=note_ref,
         explanation=(f"{lead} Model: `{_formula(log.outcome, log.terms)}`. Adım 4'teki kovaryans seçimi bu adımı da "
-                     "belirler."),
+                     "belirler." + LOG_MEAN_NOTE),
         uses=(HC_4,),
         build=build,
         checks=_stable(checks, exact),
@@ -1106,7 +1108,7 @@ def _step6(case: Case) -> LabStep:
         explanation=(
             "Aynı katsayılar standart hata türüne göre farklı yıldızlar alabilir. Makale tablosunda tablo notu önce "
             "okunur: kullanılan standart hata ya da kovaryans türü (HC0–HC3 hangisi), parantez içinde ne olduğu, "
-            "yıldız eşikleri, gözlem sayısı ve kontroller. Adım 4'teki kovaryans seçimi bu adımı da belirler."
+            "yıldız eşikleri, gözlem sayısı ve kontroller. Adım 4'teki kovaryans seçimi bu adımı da belirler." + LOG_MEAN_NOTE
         ),
         uses=(HC_4,),
         build=build,
@@ -1280,7 +1282,7 @@ def _step8(case: Case) -> LabStep:
             "kareler yalnız güvenilir varyans bilgisi varsa düşünülür.")
     if case.own and not positive(case, case.roles[SONUC]):
         return LabStep(number=8, title=title, note=note_ref,
-                       explanation=f"{lead} Bu adım için sonucun bütün değerleri pozitif olmalı (log sonuç modeli).")
+                       explanation=f"{lead} Bu adım için sonucun bütün değerleri pozitif olmalı (log sonuç modeli)." + LOG_MEAN_NOTE)
     other = _second(case)
     level, log = _second_outcomes(case)
     options = _second_options(case)
@@ -1406,7 +1408,7 @@ def _step8(case: Case) -> LabStep:
         title=title,
         note=note_ref,
         explanation=(f"{lead} {other.extra.get('second_text', 'Aynı dosyanın düzey ve log sonuç modelleri ayrı bir çerçevede karşılaştırılır.')}"
-                     + (" Açıklayıcı değişkenleri değiştirin." if _live(control) else "")),
+                     + (" Açıklayıcı değişkenleri değiştirin." if _live(control) else "") + LOG_MEAN_NOTE),
         controls=(control,),
         build=build,
         checks=tuple(checks),
