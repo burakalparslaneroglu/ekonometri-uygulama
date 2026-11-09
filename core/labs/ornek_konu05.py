@@ -20,7 +20,13 @@ sütunları (Adım 9).
 
 from __future__ import annotations
 
-from core.labs.wording import LOG_MEAN_NOTE
+from core.labs.wording import (
+    FWL_NOTE,
+    LOG_MEAN_NOTE,
+    MULTIPLE_NORMAL_NOTE,
+    MULTIPLE_POPULATION_NOTE,
+    MULTIPLE_SLOPE_DIFFERENCE_NOTE,
+)
 
 from functools import cache
 
@@ -239,13 +245,14 @@ def _step1(case: Case, choice: MultiChoice) -> LabStep:
     return interactive_step(
         number=1,
         title="Basit modelden çoklu modele: katsayıların ceteris paribus yorumu",
-        note=NoteRef("5.3", 0, ("§5.1", "Denklem 5.5")),
+        note=NoteRef("5.3", 0, ("§5.1–5.2", "Denklem 5.3–5.5")),
         explanation=(
             f"Basit regresyon (`{y} ~ {x}`) "
             f"{dict(case.extra.get('subjects', {})).get(x, phrase(case, x) + ' değeri')} farklı "
             f"{case.extra.get('unit_accusative', 'gözlemleri')}, diğer farkları ayırmadan karşılaştırır. Çoklu regresyonda her eğim katsayısı, modeldeki diğer açıklayıcı değişkenler aynıyken "
             "yorumlanır (Denklem 5.5'in karşılığı). Modelin açıklayıcı değişkenlerini seçin: tablo basit modeli ve "
             "seçtiğiniz çoklu modeli yan yana gösterir. Adım 2, 3, 5, 6 ve 8 bu modeli kullanır."
+            + MULTIPLE_POPULATION_NOTE
         ),
         controls=(choice,),
         build=build,
@@ -490,13 +497,14 @@ def _step3(case: Case, choice: MultiChoice) -> LabStep:
     return interactive_step(
         number=3,
         title="Uyum değeri ve artık değer",
-        note=NoteRef("5.4", 0, ("Denklem 5.6",)),
+        note=NoteRef("5.4", 0, ("Denklem 5.6–5.7",)),
         explanation=(
             "Bir gözlem için uyum değeri $\\widehat Y = \\hat\\beta_0 + \\hat\\beta_1 X_1 + \\cdots + "
             "\\hat\\beta_k X_k$, artık değer $\\hat u = Y - \\widehat Y$'dir. Çoklu EKK, artık değerlerin kareleri toplamını en küçük "
             "yapan katsayıları birlikte seçer (Denklem 5.6). "
             + str(case.extra.get("profile3_text", "Varsayılan özellikler değişkenlerin medyanlarıdır."))
             + " Değerleri değiştirin. Bu adım Adım 1'deki modeli kullanır."
+            + MULTIPLE_NORMAL_NOTE
         ),
         uses=(choice,),
         controls=controls,
@@ -512,10 +520,8 @@ def _step4(case: Case) -> LabStep:
     y = case.roles[SONUC]
     default = _default(case)
     title = "“Sabit tutma”: kontrollerin doğrusal katkısını ayırmak"
-    note_ref = NoteRef("5.5", 0, ("Şekil 5.2",))
-    lead = ("Üç adım: (1) sonucu kontrollere göre tahmin edip artık değerini al; (2) incelenen değişkeni aynı kontrollere göre "
-            "tahmin edip artık değerini al; (3) birinci artık değerleri ikinci artık değerlere göre regresyona tabi tut. Üçüncü adımdaki "
-            "eğim çoklu regresyondaki katsayıyla aynıdır (§5.5).")
+    note_ref = NoteRef("5.5", 0, ("Denklem 5.8", "Şekil 5.2"))
+    lead = FWL_NOTE
     if len(default) < 2:
         return LabStep(number=4, title=title, note=note_ref,
                        explanation=f"{lead} Bu adım için en az iki açıklayıcı değişken gerekir: ek bir sayısal değişken "
@@ -558,7 +564,7 @@ def _step4(case: Case) -> LabStep:
                 f"katsayısı {sayi(s['tam_katsayi'], digits)}: aynı sayıdır ({gap_text}). Yatay eksen, "
                 f"{phrase(case, focus)} değişkeninin {others} ile açıklanamayan kısmıdır; dikey eksen sonucun aynı "
                 "kontrollerle açıklanamayan kısmıdır. “Sabit tutma” birebir eşleştirme değildir; kontrollerin doğrusal "
-                "katkısı ayrılır. İleri ekonometride bu sonuç Frisch–Waugh–Lovell teoremi olarak bilinir. Grafik "
+                "katkısı ayrılır. Eğimlerin eşitliği Frisch–Waugh–Lovell teoreminin sonucudur. Grafik "
                 "nedensellik kanıtı değildir; modelde olmayan faktörler iki artıkta da kalabilir (§5.5).")
 
     return interactive_step(
@@ -591,7 +597,7 @@ def _step5(case: Case, choice: MultiChoice) -> LabStep:
         formula = " + ".join(chosen)
         operations: list = [
             *reload(case),
-            ShowModel("coklu", "Çoklu modelin temel çıktısı (Kod 5.2'deki gibi)" if same else
+            ShowModel("coklu", "Çoklu modelin temel çıktısı (Kod 5.3'teki gibi)" if same else
                       "Seçtiğiniz modelin temel çıktısı", columns=COEF_QUANTITIES, stats=("nobs",), stars=False),
             ModelValue("r2_kod", "coklu", "r2", "R²", decimals=3),
             ModelValue("r2d_kod", "coklu", "adj_r2", "Düzeltilmiş R²", decimals=3),
@@ -672,9 +678,9 @@ def _step5(case: Case, choice: MultiChoice) -> LabStep:
     return interactive_step(
         number=5,
         title="Python çıktısı ve basit–çoklu model tablosu",
-        note=NoteRef("5.6", 0, ("Kod 5.1", "Kod 5.2", "Tablo 5.1")),
+        note=NoteRef("5.6", 0, ("Kod 5.2", "Kod 5.3", "Tablo 5.1")),
         explanation=(
-            "Kod 5.1'deki gibi formüldeki `+` işaretleri açıklayıcı değişkenleri birlikte kullanır. Bu aşamada çıktıda "
+            "Kod 5.2'deki gibi formüldeki `+` işaretleri açıklayıcı değişkenleri birlikte kullanır. Bu aşamada çıktıda "
             "okunanlar: bağımlı değişken, gözlem sayısı, katsayılar, R² ve düzeltilmiş R². Tablo basit modeli, çoklu "
             "modeli ve (sonucun bütün değerleri pozitifse) bağımlı değişkeni log sonuç olan çoklu modeli yan yana "
             "koyar. Bu adım Adım 1'deki modeli kullanır." + LOG_MEAN_NOTE
@@ -740,12 +746,13 @@ def _step6(case: Case, choice: MultiChoice) -> LabStep:
     return interactive_step(
         number=6,
         title="Bir değişken eklendiğinde katsayı neden değişir?",
-        note=NoteRef("5.7", 0, ("Şekil 5.3",)),
+        note=NoteRef("5.7", 0, ("Denklem 5.9", "Şekil 5.3")),
         explanation=(
             "Aynı değişkenin katsayısı basit ve çoklu modelde farklı olabilir; bu yazılım hatası değildir. Basit katsayı, "
             "değişkenle birlikte hareket eden diğer farkları da taşır; çoklu katsayı, modeldeki diğer değişkenlerin "
             "doğrusal katkısı ayrıldıktan sonraki ilişkidir. Grafik, modeldeki her değişken için iki katsayıyı yan yana "
             "gösterir. Bu adım Adım 1'deki modeli kullanır."
+            + MULTIPLE_SLOPE_DIFFERENCE_NOTE
         ),
         uses=(choice,),
         build=build,
@@ -892,7 +899,7 @@ def _step7(house: Case) -> LabStep:
     return interactive_step(
         number=7,
         title=title,
-        note=NoteRef("5.8", 0, ("Denklem 5.7", "Tablo 5.2", "Tablo 5.3", "Şekil 5.4")),
+        note=NoteRef("5.8", 0, ("Denklem 5.10", "Tablo 5.2", "Tablo 5.3", "Şekil 5.4")),
         explanation=str(house.extra.get("house_text") or (
             f"Aynı veride sonuç ({phrase(house, y)}) birden fazla açıklayıcı değişkenle tahmin edilir. Tablo 5.3'teki gibi "
             "üç gözlem için tahmin üretilir: A değişkenlerin medyanlarıdır, B yalnız bir değişkende A'dan farklıdır, C "
@@ -910,7 +917,7 @@ def _step7(house: Case) -> LabStep:
 # --- Adım 8: R² ve düzeltilmiş R² ---------------------------------------------------------------------------
 
 def _adjusted(r2, n: int, k: int) -> E.Expr:
-    """Denklem 5.8: 1 − (1 − R²)(n − 1)/(n − k − 1)."""
+    """Denklem 5.11: 1 − (1 − R²)(n − 1)/(n − k − 1)."""
 
     return E.sub(1, E.mul(E.sub(1, r2), E.div(n - 1, n - k - 1)))
 
@@ -959,7 +966,7 @@ def _step8(case: Case, choice: MultiChoice) -> LabStep:
             Derive(case.frame, "sapma_kare", E.power(E.sub(E.var(y), E.ref("ybar")), 2), "(Yᵢ − Ȳ)²"),
             Statistic(case.frame, "sapma_kare", "sum", "tkt", "TKT = Σ(Yᵢ − Ȳ)²", decimals=3),
             Scalar("r2d_elle", E.sub(1, E.div(hkt_per_df, tkt_per_df)),
-                   f"Denklem 5.8 ile: 1 − [HKT/(n − {k} − 1)] / [TKT/(n − 1)]", decimals=4),
+                   f"Denklem 5.11 ile: 1 − [HKT/(n − {k} − 1)] / [TKT/(n − 1)]", decimals=4),
             ScalarTable((("Basit model", E.ref("r2_basit")), (label, E.ref("r2_coklu")), *default_r2), "uyum_r2",
                         decimals=4),
             ScalarTable((("Basit model", E.ref("r2d_basit")), (label, E.ref("r2d_coklu")), *default_r2d), "uyum_r2d",
@@ -984,7 +991,7 @@ def _step8(case: Case, choice: MultiChoice) -> LabStep:
         best = table.idxmax()
         label = "çoklu model" if tuple(chosen) == default else "seçtiğiniz model"
         text = (f"Basit model: R² = {sayi(s['r2_basit'], 4)}, düzeltilmiş R² = {sayi(s['r2d_basit'], 4)}; {label}: "
-                f"{sayi(s['r2_coklu'], 4)} ve {sayi(s['r2d_coklu'], 4)}. Denklem 5.8 ile elde hesaplanan değer "
+                f"{sayi(s['r2_coklu'], 4)} ve {sayi(s['r2d_coklu'], 4)}. Denklem 5.11 ile elde hesaplanan değer "
                 f"{sayi(s['r2d_elle'], 4)} yazılımınkiyle aynıdır.")
         if tuple(chosen) != default:
             text += f" Varsayılan model: {sayi(s['r2_varsayilan'], 4)} ve {sayi(s['r2d_varsayilan'], 4)}."
@@ -1004,11 +1011,11 @@ def _step8(case: Case, choice: MultiChoice) -> LabStep:
     return interactive_step(
         number=8,
         title="Çoklu R² ve düzeltilmiş R²",
-        note=NoteRef("5.9", 0, ("Denklem 5.8",)),
+        note=NoteRef("5.9", 0, ("Denklem 5.11",)),
         explanation=(
             "$R^2 = 1 - \\text{HKT}/\\text{TKT}$ çoklu modelde de aynıdır. Yeni değişken eklemek R²'yi düşürmez; "
             "düzeltilmiş R² açıklayıcı değişken sayısını hesaba katar: $\\bar R^2 = 1 - "
-            "\\frac{\\text{HKT}/(n-k-1)}{\\text{TKT}/(n-1)}$ (Denklem 5.8). Son tablo notlardaki alıştırmanın karşılığıdır: "
+            "\\frac{\\text{HKT}/(n-k-1)}{\\text{TKT}/(n-1)}$ (Denklem 5.11). Son tablo notlardaki alıştırmanın karşılığıdır: "
             "bu uygulamanın üç modelinin (basit model, seçtiğiniz çoklu model, bütün seçenekleri içeren model) R²'si "
             "seçtiğiniz gözlem sayısıyla düzeltilir. Bu adım Adım 1'deki modeli kullanır."
         ),
@@ -1018,7 +1025,7 @@ def _step8(case: Case, choice: MultiChoice) -> LabStep:
         checks=(
             _scalar("r2_basit", "Basit model: R²", 4), _scalar("r2d_basit", "Basit model: düzeltilmiş R²", 4),
             _scalar("r2_coklu", "Çoklu model: R²", 4), _scalar("r2d_coklu", "Çoklu model: düzeltilmiş R²", 4),
-            _scalar("r2d_elle", "Denklem 5.8 ile elde hesap", 4),
+            _scalar("r2d_elle", "Denklem 5.11 ile elde hesap", 4),
             *(_check(f"Alıştırma: {name} (k = {size})", TableTarget("abc", f"{name} (k = {size})", "deger"), 3)
               for name, size in zip(("Model A", "Model B", "Model C"), sizes)),
         ),
@@ -1188,7 +1195,7 @@ def _house() -> Case:
                 (("A", 2000, 7, 2, 40000), ("B", 2000, 8, 2, 40000), ("C", 2250, 8, 3, 45000))),
         house_title="KIELMC (1978): konut fiyatında birden fazla özellik",
         house_text=("Fiyat dolar, konut ve arsa büyüklüğü fit² cinsindendir. Çoklu model konut büyüklüğü, oda sayısı ve "
-                    "banyo sayısını birlikte kullanır (Denklem 5.7'nin karşılığı). Tablo 5.3'teki gibi üç konut için "
+                    "banyo sayısını birlikte kullanır (Denklem 5.10'un karşılığı). Tablo 5.3'teki gibi üç konut için "
                     "tahmin üretilir: A ve B yalnız oda sayısında, B ve C büyüklük, banyo ve arsada farklıdır. Şekil "
                     "gözlenen ve tahmin edilen fiyatları karşılaştırır. Modelin açıklayıcı değişkenlerini seçin."),
     )

@@ -362,7 +362,7 @@ FIT = SimExperiment(
     title="R² ve düzeltilmiş R²: gereksiz değişken eklemek",
     question="Y ile hiç ilişkisi olmayan değişkenleri modele eklersek R² ne olur? Düzeltilmiş R² bu artışa nasıl "
              "tepki verir?",
-    note=NoteRef("5.9", objects=("Denklem 5.8",)),
+    note=NoteRef("5.9", objects=("Denklem 5.11",)),
     parameters=(
         SimParameter("k", "Eklenen gereksiz değişken sayısı m", 1, 15, 10, 1,
                      "Her biri Y ile ilişkisiz. Formüldeki k, X ile birlikte açıklayıcı değişken sayısıdır (k = j + 1).",

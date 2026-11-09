@@ -3,8 +3,8 @@
 Bölüm 5'in çözümlü örnekleri bölüm sırasıyla: basit ve çoklu ücret modeli ile katsayı yorumları (§5.1, §5.3,
 Denklem 5.5), birden fazla birimlik fark, iki çalışanın karşılaştırılması ve ceteris paribus çizgileri (§5.3,
 Şekil 5.1), uyum değeri ve artık değer (§5.4), kontrollerin doğrusal katkısını ayırma (§5.5, Şekil 5.2), Python
-çıktısı ve Tablo 5.1 (§5.6, Kod 5.1–5.2), katsayı değişimi (§5.7, Şekil 5.3), HPRICE1 (§5.8, Tablo 5.2–5.3,
-Şekil 5.4), R² ve düzeltilmiş R² (§5.9, Denklem 5.8), makale tablosu (§5.10, Tablo 5.4) ve kontrol değişkeni seçimi
+çıktısı ve Tablo 5.1 (§5.6, Kod 5.2–5.3), katsayı değişimi (§5.7, Şekil 5.3), HPRICE1 (§5.8, Tablo 5.2–5.3,
+Şekil 5.4), R² ve düzeltilmiş R² (§5.9, Denklem 5.11), makale tablosu (§5.10, Tablo 5.4) ve kontrol değişkeni seçimi
 (§5.11). §5.2'de hesap yoktur; §5.12'deki bütünleşik uygulama bir egzersizdir (cevapları eklerde). Her ``Check``
 notlarda basılı bir sayıdır; değer notlardan kopyalanmıştır, hesaplanmamıştır.
 
@@ -13,7 +13,7 @@ kukla olmayan sayısal değişkenlerdir: eğitim, deneyim, kıdem ve bakmakla y�
 10'dadır),
 eğitim farkı (Adım 2), tahmin edilen çalışanın özellikleri (Adım 3), kısmi ilişkisi incelenen değişken (Adım 4),
 konut modelinin açıklayıcı değişkenleri (Adım 7), A, B ve C modellerinde gözlem sayısı (Adım 8) ve makale tablosunun
-sütunları (Adım 9). Kod 5.2'deki standart hata, t, p ve güven aralığı notlardaki gibi yazılım çıktısında görünür;
+sütunları (Adım 9). Kod 5.3'teki standart hata, t, p ve güven aralığı notlardaki gibi yazılım çıktısında görünür;
 yorumları Konu 7'dedir. Makale tablolarında katsayılar, gözlem sayısı, R² ve düzeltilmiş R² vardır.
 """
 
@@ -55,7 +55,14 @@ from core.labs.spec import (
     TableTarget,
     interactive_step,
 )
-from core.labs.wording import signed_difference, LOG_MEAN_NOTE
+from core.labs.wording import (
+    FWL_NOTE,
+    LOG_MEAN_NOTE,
+    MULTIPLE_NORMAL_NOTE,
+    MULTIPLE_POPULATION_NOTE,
+    MULTIPLE_SLOPE_DIFFERENCE_NOTE,
+    signed_difference,
+)
 
 DATA = "wage1"
 HPRICE = "hprice1"
@@ -360,7 +367,7 @@ def _partial_note(state, choices) -> str:
             f"katsayısı {plain(s['tam_katsayi'], 6)}: aynı sayıdır (fark {plain(s['kismi_fark'], 12)}). "
             f"Yatay eksen, {WORDS[focus][0]} değişkeninin {others} ile açıklanamayan kısmıdır; dikey eksen ücretin "
             "aynı kontrollerle açıklanamayan kısmıdır. “Sabit tutma” birebir eşleştirme değildir; kontrollerin "
-            "doğrusal katkısı ayrılır. İleri ekonometride bu sonuç Frisch–Waugh–Lovell teoremi olarak bilinir. Grafik "
+            "doğrusal katkısı ayrılır. Eğimlerin eşitliği Frisch–Waugh–Lovell teoreminin sonucudur. Grafik "
             "nedensellik kanıtı değildir; modelde olmayan faktörler iki artıkta da kalabilir (§5.5)."
             + ("" if focus == "educ" else " Notlardaki Şekil 5.2 eğitim için çizilmiştir: orada iki eğim de 0,599'dur "
                "(Denklem 5.5)."))
@@ -374,7 +381,7 @@ def _output(choices) -> tuple:
     formula = " + ".join(chosen)
     operations: list = [
         LoadWooldridge(DATA, RELOAD),
-        ShowModel("coklu", "Kod 5.2: çoklu ücret modelinin temel çıktısı" if notes
+        ShowModel("coklu", "Kod 5.3: çoklu ücret modelinin temel çıktısı" if notes
                   else "Seçtiğiniz modelin temel çıktısı", columns=COEF_QUANTITIES, stats=("nobs",), stars=False),
         ModelValue("r2_kod", "coklu", "r2", "R²", decimals=3),
         ModelValue("r2d_kod", "coklu", "adj_r2", "Düzeltilmiş R²", decimals=3),
@@ -476,7 +483,7 @@ def _houses(choices) -> tuple:
         LoadWooldridge(HPRICE, "HPRICE1 veri seti (Wooldridge, 2020): 88 konut"),
         OLS("fiyat_basit", HPRICE, "price", ("sqrft",), "Basit model: price ~ sqrft"),
         OLS("fiyat_coklu", HPRICE, "price", tuple(chosen),
-            f"Çoklu model: price ~ {formula}" + (" (Denklem 5.7)" if notes else "")),
+            f"Çoklu model: price ~ {formula}" + (" (Denklem 5.10)" if notes else "")),
         ModelValue("f_sabit", "fiyat_coklu", "coef", "Kesim terimi (bin dolar)", term=INTERCEPT),
         *(ModelValue(f"f_{name}", "fiyat_coklu", "coef", f"{HOUSE_WORDS[name].capitalize()} katsayısı",
                      term=name, decimals=6 if name == "lotsize" else 4) for name in chosen),
@@ -565,7 +572,7 @@ EXERCISE = (("Model A (k = 1)", 0.40, 1), ("Model B (k = 3)", 0.43, 3), ("Model 
 
 
 def _adjusted(r2: float, n: int, k: int) -> E.Expr:
-    """Denklem 5.8: 1 − (1 − R²)(n − 1)/(n − k − 1)."""
+    """Denklem 5.11: 1 − (1 − R²)(n − 1)/(n − k − 1)."""
 
     return E.sub(1, E.mul(E.sub(1, r2), E.div(n - 1, n - k - 1)))
 
@@ -596,7 +603,7 @@ def _fit(choices) -> tuple:
         Derive(DATA, "sapma_kare", E.power(E.sub(E.var(OUTCOME), E.ref("ybar")), 2), "(Yᵢ − Ȳ)²"),
         Statistic(DATA, "sapma_kare", "sum", "tkt", "TKT = Σ(Yᵢ − Ȳ)²", decimals=3),
         Scalar("r2d_elle", E.sub(1, E.div(hkt_per_df, tkt_per_df)),
-               f"Denklem 5.8 ile: 1 − [HKT/(n − {k} − 1)] / [TKT/(n − 1)]", decimals=4),
+               f"Denklem 5.11 ile: 1 − [HKT/(n − {k} − 1)] / [TKT/(n − 1)]", decimals=4),
         ScalarTable((("Basit model", E.ref("r2_basit")), (label, E.ref("r2_coklu")), *notes_r2), "uyum_r2",
                     decimals=4),
         ScalarTable((("Basit model", E.ref("r2d_basit")), (label, E.ref("r2d_coklu")), *notes_r2d), "uyum_r2d",
@@ -619,7 +626,7 @@ def _fit_note(state, choices) -> str:
     best = table.idxmax()
     label = "çoklu model" if tuple(chosen) == NOTES_X else "seçtiğiniz model"
     text = (f"Basit model: R² = {plain(s['r2_basit'], 4)}, düzeltilmiş R² = {plain(s['r2d_basit'], 4)}; {label}: "
-            f"{plain(s['r2_coklu'], 4)} ve {plain(s['r2d_coklu'], 4)}. Denklem 5.8 ile elde hesaplanan değer "
+            f"{plain(s['r2_coklu'], 4)} ve {plain(s['r2d_coklu'], 4)}. Denklem 5.11 ile elde hesaplanan değer "
             f"{plain(s['r2d_elle'], 4)} yazılımınkiyle aynıdır.")
     if tuple(chosen) != NOTES_X:
         text += (f" Notlardaki model (eğitim, deneyim, kıdem): {plain(s['r2_notlar'], 4)} ve "
@@ -677,13 +684,13 @@ def _article_note(state, choices) -> str:
 
 # --- Tanım ---------------------------------------------------------------------------
 
-_KOD52 = (
+_KOD53 = (
     (INTERCEPT, (-2.8727, 0.729, -3.941, 0.000, -4.305, -1.441)),
     ("educ", (0.5990, 0.051, 11.679, 0.000, 0.498, 0.700)),
     ("exper", (0.0223, 0.012, 1.853, 0.064, -0.001, 0.046)),
     ("tenure", (0.1693, 0.022, 7.820, 0.000, 0.127, 0.212)),
 )
-"""Kod 5.2: katsayı, standart hata, t, p, %95 GA alt ve üst sınır (basılı basamakla)."""
+"""Kod 5.3: katsayı, standart hata, t, p, %95 GA alt ve üst sınır (basılı basamakla)."""
 _TERM_NAMES = {INTERCEPT: "kesim terimi", "educ": "eğitim", "exper": "deneyim", "tenure": "kıdem"}
 _QUANTITY_NAMES = {"coef": "katsayı", "se": "standart hata", "t": "t", "p": "p-değeri", "ci_low": "%95 GA alt",
                    "ci_high": "%95 GA üst"}
@@ -727,13 +734,14 @@ STEPS = (
     interactive_step(
         number=1,
         title="Basit modelden çoklu modele: katsayıların ceteris paribus yorumu",
-        note=NoteRef("5.3", 0, ("§5.1", "Denklem 5.5")),
+        note=NoteRef("5.3", 0, ("§5.1–5.2", "Denklem 5.3–5.5")),
         explanation=(
             "Basit regresyon ($\\widehat{\\text{ücret}} = -0{,}9049 + 0{,}5414\\,\\text{eğitim}$, §5.1) eğitim düzeyi "
             "farklı çalışanları, diğer farkları ayırmadan karşılaştırır. Çoklu regresyonda her eğim katsayısı, "
             "modeldeki diğer açıklayıcı değişkenler aynıyken yorumlanır (Denklem 5.5). Modelin açıklayıcı "
             "değişkenlerini seçin: tablo basit modeli ve seçtiğiniz çoklu modeli yan yana gösterir. Adım 2, 3, 5, 6 "
             "ve 8 bu modeli kullanır."
+            + MULTIPLE_POPULATION_NOTE
         ),
         controls=(X_MULTI,),
         build=_models,
@@ -778,12 +786,13 @@ STEPS = (
     interactive_step(
         number=3,
         title="Uyum değeri ve artık değer",
-        note=NoteRef("5.4", 0, ("Denklem 5.6",)),
+        note=NoteRef("5.4", 0, ("Denklem 5.6–5.7",)),
         explanation=(
             "Bir çalışan için uyum değeri $\\widehat Y = \\hat\\beta_0 + \\hat\\beta_1 X_1 + \\cdots + "
             "\\hat\\beta_k X_k$, artık değer $\\hat u = Y - \\widehat Y$'dir. Çoklu EKK, artık değerlerin kareleri toplamını en küçük "
             "yapan katsayıları birlikte seçer (Denklem 5.6). Notlardaki çalışanın eğitimi 16, deneyimi 20, kıdemi 10 "
             "yıl; gözlenen ücreti 10 dolardır. Değerleri değiştirin. Bu adım Adım 1'deki modeli kullanır."
+            + MULTIPLE_NORMAL_NOTE
         ),
         uses=(X_MULTI,),
         controls=(
@@ -804,12 +813,10 @@ STEPS = (
     interactive_step(
         number=4,
         title="“Sabit tutma”: kontrollerin doğrusal katkısını ayırmak",
-        note=NoteRef("5.5", 0, ("Şekil 5.2",)),
+        note=NoteRef("5.5", 0, ("Denklem 5.8", "Kod 5.1", "Şekil 5.2")),
         explanation=(
-            "Üç adım: (1) ücreti kontrollere göre tahmin edip artık değerini al; (2) incelenen değişkeni aynı kontrollere göre "
-            "tahmin edip artık değerini al; (3) birinci artık değerleri ikinci artık değerlere göre regresyona tabi tut. Üçüncü adımdaki "
-            "eğim çoklu regresyondaki katsayıyla aynıdır (§5.5). Notlarda incelenen değişken eğitim, kontroller deneyim "
-            "ve kıdemdir; değişkeni değiştirin."
+            FWL_NOTE + " Notlardaki örnekte incelenen değişken eğitim, kontroller deneyim ve kıdemdir. "
+            "Değişkeni seçip iki eğimi karşılaştırın."
         ),
         controls=(Choice("adim4_x", "Kısmi ilişkisi incelenen değişken (diğer ikisi kontroldür)", PARTIAL_OPTIONS,
                          "educ", help="Notlarda eğitim."),),
@@ -824,9 +831,9 @@ STEPS = (
     interactive_step(
         number=5,
         title="Python çıktısı ve basit–çoklu model tablosu",
-        note=NoteRef("5.6", 0, ("Kod 5.1", "Kod 5.2", "Tablo 5.1")),
+        note=NoteRef("5.6", 0, ("Kod 5.2", "Kod 5.3", "Tablo 5.1")),
         explanation=(
-            "Kod 5.1 çoklu modeli tahmin eder: formüldeki `+` işaretleri açıklayıcı değişkenleri birlikte kullanır. "
+            "Kod 5.2 çoklu modeli tahmin eder: formüldeki `+` işaretleri açıklayıcı değişkenleri birlikte kullanır. "
             "Bu aşamada çıktıda okunanlar: bağımlı değişken, gözlem sayısı, katsayılar, R² ve düzeltilmiş R². "
             "Tablo 5.1 basit modeli, çoklu modeli ve bağımlı değişkeni log ücret olan çoklu modeli yan yana koyar. Bu "
             "adım Adım 1'deki modeli kullanır." + LOG_MEAN_NOTE
@@ -834,12 +841,12 @@ STEPS = (
         uses=(X_MULTI,),
         build=_output,
         checks=(
-            *(Check(f"Kod 5.2: {_TERM_NAMES[term]}, {_QUANTITY_NAMES[quantity]}", CoefTarget("coklu", term, quantity),
+            *(Check(f"Kod 5.3: {_TERM_NAMES[term]}, {_QUANTITY_NAMES[quantity]}", CoefTarget("coklu", term, quantity),
                     value, 4 if quantity == "coef" else 3)
-              for term, values in _KOD52 for quantity, value in zip(COEF_QUANTITIES, values)),
-            Check("Kod 5.2: gözlem sayısı", ModelTarget("coklu", "nobs"), 526, 0),
-            _scalar("r2_kod", 0.306, "Kod 5.2: R²", 3),
-            _scalar("r2d_kod", 0.302, "Kod 5.2: düzeltilmiş R²", 3),
+              for term, values in _KOD53 for quantity, value in zip(COEF_QUANTITIES, values)),
+            Check("Kod 5.3: gözlem sayısı", ModelTarget("coklu", "nobs"), 526, 0),
+            _scalar("r2_kod", 0.306, "Kod 5.3: R²", 3),
+            _scalar("r2d_kod", 0.302, "Kod 5.3: düzeltilmiş R²", 3),
             _scalar("r2_yuzde", 30.6, "§5.6: yaklaşık yüzde 30,6", 1),
             *_table_checks("tablo51", "Tablo 5.1", _TABLE51, 4),
             _scalar("log_yuzde", 9.2, "§5.6: log ücret sütunu, yaklaşık yüzde 9,2", 1),
@@ -849,13 +856,14 @@ STEPS = (
     interactive_step(
         number=6,
         title="Bir değişken eklendiğinde katsayı neden değişir?",
-        note=NoteRef("5.7", 0, ("Şekil 5.3",)),
+        note=NoteRef("5.7", 0, ("Denklem 5.9", "Şekil 5.3")),
         explanation=(
             "Aynı değişkenin katsayısı basit ve çoklu modelde farklı olabilir; bu yazılım hatası değildir. Basit "
             "katsayı, değişkenle birlikte hareket eden diğer farkları da taşır; çoklu katsayı, modeldeki diğer "
             "değişkenlerin doğrusal katkısı ayrıldıktan sonraki ilişkidir. Notlarda eğitim katsayısı 0,541'den "
             "0,599'a yükselir. Grafik, modeldeki her değişken için iki katsayıyı yan yana gösterir. Bu adım Adım 1'deki "
             "modeli kullanır."
+            + MULTIPLE_SLOPE_DIFFERENCE_NOTE
         ),
         uses=(X_MULTI,),
         build=_change,
@@ -870,23 +878,23 @@ STEPS = (
     interactive_step(
         number=7,
         title="HPRICE1: konut fiyatında birden fazla özellik",
-        note=NoteRef("5.8", 0, ("Denklem 5.7", "Tablo 5.2", "Tablo 5.3", "Şekil 5.4")),
+        note=NoteRef("5.8", 0, ("Denklem 5.10", "Tablo 5.2", "Tablo 5.3", "Şekil 5.4")),
         explanation=(
             "Fiyat bin dolar, konut ve arsa büyüklüğü kare fit cinsindedir. Çoklu model konut büyüklüğü, yatak odası "
-            "sayısı ve arsa büyüklüğünü birlikte kullanır (Denklem 5.7). Tablo 5.3'teki üç konut için tahmin üretilir; "
+            "sayısı ve arsa büyüklüğünü birlikte kullanır (Denklem 5.10). Tablo 5.3'teki üç konut için tahmin üretilir; "
             "şekil gözlenen ve tahmin edilen fiyatları karşılaştırır. Modelin açıklayıcı değişkenlerini seçin."
         ),
         controls=(MultiChoice("adim7_x", "Konut fiyatı modelinin açıklayıcı değişkenleri (bağımlı değişken: fiyat)",
                               W.options(HPRICE, HOUSE_OPTIONS), HOUSE_OPTIONS,
-                              help="Notlardaki model: üç değişken birlikte (Denklem 5.7)."),),
+                              help="Notlardaki model: üç değişken birlikte (Denklem 5.10)."),),
         build=_houses,
         checks=(
             Check("§5.8: basit model, kesim terimi", CoefTarget("fiyat_basit", INTERCEPT), 11.2041, 4),
             Check("§5.8: basit model, konut büyüklüğü", CoefTarget("fiyat_basit", "sqrft"), 0.1402, 4),
-            Check("Denklem 5.7: kesim terimi", CoefTarget("fiyat_coklu", INTERCEPT), -21.7703, 4),
-            Check("Denklem 5.7: konut büyüklüğü", CoefTarget("fiyat_coklu", "sqrft"), 0.1228, 4),
-            Check("Denklem 5.7: yatak odası sayısı", CoefTarget("fiyat_coklu", "bdrms"), 13.8525, 4),
-            Check("Denklem 5.7: arsa büyüklüğü", CoefTarget("fiyat_coklu", "lotsize"), 0.002068, 6),
+            Check("Denklem 5.10: kesim terimi", CoefTarget("fiyat_coklu", INTERCEPT), -21.7703, 4),
+            Check("Denklem 5.10: konut büyüklüğü", CoefTarget("fiyat_coklu", "sqrft"), 0.1228, 4),
+            Check("Denklem 5.10: yatak odası sayısı", CoefTarget("fiyat_coklu", "bdrms"), 13.8525, 4),
+            Check("Denklem 5.10: arsa büyüklüğü", CoefTarget("fiyat_coklu", "lotsize"), 0.002068, 6),
             *_table_checks("tablo52", "Tablo 5.2", _TABLE52, 4),
             _scalar("yuz_fit", 12.28, "§5.8: 100(0,1228) = 12,28 bin dolar", 2),
             _scalar("f_bdrms", 13.85, "§5.8: bir ek yatak odası, 13,85 bin dolar", 2),
@@ -901,11 +909,11 @@ STEPS = (
     interactive_step(
         number=8,
         title="Çoklu R² ve düzeltilmiş R²",
-        note=NoteRef("5.9", 0, ("Denklem 5.8",)),
+        note=NoteRef("5.9", 0, ("Denklem 5.11",)),
         explanation=(
             "$R^2 = 1 - \\text{HKT}/\\text{TKT}$ çoklu modelde de aynıdır. Yeni değişken eklemek R²'yi düşürmez; "
             "düzeltilmiş R² açıklayıcı değişken sayısını hesaba katar: $\\bar R^2 = 1 - "
-            "\\frac{\\text{HKT}/(n-k-1)}{\\text{TKT}/(n-1)}$ (Denklem 5.8). Son tablo §5.9'daki üç modeli "
+            "\\frac{\\text{HKT}/(n-k-1)}{\\text{TKT}/(n-1)}$ (Denklem 5.11). Son tablo §5.9'daki üç modeli "
             "(R² 0,40; 0,43; 0,44; k = 1, 3, 8) seçtiğiniz gözlem sayısıyla hesaplar; notlarda n = 200. Bu adım Adım "
             "1'deki modeli kullanır."
         ),
@@ -918,7 +926,7 @@ STEPS = (
             _scalar("r2d_basit", 0.1632, "§5.9: basit model, düzeltilmiş R²", 4),
             _scalar("r2_coklu", 0.3064, "§5.9: çoklu model, R²", 4),
             _scalar("r2d_coklu", 0.3024, "§5.9: çoklu model, düzeltilmiş R²", 4),
-            _scalar("r2d_elle", 0.3024, "Denklem 5.8 ile elde hesap", 4),
+            _scalar("r2d_elle", 0.3024, "Denklem 5.11 ile elde hesap", 4),
             *(Check(f"§5.9: {label}, düzeltilmiş R²", TableTarget("abc", label, "deger"), value, 3)
               for (label, _, _), value in zip(EXERCISE, (0.397, 0.421, 0.417))),
         ),
@@ -978,7 +986,7 @@ KONU05_LAB = LabSpec(
         *((f"tahmin_{level}", f"Deneyim = {level} yıl") for level in EXPER_LEVELS),
     ),
     consistency_notes=(
-        "Veri notlardaki gibi WAGE1 ve HPRICE1'dir; notlardaki kod (Kod 5.1), betikler, uygulama ve üretilen kod onları "
+        "Veri notlardaki gibi WAGE1 ve HPRICE1'dir; notlardaki kod (Kod 5.2), betikler, uygulama ve üretilen kod onları "
         "wooldridge paketinden okur.",
         "§5.3'te iki çalışanın tahminleri iki basamakla yazılır (5,38 ve 7,78): yuvarlanmış katsayılarla elle hesap "
         "B için 7,781, tam duyarlık 7,780 verir; iki basamakta ikisi de 7,78'dir. Fark 4(0,5990) = 2,396'dır.",

@@ -65,7 +65,7 @@ COLUMNS_DEFAULT = ("yalniz", "deneyim", "tam")
 """Notlardaki Tablo 6.6."""
 VIF_OPTIONS = ("sqrft", "bdrms", "lotsize", "assess", "lsqrft")
 VIF_DEFAULT = ("sqrft", "bdrms", "lotsize")
-"""Notlardaki VIF örneği (§6.12): Denklem 5.7'deki konut fiyatı modelinin açıklayıcı değişkenleri."""
+"""Notlardaki VIF örneği (§6.12): Denklem 5.10'daki konut fiyatı modelinin açıklayıcı değişkenleri."""
 VIF_NAMES = {"sqrft": "Konut büyüklüğü", "bdrms": "Yatak odası sayısı", "lotsize": "Arsa büyüklüğü",
              "assess": "Vergi değeri", "lsqrft": "Konut büyüklüğünün logaritması"}
 
@@ -418,7 +418,7 @@ STEPS = (
         note=NoteRef("6.12", 0, ("Kod 6.4", "Tablo 6.9")),
         explanation=(
             "Her açıklayıcı değişken diğerlerine göre regresyona alınır; yardımcı regresyonun $R_j^2$ değeri "
-            "$\\text{VIF}_j = 1/(1 - R_j^2)$ formülüne yerleştirilir (Kod 6.4). Notlarda Denklem 5.7'deki konut fiyatı "
+            "$\\text{VIF}_j = 1/(1 - R_j^2)$ formülüne yerleştirilir (Kod 6.4). Notlarda Denklem 5.10'daki konut fiyatı "
             "modelinin üç değişkeni kullanılır. Değişkenleri değiştirin: vergi değeri ya da konut büyüklüğünün "
             "logaritması eklenince VIF'ler nasıl değişiyor?"
         ),

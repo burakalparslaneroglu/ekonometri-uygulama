@@ -4,7 +4,7 @@ Her soru tek bir kavramı sınar ve notlardaki bir bölüme bağlıdır. Sorular
 5.1–5.12 maddelerini tekrar etmez: dört araştırma sorusunda sonuç ve temel değişken; konut, satış ve sınav modellerini
 notasyonla kurma; satış = 18 + 2,5 reklam − 1,2 fiyat + 0,8 firma büyüklüğü yorumları; Ŷ = 4 + 1,5X₁ − 0,8X₂ + 2X₃
 hesapları; sınav notu için yardımcı regresyonlar; Tablo 5.1'in yorum soruları (eğitim dört, kıdem üç yıl fark
-dahil); 0,50'den 0,62'ye yükselen eğitim katsayısı; Denklem 5.7'de 250 kare fit, 1.500 kare fit arsa ve 200 kare fit
+dahil); 0,50'den 0,62'ye yükselen eğitim katsayısı; Denklem 5.10'da 250 kare fit, 1.500 kare fit arsa ve 200 kare fit
 artı bir oda hesapları; A, B ve C modellerinin R² tablosu; Tablo 5.4'ün eleştirel okunması; dört soruda kontrol
 gerekçesi; satış = 25 + 1,6 reklam − 0,9 fiyat + 0,04 çalışan bütünleşik uygulaması ve mini quizlerdeki sorular. Aynı
 becerileri yeni bağlamlarla ve yeni sayılarla sınar. Eksik değişken yanlılığının formülü ve çoklu doğrusal bağlantı
@@ -112,9 +112,9 @@ QUESTIONS = (
         ),
     ),
     Question(
-        key="k03", concept="henuz-yorumlanmayan-cikti-sutunlari", note=_note("5.6", "Kod 5.2"),
+        key="k03", concept="henuz-yorumlanmayan-cikti-sutunlari", note=_note("5.6", "Kod 5.3"),
         prompt=(
-            "Kod 5.2'deki Python çıktısını bu bölümün okuma sırasıyla okurken aşağıdakilerden hangisi yapılmaz?"
+            "Kod 5.3'teki Python çıktısını bu bölümün okuma sırasıyla okurken aşağıdakilerden hangisi yapılmaz?"
         ),
         answer=MultipleChoice(
             (
@@ -130,7 +130,7 @@ QUESTIONS = (
             "Bu bölümde çıktıdan bağımlı değişken, gözlem sayısı, `coef` sütunu, R² ve düzeltilmiş R² okunur. Standart "
             "hata, t, p-değeri ve güven aralığı sütunları görünür ama henüz yorumlanmaz; bunlar Konu 7'nin "
             "konusudur. Ayrıca bir p-değerinden “ilişkisiz” sonucuna varmak, o bölümde de doğru bir okuma değildir "
-            "(§5.6, Kod 5.2)."
+            "(§5.6, Kod 5.3)."
         ),
     ),
     Question(
@@ -159,9 +159,9 @@ QUESTIONS = (
         ),
     ),
     Question(
-        key="k05", concept="oda-katsayisinin-karsilastirdigi-konutlar", note=_note("5.8", "(5.7)"),
+        key="k05", concept="oda-katsayisinin-karsilastirdigi-konutlar", note=_note("5.8", "(5.10)"),
         prompt=(
-            "Denklem (5.7) ile dört konutun fiyatı tahmin ediliyor: P (1.800 kare fit, 3 yatak odası, 6.000 kare fit "
+            "Denklem (5.10) ile dört konutun fiyatı tahmin ediliyor: P (1.800 kare fit, 3 yatak odası, 6.000 kare fit "
             "arsa), Q (1.800; 4; 6.000), R (2.100; 4; 6.000) ve S (1.800; 4; 9.000). Hangi iki konutun tahmin farkı "
             "yalnız yatak odası katsayısına (13,85 bin dolar) eşittir?"
         ),
@@ -312,11 +312,11 @@ QUESTIONS = (
         ),
     ),
     Question(
-        key="d07", concept="duzeltilmis-r2-negatif-olabilir", note=_note("5.9", "(5.8)"),
+        key="d07", concept="duzeltilmis-r2-negatif-olabilir", note=_note("5.9", "(5.11)"),
         prompt="Düzeltilmiş R² her zaman 0 ile 1 arasında bir değer alır.",
         answer=TrueFalse(False),
         explanation=(
-            "(5.8)'de HKT/TKT oranı $(n-1)/(n-k-1)$ ile büyütülerek birden çıkarılır. Bu çarpan birden büyük olduğu "
+            "(5.11)'de HKT/TKT oranı $(n-1)/(n-k-1)$ ile büyütülerek birden çıkarılır. Bu çarpan birden büyük olduğu "
             "için uyum zayıf ve açıklayıcı değişken sayısı gözlem sayısına göre büyükse değer sıfırın altına düşer: "
             "HKT/TKT = 0,98, $n = 30$, $k = 5$ için $1 - 0{,}98 \\times 29/24 \\approx -0{,}18$. R² ise kesim terimli "
             "modelde 0 ile 1 arasındadır (§5.9)."
@@ -369,7 +369,7 @@ QUESTIONS = (
         ),
     ),
     Question(
-        key="b04", concept="gozlem-sayisi-ve-duzeltme-payi", note=_note("5.9", "(5.8)"),
+        key="b04", concept="gozlem-sayisi-ve-duzeltme-payi", note=_note("5.9", "(5.11)"),
         prompt=(
             "Beş açıklayıcı değişkenli bir modelde TKT = 1200 ve HKT = 840'tır. Model 40 gözlemle tahmin edildiyse "
             "düzeltilmiş R² **(1)**, aynı kareler toplamları 400 gözlemle elde edildiyse düzeltilmiş R² **(2)** olur. "
@@ -377,7 +377,7 @@ QUESTIONS = (
         ),
         answer=FillBlanks((NumberBlank(0.197, 0.0005, "0,197"), NumberBlank(0.291, 0.0005, "0,291"))),
         explanation=(
-            "(5.8): n = 40 için 1 − (840/34)/(1200/39) ≈ 0,197; n = 400 için 1 − (840/394)/(1200/399) ≈ 0,291. İki "
+            "(5.11): n = 40 için 1 − (840/34)/(1200/39) ≈ 0,197; n = 400 için 1 − (840/394)/(1200/399) ≈ 0,291. İki "
             "durumda da R² = 1 − 840/1200 = 0,30'dur. Aynı beş katsayının serbestlik derecesi maliyeti küçük "
             "örneklemde büyüktür; gözlem sayısı arttıkça düzeltilmiş R², R²'ye yaklaşır (§5.9)."
         ),
@@ -507,9 +507,9 @@ QUESTIONS = (
         ),
     ),
     Question(
-        key="e05", concept="duzeltilmis-r2-r2-cinsinden", note=_note("5.9", "(5.8)"),
+        key="e05", concept="duzeltilmis-r2-r2-cinsinden", note=_note("5.9", "(5.11)"),
         prompt=(
-            "Kesim terimli, $k$ açıklayıcı değişkenli ve $n$ gözlemli bir modelin düzeltilmiş $R^2$'sini (5.8) "
+            "Kesim terimli, $k$ açıklayıcı değişkenli ve $n$ gözlemli bir modelin düzeltilmiş $R^2$'sini (5.11) "
             "yardımıyla $R^2$, $n$ ve $k$ cinsinden yazın."
         ),
         answer=Equation(
@@ -523,7 +523,7 @@ QUESTIONS = (
             shown="1 - (1 - R^2)\\,\\frac{n-1}{n-k-1}",
         ),
         explanation=(
-            "(5.8)'de pay ve paydayı düzenleyelim: $\\bar{R}^2 = 1 - (\\text{HKT}/\\text{TKT})\\,(n-1)/(n-k-1)$ ve "
+            "(5.11)'de pay ve paydayı düzenleyelim: $\\bar{R}^2 = 1 - (\\text{HKT}/\\text{TKT})\\,(n-1)/(n-k-1)$ ve "
             "$\\text{HKT}/\\text{TKT} = 1 - R^2$. Yeni değişken R²'yi azaltmasa da $(n-1)/(n-k-1)$ çarpanını büyütür; "
             "uyum artışı bu maliyeti karşılamazsa düzeltilmiş R² düşer. WAGE1'de 1 − 0,6936 × 525/522 ≈ 0,3024, "
             "Tablo 5.1'deki değerdir (§5.9)."
